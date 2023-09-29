@@ -1,4 +1,9 @@
-# Flask Boilerplate
+# how to start server
+
+```
+pipenv shell
+python3 run.py
+```
 
 [![The MIT License](https://img.shields.io/badge/license-MIT-orange.svg?style=flat-square)](LICENSE)
 
