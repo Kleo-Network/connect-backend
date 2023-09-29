@@ -3,8 +3,8 @@ from flask import Blueprint, current_app, request
 from werkzeug.local import LocalProxy
 
 from authentication import require_appkey
-from  .database import upload_browsing_data
-from .tasks import test_task
+from  .database import record_exists
+from .tasks import categorize_history
 
 core = Blueprint('core', __name__)
 logger = LocalProxy(lambda: current_app.logger)
@@ -19,11 +19,15 @@ def before_request_func():
 def upload():
     data = request.get_json()
     history = data["history"]
+    # use jwt token for user authentication -> important. 
+    # jwt token signed from ethereum address and valid for 45 minutes.  
     user_id = data["user_id"]
-    upload_browsing_data(history, user_id)
-    logger.info('app test route hit')
-    test_task.delay()
-    return 'Congratulations! Your core-app test route is running!'
+    for item in history:
+        if not record_exists(item["id"], user_id):
+            categorize_history.delay(item, user_id)
+        else:
+            logger.info('item exists id:', item["id"])
+    return 'History Upload and Categorization is queued!'
 
 
 @core.route('/', methods=['GET'])
