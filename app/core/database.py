@@ -12,19 +12,23 @@ session = boto3.Session(
 )
 dynamodb = session.resource('dynamodb')
 
-
+def record_exists(id, user_id):
+    table = dynamodb.Table('history')
+    response = table.query(
+        KeyConditionExpression=boto3.dynamodb.conditions.Key('id').eq(id) & boto3.dynamodb.conditions.Key('user_id').eq(user_id)
+    )
+    return 'Items' in response and len(response['Items']) > 0
 
 def create_user(user):
     table = dynamodb.Table('users')
     response = table.put_item(Item=user)
     return response
 
-def upload_browsing_data(history,user_id):
+def upload_browsing_data(item,user_id):
     table = dynamodb.Table('history')
-    for item in history:
-        item["user_id"] = user_id
-        item["favourite"] = False
-        table.put_item(Item=item)
+    item["user_id"] = user_id
+    item["favourite"] = False
+    table.put_item(Item=item)
     return True
 
 
