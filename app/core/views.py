@@ -43,7 +43,7 @@ def get_browsing_history_by_category():
     filters = request.args.get('filters')
     
 
-@core.route('/get_pinned_website', methods=["GET"])
+@core.route('/get_pinned_websites', methods=["GET"])
 def get_pinned_websites_for_user():
     # Initialize the DynamoDB resource and the table
     user_id = request.args.get('user_id')
@@ -67,8 +67,17 @@ def get_pinned_data_domain():
     to_epoch = request.args.get('to')
     domain_name = request.args.get('domain_name')
     return get_history(user_id, from_epoch, to_epoch, domain_name)
+
+@core.route('/get_pinned_summary_domain', methods=['GET'])
+def get_pinned_summary_domain():
+    user_id = request.args.get('user_id')
+    domain_name = request.args.get('domain_name')
+    summary = get_summary(user_id, domain_name)
+    total_visit_count = 0
+    for item in summary:
+        total_visit_count += int(item["visitCount"])
     
-    
+    return {"total_visit_count": total_visit_count}    
 
 @core.route('/upload', methods=['POST'])
 def upload():
