@@ -12,28 +12,6 @@ core = Blueprint('core', __name__)
 logger = LocalProxy(lambda: current_app.logger)
 
 
-'''
-4. GET BROWSING HISTORY BY CATEGORY 
--> user_id 
--> fromEpoch and toEpoch
--> checkpoints -> {24 hour interval} , {weekly} , {}
-
-RESULT 
--> 7 din -> 
-{
-    "day1" : {
-        "category_name": {
-            "percentage":"x%",
-            "domains": {
-                "github.com",
-                "abc.com",
-            }
-        }
-    }
-}
-
-'''
-
 @core.before_request
 def before_request_func():
     current_app.logger.name = 'core'
@@ -68,16 +46,23 @@ def get_pinned_data_domain():
     domain_name = request.args.get('domain_name')
     return get_history(user_id, from_epoch, to_epoch, domain_name)
 
+
 @core.route('/get_pinned_summary_domain', methods=['GET'])
 def get_pinned_summary_domain():
     user_id = request.args.get('user_id')
     domain_name = request.args.get('domain_name')
     summary = get_summary(user_id, domain_name)
+    fav = get_favourites(user_id, domain_name)
     total_visit_count = 0
     for item in summary:
         total_visit_count += int(item["visitCount"])
-    
-    return {"total_visit_count": total_visit_count}    
+    return {"total_visit_count": total_visit_count, "favourites": fav}    
+
+@core.route('/add_to_favourites', methods=['POST'])
+def add_to_favourite():
+    item_id = request.args.get('item_id')
+    response = add_to_favourites(item_id)
+    return response
 
 @core.route('/upload', methods=['POST'])
 def upload():
