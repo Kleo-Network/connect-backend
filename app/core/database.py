@@ -42,20 +42,17 @@ def upload_browsing_data(item,user_id):
 
 def get_history(user_id, from_epoch, to_epoch, regex):
     table = dynamodb.Table('history')
-    response = table.query(
-        KeyConditionExpression=(
-            "user_id = :user_id AND #time_attr BETWEEN :start_date AND :end_date"
-        ),
-        FilterExpression="contains (#name_attr, :username)",
-        ExpressionAttributeNames={
-            "#time_attr": "visitTime",
-            "#name_attr": "url"
-        },
-        ExpressionAttributeValues={
-            ":user_id": user_id,
-            ":username": regex,
-            ":start_date": from_epoch,
-            ":end_date": to_epoch
+    response = table.scan(
+    FilterExpression="user_id = :user_id AND #lastVisitTime BETWEEN :start_date AND :end_date AND contains(#name_attr, :username)",
+    ExpressionAttributeNames={
+        "#lastVisitTime": "lastVisitTime",
+        "#name_attr": "url"
+    },
+    ExpressionAttributeValues={
+        ":user_id": user_id,
+        ":username": regex,
+        ":start_date": Decimal(from_epoch),
+        ":end_date": Decimal(to_epoch)
         }
     )
     return response['Items']
@@ -82,6 +79,36 @@ def delete_history_item(primary_id):
     table = dynamodb.Table('history')
     response = table.delete_item(Key={"item_id": primary_id })
     return response 
+
+def add_to_favourites(item_id):
+    table = dynamodb.Table('history')
+    response = table.update_item(
+        Key={
+            'id': item_id
+        },
+        UpdateExpression="set isStarred = :d",
+        ExpressionAttributeValues={
+            ':d': True
+        },
+        ReturnValues="UPDATED_NEW"  # This will return the updated attributes. You can change this based on your needs.
+    )
+    return response
+    
+
+def get_favourites(user_id, domain_name):
+    table = dynamodb.Table('history')
+    response = table.scan(
+    FilterExpression="user_id = :user_id AND contains(#url_params, :domain) AND isStarred = :fav",
+    ExpressionAttributeNames={
+        "#url_params": "url"
+        },
+    ExpressionAttributeValues={
+        ":user_id": user_id,
+        ":domain": domain_name,
+        ":fav": True
+        }
+    )
+    return response['Items']
 
 def get_summary(user_id, domain_name):
     table = dynamodb.Table('history')
