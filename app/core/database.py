@@ -6,6 +6,7 @@ import random
 aws_access_key = "AKIA3RWDXTFSIADMEAPE"
 aws_secret_access_key = "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"
 aws_region = "ap-south-1"
+import uuid
 
 session = boto3.Session(
     aws_access_key_id=aws_access_key,
@@ -82,17 +83,29 @@ def delete_history_item(primary_id):
     response = table.delete_item(Key={"item_id": primary_id })
     return response 
 
+def get_summary(user_id, domain_name):
+    table = dynamodb.Table('history')
+    response = table.scan(
+    FilterExpression="user_id = :user_id AND contains(#url_params, :domain)",
+    ExpressionAttributeNames={
+        "#url_params": "url"
+        },
+    ExpressionAttributeValues={
+        ":user_id": user_id,
+        ":domain": domain_name
+        }
+    )
+    return response['Items']
+
 def get_pinned_website(user_id):
-    dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table('pinned_websites')
     
     # Query the table for the given user_id
-    response = table.query(
-        KeyConditionExpression="user_id = :user_id",
-        ExpressionAttributeValues={
-            ":user_id": user_id
-        }
-    )
+    response = table.scan(
+    FilterExpression="user_id = :user_id",
+    ExpressionAttributeValues={
+        ":user_id": user_id
+    })
     
     # Return the items from the response
     return response['Items']
@@ -110,7 +123,8 @@ def add_to_pinned_websites(user_id, domain_name, order):
     item = {
         'user_id': user_id,
         'domain_name': domain_name,
-        'order': order
+        'order': order,
+        'id':  str(uuid.uuid4())
     }
     
     response = table.put_item(Item=item)
