@@ -1,7 +1,7 @@
 {
     "client": "Thunder Client",
     "collectionName": "Kleo Connect",
-    "dateExported": "2023-10-02T09:10:36.961Z",
+    "dateExported": "2023-10-03T10:26:54.485Z",
     "version": "1.1",
     "folders": [],
     "requests": [
@@ -138,6 +138,41 @@
                 {
                     "name": "domain_name",
                     "value": "b",
+                    "isPath": false
+                }
+            ],
+            "tests": []
+        },
+        {
+            "_id": "01f55849-e7db-4608-ae4e-68c84c346fad",
+            "colId": "793cb479-56de-4f49-884b-f8690d3be148",
+            "containerId": "",
+            "name": "Get Graph Data",
+            "url": "http://127.0.0.1:5000/api/v1/core/get_browsing_history_graph?user_id=1&from=1695000000000&to=1695140083273&divisions=5",
+            "method": "GET",
+            "sortNum": 70000,
+            "created": "2023-10-03T10:04:05.148Z",
+            "modified": "2023-10-03T10:05:49.471Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "user_id",
+                    "value": "1",
+                    "isPath": false
+                },
+                {
+                    "name": "from",
+                    "value": "1695000000000",
+                    "isPath": false
+                },
+                {
+                    "name": "to",
+                    "value": "1695140083273",
+                    "isPath": false
+                },
+                {
+                    "name": "divisions",
+                    "value": "5",
                     "isPath": false
                 }
             ],
