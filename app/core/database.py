@@ -3,10 +3,13 @@ from boto3.dynamodb.conditions import Key, Attr
 import json
 from decimal import Decimal
 import random 
+from collections import defaultdict
+import uuid
+
+
 aws_access_key = "os.environ.get('AWS_ACCESS_KEY_ID')"
 aws_secret_access_key = "os.environ.get('AWS_SECRET_ACCESS_KEY')"
 aws_region = "ap-south-1"
-import uuid
 
 session = boto3.Session(
     aws_access_key_id=aws_access_key,
@@ -18,7 +21,7 @@ dynamodb = session.resource('dynamodb')
 def record_exists(id, user_id):
     table = dynamodb.Table('history')
     response = table.query(
-        KeyConditionExpression=boto3.dynamodb.conditions.Key('id').eq(id) & boto3.dynamodb.conditions.Key('user_id').eq(user_id)
+        KeyConditionExpression=boto3.dynamodb.conditions.Key('id').eq(id)
     )
     return 'Items' in response and len(response['Items']) > 0
 
@@ -124,6 +127,37 @@ def get_summary(user_id, domain_name):
     )
     return response['Items']
 
+def get_grpah_query(user_id, fromEpoch, toEpoch, divisions):
+    table = dynamodb.Table('history')
+    fromEpoch = Decimal(fromEpoch)
+    toEpoch = Decimal(toEpoch)
+    divisions = Decimal(divisions)
+    response = table.scan(
+    FilterExpression="user_id = :user_id AND #visitTime BETWEEN :fromEpoch AND :toEpoch",
+    ExpressionAttributeNames={
+        "#visitTime": "visitTime",
+    },
+    ExpressionAttributeValues={
+        ":user_id": user_id,
+        ":fromEpoch": fromEpoch,
+        ":toEpoch": toEpoch
+    }
+)
+    
+    items = response['Items']
+    print(items)
+    division_length = (toEpoch - fromEpoch) / divisions
+    results = defaultdict(dict)
+    print(results)
+    for item in items:
+        division_index = int((int(item["visitTime"]) - fromEpoch) / division_length)
+        print(division_index)
+        category = item['category']
+        if category not in results[division_index]:
+            results[division_index][category] = []
+        results[division_index][category].append(item)
+    return results
+
 def get_pinned_website(user_id):
     table = dynamodb.Table('pinned_websites')
     
@@ -138,13 +172,6 @@ def get_pinned_website(user_id):
     return response['Items']
 
 def add_to_pinned_websites(user_id, domain_name, order):
-    """
-    Add a new item to the 'pinned_websites' DynamoDB table.
-
-    :param user_id: The user ID.
-    :param domain_name: The domain name.
-    :param order: The order as an integer.
-    """
     table = dynamodb.Table('pinned_websites')
     
     item = {

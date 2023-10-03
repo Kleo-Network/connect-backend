@@ -16,9 +16,14 @@ logger = LocalProxy(lambda: current_app.logger)
 def before_request_func():
     current_app.logger.name = 'core'
 
-@core.route('/get_browsing_history_by_category', methods=["GET"])
-def get_browsing_history_by_category():
-    filters = request.args.get('filters')
+@core.route('/get_browsing_history_graph', methods=["GET"])
+def get_browsing_history_graph():
+    user_id = request.args.get('user_id')
+    divisions = request.args.get('divisions')
+    from_epoch = request.args.get('from')
+    to_epoch = request.args.get('to')
+    response = get_grpah_query(user_id, from_epoch, to_epoch, divisions)
+    return response
     
 
 @core.route('/get_pinned_websites', methods=["GET"])
@@ -72,12 +77,11 @@ def upload():
     # jwt token signed from ethereum address and valid for 45 minutes.  
     user_id = data["user_id"]
     for index,item in enumerate(history):
-        #if not record_exists(item["id"], user_id):
-        #item = single_url_request(item["url"], item)
-        categorize_history.delay(item, user_id)
-        #upload_browsing_data(item, user_id)
-        #else:
-        #    logger.info('item exists id:', item["id"])
+        if not record_exists(item["id"], user_id):
+            print("upload will happen?")
+            #categorize_history.delay(item, user_id)
+        else:
+            logger.info('item exists id:', item["id"])
     return 'History Upload and Categorization is queued!'
 
 
