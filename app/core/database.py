@@ -145,10 +145,8 @@ def get_grpah_query(user_id, fromEpoch, toEpoch, divisions):
 )
     
     items = response['Items']
-    print(items)
     division_length = (toEpoch - fromEpoch) / divisions
     results = defaultdict(dict)
-    print(results)
     for item in items:
         division_index = int((int(item["visitTime"]) - fromEpoch) / division_length)
         print(division_index)
@@ -158,6 +156,19 @@ def get_grpah_query(user_id, fromEpoch, toEpoch, divisions):
         results[division_index][category].append(item)
     return results
 
+def get_entire_profile(user_id):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('users')
+
+    response = table.query(
+        KeyConditionExpression="user_id = :user_id",
+        ExpressionAttributeValues={
+            ":user_id": user_id
+        }
+    )
+
+    items = response['Items']
+    return items[0] if items else None
 def get_pinned_website(user_id):
     table = dynamodb.Table('pinned_websites')
     

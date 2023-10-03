@@ -16,6 +16,12 @@ logger = LocalProxy(lambda: current_app.logger)
 def before_request_func():
     current_app.logger.name = 'core'
 
+@core.route('/get_profile_info', methods=["GET"])
+def get_profile_information():
+    user_id = request.args.get('user_id')
+    response = get_entire_profile(user_id)
+    return response
+
 @core.route('/get_browsing_history_graph', methods=["GET"])
 def get_browsing_history_graph():
     user_id = request.args.get('user_id')
