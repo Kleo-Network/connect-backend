@@ -12,3 +12,13 @@ def categorize_history(item, user_id):
     upload_browsing_data(item, user_id)
     logger.info('item uploaded ')
     return True
+
+# @celery.task(name='core.tasks.get_icon_from_url')
+# def getIcon(item, user_id):
+#     extracted = tldextract.extract(item["url"])
+#     domain = "{}.{}".format(extracted.domain, extracted.suffix)
+#     item["icon"] = "https://www.google.com/s2/favicons?domain={}&sz=48".format(domain)
+    
+#     return True
+
+    

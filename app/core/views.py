@@ -25,10 +25,9 @@ def get_profile_information():
 @core.route('/get_browsing_history_graph', methods=["GET"])
 def get_browsing_history_graph():
     user_id = request.args.get('user_id')
-    divisions = request.args.get('divisions')
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
-    response = get_grpah_query(user_id, from_epoch, to_epoch, divisions)
+    response = get_graph_query(user_id, from_epoch, to_epoch)
     return response
     
 
@@ -46,7 +45,8 @@ def add_pinned_website():
     user_id = data["user_id"]
     domain = data["domain"]
     order = data["order"]
-    response = add_to_pinned_websites(user_id, domain, order)
+    title = data["title"]
+    response = add_to_pinned_websites(user_id, domain, order, title)
     return response
 
 @core.route('/get_pinned_data_domain', methods=['GET'])
