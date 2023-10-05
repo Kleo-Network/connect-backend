@@ -3,6 +3,7 @@ from datetime import datetime
 import boto3
 import math
 from decimal import Decimal
+from collections import OrderedDict
 
 aws_access_key = "AKIA3RWDXTFSIADMEAPE"
 aws_secret_access_key = "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"
@@ -56,50 +57,50 @@ grouping_methods = {
 }
 
 def initialize_output_for_hours():
-    return {
-        "00-04": {},
-        "04-08": {},
-        "08-12": {},
-        "12-16": {},
-        "16-20": {},
-        "20-24": {}
-    }
+    return OrderedDict([
+        ("00-04", {}),
+        ("04-08", {}),
+        ("08-12", {}),
+        ("12-16", {}),
+        ("16-20", {}),
+        ("20-24", {})
+    ])
 
 def initialize_output_for_days():
-    return {
-        "Monday": {},
-        "Tuesday": {},
-        "Wednesday": {},
-        "Thursday": {},
-        "Friday": {},
-        "Saturday": {},
-        "Sunday": {}
-    }
+    return OrderedDict([
+        ("Monday", {}),
+        ("Tuesday", {}),
+        ("Wednesday", {}),
+        ("Thursday", {}),
+        ("Friday", {}),
+        ("Saturday", {}),
+        ("Sunday", {})
+    ])
 
 def initialize_output_for_weeks():
-    return {
-        "Week 1": {},
-        "Week 2": {},
-        "Week 3": {},
-        "Week 4": {},
-        "Week 5": {}
-    }
+    return OrderedDict([
+        ("Week 1", {}),
+        ("Week 2", {}),
+        ("Week 3", {}),
+        ("Week 4", {}),
+        ("Week 5", {})  # Just in case
+    ])
 
 def initialize_output_for_year():
-    return {
-        "January": {},
-        "February": {},
-        "March": {},
-        "April": {},
-        "May": {},
-        "June": {},
-        "July": {},
-        "August": {},
-        "September": {},
-        "October": {},
-        "November": {},
-        "December": {}
-    }
+    return OrderedDict([
+        ("January", {}),
+        ("February", {}),
+        ("March", {}),
+        ("April", {}),
+        ("May", {}),
+        ("June", {}),
+        ("July", {}),
+        ("August", {}),
+        ("September", {}),
+        ("October", {}),
+        ("November", {}),
+        ("December", {})
+    ])
 
 initialization_methods = {
     'hour': initialize_output_for_hours,
