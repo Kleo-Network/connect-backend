@@ -66,6 +66,8 @@ def process_data(group_by, history_data):
         group_value = group_function(int(entry["lastVisitTime"]))
         category = entry["category"]
         domain = get_domain(entry["url"])
+        icon = entry.get("icon", "https://www.google.com/s2/favicons?domain={}&sz=48".format(domain))
+        name = domain
 
         if group_value not in output_data:
             output_data[group_value] = {}
@@ -77,15 +79,16 @@ def process_data(group_by, history_data):
             }
         
         if domain not in output_data[group_value][category]["domains"]:
-            output_data[group_value][category]["domains"][domain] = 0
+            output_data[group_value][category]["domains"][domain] = {"visitCounterTimeRange": 0, "icon": icon, "name": name}
+
         
-        output_data[group_value][category]["domains"][domain] += 1
+        output_data[group_value][category]["domains"][domain]["visitCounterTimeRange"] += 1
         output_data[group_value][category]["totalCategoryVisits"] += 1
 
     # Convert domain data to desired output format
     for group_value, categories in output_data.items():
         for category, data in categories.items():
-            domains_list = [{"domain": k, "visitCounterTimeRange": v} for k, v in data["domains"].items()]
+            domains_list = [{"domain": k, "visitCounterTimeRange": v["visitCounterTimeRange"], "icon": v["icon"],  "name": v["name"]} for k, v in data["domains"].items()]
             output_data[group_value][category]["domains"] = domains_list
 
     return output_data
