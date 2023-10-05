@@ -1,7 +1,7 @@
 {
     "client": "Thunder Client",
     "collectionName": "Kleo Connect",
-    "dateExported": "2023-10-05T08:32:43.960Z",
+    "dateExported": "2023-10-05T17:04:35.733Z",
     "version": "1.1",
     "folders": [],
     "requests": [
@@ -93,11 +93,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "",
             "name": "Add to Favourites",
-            "url": "http://127.0.0.1:5000/api/v1/core/add_to_favourites?item_id=7963006",
+            "url": "http://127.0.0.1:5000/api/v1/core/history/add_to_favourites?item_id=7963006",
             "method": "POST",
             "sortNum": 50000,
             "created": "2023-10-02T08:50:42.798Z",
-            "modified": "2023-10-02T08:51:47.203Z",
+            "modified": "2023-10-05T08:37:50.479Z",
             "headers": [],
             "params": [
                 {
@@ -148,11 +148,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "",
             "name": "Get Graph Data",
-            "url": "http://127.0.0.1:5000/api/v1/core/get_browsing_history_graph?user_id=1&from=1695000000000&to=1695140083273",
+            "url": "http://127.0.0.1:5000/api/v1/core/history/get_browsing_history_graph?user_id=1&from=1695000000000&to=1695140083273&filter=week",
             "method": "GET",
             "sortNum": 70000,
             "created": "2023-10-03T10:04:05.148Z",
-            "modified": "2023-10-03T18:17:01.404Z",
+            "modified": "2023-10-05T17:03:47.712Z",
             "headers": [],
             "params": [
                 {
@@ -168,6 +168,11 @@
                 {
                     "name": "to",
                     "value": "1695140083273",
+                    "isPath": false
+                },
+                {
+                    "name": "filter",
+                    "value": "week",
                     "isPath": false
                 }
             ],
