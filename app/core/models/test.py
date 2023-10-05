@@ -17,11 +17,7 @@ session = boto3.Session(
 )
 dynamodb = session.resource('dynamodb')
 
-table = dynamodb.Table('history')
-
-response = table.scan()
-
-history_data = response['Items']  # Your list of dictionaries from the history table
+  # Your list of dictionaries from the history table
 
 # Initialize the output data structure
 
@@ -66,7 +62,7 @@ grouping_methods = {
     'week': group_by_week
 }
 
-def process_data(group_by):
+def process_data(group_by, history_data):
     # Choose the grouping method based on the parameter
     group_function = grouping_methods[group_by]
 
@@ -102,6 +98,9 @@ def process_data(group_by):
     return output_data
 
 # To use:
-group_by_parameter = 'day'  # or 'hour' or 'week'
-result = process_data(group_by_parameter)
-print(json.dumps(result, indent=4))
+def graph_query(group_by_parameter):
+    table = dynamodb.Table('history')
+    response = table.scan()
+    history_data = response['Items']
+    result = process_data(group_by_parameter, history_data)
+    return result

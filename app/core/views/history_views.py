@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, request
 from ..models.history import *
 from werkzeug.local import LocalProxy
-
+from ..models.graph import *
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
@@ -11,13 +11,14 @@ logger = LocalProxy(lambda: current_app.logger)
 def before_request_func():
     current_app.logger.name = 'core'
 
-# @core.route('/get_browsing_history_graph', methods=["GET"])
-# def get_browsing_history_graph():
-#     user_id = request.args.get('user_id')
-#     from_epoch = request.args.get('from')
-#     to_epoch = request.args.get('to')
-#     response = get_graph_query(user_id, from_epoch, to_epoch)
-#     return response
+@core.route('/get_browsing_history_graph', methods=["GET"])
+def get_browsing_history_graph():
+    user_id = request.args.get('user_id')
+    from_epoch = request.args.get('from')
+    to_epoch = request.args.get('to')
+    filter = request.args.get('filter')
+    response = graph_query(filter)
+    return response
 
 @core.route('/add_to_favourites', methods=['POST'])
 def add_to_favourite():
