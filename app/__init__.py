@@ -25,12 +25,25 @@ def create_app():
     # celery is not able to pick result_backend and hence using update
     celery.conf.update(result_backend=app.config['RESULT_BACKEND'])
 
-    from .core.views import core as core_blueprint
+    from .core.views.history_views import core as core_history
+    from .core.views.pinned_views import core as core_pinned
+    from .core.views.user_views import core as core_user
+    
     app.register_blueprint(
-        core_blueprint,
-        url_prefix='/api/v1/core'
+        core_history,
+        name="history_api",
+        url_prefix='/api/v1/core/history'
     )
-
+    app.register_blueprint(
+        core_pinned,
+        name="pinned_api",
+        url_prefix='/api/v1/core/pinned'
+    )
+    app.register_blueprint(
+        core_user,
+        name="user_api",
+        url_prefix='/api/v1/core/user'
+    )
     return app
 
 

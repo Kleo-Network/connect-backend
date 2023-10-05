@@ -6,8 +6,8 @@ import random
 from collections import defaultdict
 
 # AWS Initialization
-aws_access_key = "YOUR_AWS_ACCESS_KEY"
-aws_secret_access_key = "YOUR_AWS_SECRET_ACCESS_KEY"
+aws_access_key = "os.environ.get('AWS_ACCESS_KEY_ID')"
+aws_secret_access_key = "os.environ.get('AWS_SECRET_ACCESS_KEY')"
 aws_region = "ap-south-1"
 
 session = boto3.Session(
@@ -47,19 +47,6 @@ def get_history(user_id, from_epoch, to_epoch, regex):
             ":start_date": Decimal(from_epoch),
             ":end_date": Decimal(to_epoch)
         }
-    )
-    return response['Items']
-
-def query_history(user_id, filters):
-    table = dynamodb.Table('history')
-    key_condition = Key('user_id').eq(user_id)
-    conditions = [Attr(attr).eq(value) for attr, value in filters]
-    filter_expression = conditions[0]
-    for condition in conditions[1:]:
-        filter_expression = filter_expression & condition
-    response = table.query(
-        KeyConditionExpression=key_condition,
-        FilterExpression=filter_expression
     )
     return response['Items']
 
@@ -111,29 +98,3 @@ def get_summary(user_id, domain_name):
     )
     return response['Items']
 
-def get_grpah_query(user_id, fromEpoch, toEpoch, divisions):
-    table = dynamodb.Table('history')
-    fromEpoch = Decimal(fromEpoch)
-    toEpoch = Decimal(toEpoch)
-    divisions = Decimal(divisions)
-    response = table.scan(
-        FilterExpression="user_id = :user_id AND #visitTime BETWEEN :fromEpoch AND :toEpoch",
-        ExpressionAttributeNames={
-            "#visitTime": "visitTime",
-        },
-        ExpressionAttributeValues={
-            ":user_id": user_id,
-            ":fromEpoch": fromEpoch,
-            ":toEpoch": toEpoch
-        }
-    )
-    items = response['Items']
-    division_length = (toEpoch - fromEpoch) / divisions
-    results = defaultdict(dict)
-    for item in items:
-        division_index = int((int(item["visitTime"]) - fromEpoch) / division_length)
-        category = item['category']
-        if category not in results[division_index]:
-            results[division_index][category] = []
-        results[division_index][category].append(item)
-    return results
