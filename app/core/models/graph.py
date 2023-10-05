@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 import boto3
 import math
+from decimal import Decimal
 
 aws_access_key = "os.environ.get('AWS_ACCESS_KEY_ID')"
 aws_secret_access_key = "os.environ.get('AWS_SECRET_ACCESS_KEY')"
@@ -137,9 +138,19 @@ def process_data(group_by, history_data):
 
     return output_data
 
-def graph_query(group_by_parameter):
+def graph_query(group_by_parameter, user_id, from_epoch, to_epoch):
     table = dynamodb.Table('history')
-    response = table.scan()
+    response = table.scan(
+        FilterExpression="user_id = :user_id AND #lastVisitTime BETWEEN :start_date AND :end_date",
+        ExpressionAttributeNames={
+            "#lastVisitTime": "lastVisitTime"
+        },
+        ExpressionAttributeValues={
+            ":user_id": user_id,
+            ":start_date": Decimal(from_epoch),
+            ":end_date": Decimal(to_epoch)
+        }
+    )
     history_data = response['Items']
     result = process_data(group_by_parameter, history_data)
     return result

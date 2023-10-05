@@ -17,7 +17,7 @@ def get_browsing_history_graph():
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
     filter = request.args.get('filter')
-    response = graph_query(filter)
+    response = graph_query(filter, user_id, from_epoch, to_epoch)
     return response
 
 @core.route('/add_to_favourites', methods=['POST'])
