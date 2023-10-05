@@ -1,7 +1,7 @@
 {
     "client": "Thunder Client",
     "collectionName": "Kleo Connect",
-    "dateExported": "2023-10-03T10:26:54.485Z",
+    "dateExported": "2023-10-05T08:32:43.960Z",
     "version": "1.1",
     "folders": [],
     "requests": [
@@ -29,16 +29,16 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "",
             "name": "CREATE PINNED WEBSITE",
-            "url": "http://127.0.0.1:5000/api/v1/core/add_pinned_website",
+            "url": "http://127.0.0.1:5000/api/v1/core/pinned/add_pinned_website",
             "method": "POST",
             "sortNum": 20000,
             "created": "2023-10-01T20:46:02.310Z",
-            "modified": "2023-10-01T20:57:01.686Z",
+            "modified": "2023-10-04T23:15:25.440Z",
             "headers": [],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{\n  \"user_id\": \"200\",\n  \"domain\": \"https://www.netflix.com\",\n  \"order\": \"2\"\n}",
+                "raw": "{\n  \"user_id\": \"311\",\n  \"domain\": \"https://www.netflix.com\",\n  \"order\": \"2\",\n  \"title\": \"Netflix\"\n}",
                 "form": []
             },
             "tests": []
@@ -48,11 +48,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "",
             "name": "Get Pinned Websites",
-            "url": "http://127.0.0.1:5000/api/v1/core/get_pinned_websites?user_id=200",
+            "url": "http://127.0.0.1:5000/api/v1/core/pinned/get_pinned_websites?user_id=200",
             "method": "GET",
             "sortNum": 30000,
             "created": "2023-10-01T20:57:20.186Z",
-            "modified": "2023-10-01T20:57:58.068Z",
+            "modified": "2023-10-04T23:15:40.925Z",
             "headers": [],
             "params": [
                 {
@@ -68,11 +68,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "",
             "name": "Get Summary Pinned ",
-            "url": "http://127.0.0.1:5000/api/v1/core/get_pinned_summary_domain?user_id=1&domain_name=github.com",
+            "url": "http://127.0.0.1:5000/api/v1/core/pinned/get_pinned_summary_domain?user_id=1&domain_name=youtube",
             "method": "GET",
             "sortNum": 40000,
             "created": "2023-10-02T03:35:53.082Z",
-            "modified": "2023-10-02T05:02:12.792Z",
+            "modified": "2023-10-05T00:17:33.298Z",
             "headers": [],
             "params": [
                 {
@@ -82,7 +82,7 @@
                 },
                 {
                     "name": "domain_name",
-                    "value": "github.com",
+                    "value": "youtube",
                     "isPath": false
                 }
             ],
@@ -113,11 +113,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "",
             "name": "Get PInned Data History Items",
-            "url": "http://127.0.0.1:5000/api/v1/core/get_pinned_data_domain?user_id=1&from=1695140083273&to=1695140083275&domain_name=b",
+            "url": "http://127.0.0.1:5000/api/v1/core/pinned/get_pinned_data_domain?user_id=1&from=1695140083273&to=1695141140735&domain_name=youtube.com",
             "method": "GET",
             "sortNum": 60000,
             "created": "2023-10-02T08:54:51.485Z",
-            "modified": "2023-10-02T09:09:43.227Z",
+            "modified": "2023-10-05T00:18:25.083Z",
             "headers": [],
             "params": [
                 {
@@ -132,12 +132,12 @@
                 },
                 {
                     "name": "to",
-                    "value": "1695140083275",
+                    "value": "1695141140735",
                     "isPath": false
                 },
                 {
                     "name": "domain_name",
-                    "value": "b",
+                    "value": "youtube.com",
                     "isPath": false
                 }
             ],
@@ -148,11 +148,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "",
             "name": "Get Graph Data",
-            "url": "http://127.0.0.1:5000/api/v1/core/get_browsing_history_graph?user_id=1&from=1695000000000&to=1695140083273&divisions=5",
+            "url": "http://127.0.0.1:5000/api/v1/core/get_browsing_history_graph?user_id=1&from=1695000000000&to=1695140083273",
             "method": "GET",
             "sortNum": 70000,
             "created": "2023-10-03T10:04:05.148Z",
-            "modified": "2023-10-03T10:05:49.471Z",
+            "modified": "2023-10-03T18:17:01.404Z",
             "headers": [],
             "params": [
                 {
@@ -168,11 +168,6 @@
                 {
                     "name": "to",
                     "value": "1695140083273",
-                    "isPath": false
-                },
-                {
-                    "name": "divisions",
-                    "value": "5",
                     "isPath": false
                 }
             ],
