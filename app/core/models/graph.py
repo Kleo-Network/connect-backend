@@ -4,6 +4,7 @@ import boto3
 import math
 from decimal import Decimal
 from collections import OrderedDict
+from boto3.dynamodb.conditions import Key, Attr
 
 aws_access_key = "AKIA3RWDXTFSIADMEAPE"
 aws_secret_access_key = "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"
@@ -141,17 +142,10 @@ def process_data(group_by, history_data):
 
 def graph_query(group_by_parameter, user_id, from_epoch, to_epoch):
     table = dynamodb.Table('history')
-    response = table.scan(
-        FilterExpression="user_id = :user_id AND #lastVisitTime BETWEEN :start_date AND :end_date",
-        ExpressionAttributeNames={
-            "#lastVisitTime": "lastVisitTime"
-        },
-        ExpressionAttributeValues={
-            ":user_id": user_id,
-            ":start_date": Decimal(from_epoch),
-            ":end_date": Decimal(to_epoch)
-        }
-    )
+    response = table.query(
+    KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch))
+)
     history_data = response['Items']
     result = process_data(group_by_parameter, history_data)
     return result
