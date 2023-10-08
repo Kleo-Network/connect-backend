@@ -1,6 +1,7 @@
 from flask import Blueprint, current_app, request
 from ..models.history import *
 from ..models.pinned_website import *
+from ..models.graph import *
 from werkzeug.local import LocalProxy
 
 core = Blueprint('core', __name__)
@@ -30,7 +31,9 @@ def get_pinned_data_domain():
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
     domain_name = request.args.get('domain_name')
-    return get_history(user_id, from_epoch, to_epoch, domain_name)
+    filter = request.args.get('filter')
+    response = graph_query(filter, user_id, from_epoch, to_epoch, domain_name)
+    return response
 
 
 @core.route('/get_pinned_summary_domain', methods=['GET'])
