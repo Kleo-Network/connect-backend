@@ -1,14 +1,13 @@
 import logging.config
 from os import environ
 
-from celery import Celery
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
 
+from .core.celery.main import make_celery
 from .config import config as app_config
 
-celery = Celery(__name__)
 
 
 def create_app():
@@ -18,13 +17,13 @@ def create_app():
     logging.config.dictConfig(app_config[APPLICATION_ENV].LOGGING)
     app = Flask(app_config[APPLICATION_ENV].APP_NAME)
     app.config.from_object(app_config[APPLICATION_ENV])
-
+    app.config["CELERY_CONFIG"] = {"broker_url": "redis://localhost:6379", "result_backend": "redis://localhost:6379"}
+    
     CORS(app, resources={r'/api/*': {'origins': '*'}})
-
-    celery.config_from_object(app.config, force=True)
-    # celery is not able to pick result_backend and hence using update
-    celery.conf.update(result_backend=app.config['RESULT_BACKEND'])
-
+    celery = make_celery(app)
+    celery.set_default()
+    
+    
     from .core.views.history_views import core as core_history
     from .core.views.pinned_views import core as core_pinned
     from .core.views.user_views import core as core_user
@@ -44,7 +43,7 @@ def create_app():
         name="user_api",
         url_prefix='/api/v1/core/user'
     )
-    return app
+    return app, celery
 
 
 def get_environment():

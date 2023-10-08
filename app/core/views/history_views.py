@@ -2,6 +2,7 @@ from flask import Blueprint, current_app, request
 from ..models.history import *
 from werkzeug.local import LocalProxy
 from ..models.graph import *
+from ..celery.tasks import *
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
@@ -34,10 +35,9 @@ def upload():
     # jwt token signed from ethereum address and valid for 45 minutes.  
     user_id = data["user_id"]
     for index,item in enumerate(history):
-        if not record_exists(item["id"], user_id):
-            print("upload will happen?")
-            #categorize_history.delay(item, user_id)
+        if not record_exists(user_id, item["visitTime"]):
+            task = categorize_history.delay({"item": item, "user_id": user_id})
         else:
-            logger.info('item exists id:', item["id"])
+            logger.info('item exists:', item)
     return 'History Upload and Categorization is queued!'
 

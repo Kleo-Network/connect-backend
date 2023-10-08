@@ -50,10 +50,10 @@ def group_by_month(timestamp):
     return dt_object.strftime('%B')
 
 grouping_methods = {
-    'hour': group_by_hour,
-    'day': group_by_day,
-    'week': group_by_week,
-    'month': group_by_month
+    'day': group_by_hour,
+    'week': group_by_day,
+    'month': group_by_week,
+    'year': group_by_month
 }
 
 def initialize_output_for_hours():
@@ -103,10 +103,10 @@ def initialize_output_for_year():
     ])
 
 initialization_methods = {
-    'hour': initialize_output_for_hours,
-    'day': initialize_output_for_days,
-    'week': initialize_output_for_weeks,
-    'month': initialize_output_for_year
+    'day': initialize_output_for_hours,
+    'week': initialize_output_for_days,
+    'month': initialize_output_for_weeks,
+    'year': initialize_output_for_year
 }
 
 def process_data(group_by, history_data):

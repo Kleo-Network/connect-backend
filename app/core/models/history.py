@@ -4,6 +4,8 @@ from decimal import Decimal
 import json
 import random
 from collections import defaultdict
+from ..modules.history import single_url_request
+import time
 
 # AWS Initialization
 aws_access_key = "AKIA3RWDXTFSIADMEAPE"
@@ -17,21 +19,50 @@ session = boto3.Session(
 )
 dynamodb = session.resource('dynamodb')
 
-def record_exists(id, user_id):
+def domain_exists_or_insert(domain):
+    table = dynamodb.Table("domains")
+    response = table.query(
+        KeyConditionExpression=boto3.dynamodb.conditions.Key('domain').eq(domain)
+    )
+    
+    if response['Items']:
+        print(response['Items'])
+        return response['Items'][0]
+    else:
+        category_group, category_description, category = single_url_request(domain)
+        # Insert domain into the table
+        item =  {'domain': domain,
+                'category_group': category_group,
+                'category_description': category_description, 
+                'category': category}
+        table.put_item(Item=item)
+        return item
+        
+
+def record_exists(user_id, visitTime):
     table = dynamodb.Table('history')
     response = table.query(
-        KeyConditionExpression=Key('id').eq(id)
+       KeyConditionExpression=(
+            Key('user_id').eq(str(user_id)) & 
+            Key('visitTime').eq(Decimal(str(visitTime)))
+        )
     )
+    print(len(response['Items']))
     return 'Items' in response and len(response['Items']) > 0
 
 def upload_browsing_data(item, user_id):
-    table = dynamodb.Table('history')
-    item["user_id"] = user_id
-    item["favourite"] = False
-    item["id"] = str(random.randint(1, 10000000))
-    item = json.loads(json.dumps(item), parse_float=Decimal)
-    res = table.put_item(Item=item)
-    return True
+    try:
+        table = dynamodb.Table('history')
+        item["user_id"] = str(user_id)
+        item["favourite"] = False
+        item["hidden"] = False
+        item = json.loads(json.dumps(item), parse_float=Decimal)
+        res = table.put_item(Item=item)
+        return True
+    except:
+        time.sleep(5)
+        pass
+        
 
 def get_history(user_id, from_epoch, to_epoch, regex):
     table = dynamodb.Table('history')

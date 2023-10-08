@@ -17,6 +17,27 @@ session = boto3.Session(
 )
 dynamodb = session.resource('dynamodb')
 
+
+def delete_all_history_items():
+    table = dynamodb.Table('history')
+    
+    # Scan the table to get all items.
+    response = table.scan()
+    items = response['Items']
+
+    # Keep scanning until all items are fetched
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response['Items'])
+
+    # Delete each item
+    for item in items:
+        table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
+
+    print(f"Deleted {len(items)} items from the history table.")
+
+# Call the function to delete all items
+delete_all_history_items()
   # Your list of dictionaries from the history table
 
 # Initialize the output data structure
@@ -104,3 +125,4 @@ def graph_query(group_by_parameter):
     history_data = response['Items']
     result = process_data(group_by_parameter, history_data)
     return result
+
