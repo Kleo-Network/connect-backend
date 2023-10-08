@@ -110,6 +110,36 @@ initialization_methods = {
     'year': initialize_output_for_year
 }
 
+def process_data_by_domain(group_by, history_data):
+    group_function = grouping_methods[group_by]
+    output_data = initialization_methods[group_by]()
+
+    for entry in history_data:
+        group_value = group_function(int(entry["lastVisitTime"]))
+        domain = get_domain(entry["url"])
+        icon = entry.get("icon", f"https://www.google.com/s2/favicons?domain={domain}&sz=48")
+        name = entry["title"]
+        url = entry["url"]
+
+        if "urls" not in output_data[group_value]:
+            output_data[group_value]["urls"] = []
+
+        url_entry = {
+            "icon": icon,
+            "title": name,
+            "visitTime": int(entry["lastVisitTime"]),
+            "url": url
+        }
+
+        # Append the URL entry to the list of URLs for the current group
+        output_data[group_value]["urls"].append(url_entry)
+
+    # Remove empty entries:
+    output_data = {k: v for k, v in output_data.items() if "urls" in v}
+
+    return output_data
+
+
 def process_data(group_by, history_data):
     group_function = grouping_methods[group_by]
     output_data = initialization_methods[group_by]()
@@ -120,6 +150,7 @@ def process_data(group_by, history_data):
         domain = get_domain(entry["url"])
         icon = entry.get("icon", f"https://www.google.com/s2/favicons?domain={domain}&sz=48")
         name = domain
+        
 
         if category not in output_data[group_value]:
             output_data[group_value][category] = {
@@ -140,12 +171,24 @@ def process_data(group_by, history_data):
 
     return output_data
 
-def graph_query(group_by_parameter, user_id, from_epoch, to_epoch):
+def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None):
     table = dynamodb.Table('history')
-    response = table.query(
-    KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch))
-)
-    history_data = response['Items']
-    result = process_data(group_by_parameter, history_data)
+    if domain is not None:
+        response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
+                            FilterExpression="contains(#url_attr, :domain_name)",
+                            ExpressionAttributeNames={
+                                "#url_attr": "url"
+                            },
+                            ExpressionAttributeValues={
+                                ":domain_name": domain
+                            })
+        result = process_data_by_domain(group_by_parameter, response['Items'])
+    else:
+        response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)))
+        result = process_data(group_by_parameter, response['Items'])
+    
     return result

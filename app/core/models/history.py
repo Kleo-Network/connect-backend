@@ -104,9 +104,13 @@ def get_favourites(user_id, domain_name):
     table = dynamodb.Table('history')
     response = table.query(
     KeyConditionExpression=Key('user_id').eq(str(user_id)),
-    FilterExpression="favourite = :is_starred",
+    FilterExpression="contains(#url_params, :domain) AND favourite = :is_starred",
+    ExpressionAttributeNames={
+            "#url_params": "url"
+        },
     ExpressionAttributeValues={
-        ":is_starred": True
+        ":is_starred": True,
+        ":domain": domain_name
     },
     ConsistentRead=True
 )
