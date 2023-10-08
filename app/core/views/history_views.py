@@ -23,8 +23,9 @@ def get_browsing_history_graph():
 
 @core.route('/add_to_favourites', methods=['POST'])
 def add_to_favourite():
-    item_id = request.args.get('item_id')
-    response = add_to_favourites(item_id)
+    user_id = request.args.get('user_id')
+    visitTime = request.args.get('visitTime')
+    response = add_to_favourites(user_id, visitTime)
     return response
 
 @core.route('/upload', methods=['POST'])
