@@ -1,5 +1,5 @@
 from ..modules.history import single_url_request
-from ..models.history import upload_browsing_data, domain_exists_or_insert
+from ..controllers.history import upload_browsing_data, domain_exists_or_insert
 
 from celery import shared_task 
 from celery.contrib.abortable import AbortableTask

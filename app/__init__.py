@@ -8,7 +8,10 @@ from flask_cors import CORS
 from .core.celery.main import make_celery
 from .config import config as app_config
 
+import os
 
+redis_url = os.environ.get("REDIS_URL", "localhost")
+redis_port = os.environ.get("REDIS_PORT", "6379")
 
 def create_app():
     # loading env vars from .env file
@@ -17,8 +20,10 @@ def create_app():
     logging.config.dictConfig(app_config[APPLICATION_ENV].LOGGING)
     app = Flask(app_config[APPLICATION_ENV].APP_NAME)
     app.config.from_object(app_config[APPLICATION_ENV])
-    app.config["CELERY_CONFIG"] = {"broker_url": "redis://localhost:6379", "result_backend": "redis://localhost:6379"}
-    
+    app.config["CELERY_CONFIG"] = {
+        "broker_url": f"redis://{redis_url}:{redis_port}",
+        "result_backend": f"redis://{redis_url}:{redis_port}"
+    }    
     CORS(app, resources={r'/api/*': {'origins': '*'}})
     celery = make_celery(app)
     celery.set_default()

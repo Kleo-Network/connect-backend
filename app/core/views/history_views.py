@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, request
-from ..models.history import *
+from ..controllers.history import *
 from werkzeug.local import LocalProxy
-from ..models.graph import *
+from ..controllers.graph import *
 from ..celery.tasks import *
 core = Blueprint('core', __name__)
 

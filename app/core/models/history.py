@@ -1,131 +1,47 @@
-import boto3
-from boto3.dynamodb.conditions import Key, Attr
-from decimal import Decimal
-import json
-import random
-from collections import defaultdict
-from ..modules.history import single_url_request
-import time
+from marshmallow import Schema, fields, validate, ValidationError
 
-# AWS Initialization
-aws_access_key = "os.environ.get('AWS_ACCESS_KEY_ID')"
-aws_secret_access_key = "os.environ.get('AWS_SECRET_ACCESS_KEY')"
-aws_region = "ap-south-1"
+class VisitItemSchema(Schema):
+    user_id = fields.Str(required=True, validate=validate.Regexp(r'^uuid-[^-]+-[^-]+-[^-]+-[^-]+$'))
+    visitTime = fields.Decimal(required=True)
+    domain = fields.Str(required=True)
+    favourite = fields.Bool(required=True, default=False)
+    hidden = fields.Bool(required=True, default=False)
+    url = fields.Urlrequired=True)
+    category = fields.Str()
+    category_description = fields.Str()
+    category_group = fields.Str()
+    id = fields.Str(required=True)
+    isLocal = fields.Bool()
+    lastVisitTime = fields.Decimal()
+    title = fields.Str()
+    transition = fields.Str()
+    typedCount = fields.Int()
+    visitCount = fields.Int()
+    visitId = fields.Str()
 
-session = boto3.Session(
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-)
-dynamodb = session.resource('dynamodb')
+# Test with the provided data
+# data = {
+#     "user_id": "uuid-uuid-uuid-uuid",
+#     "visitTime": 1687511286634.651,
+#     "category": "Web-based Applications",
+#     "category_description": "Sites that mimic desktop applications such as word processing, spreadsheets, and slide-show presentations.",
+#     "category_group": "General Interest - Business",
+#     "domain": "docs.google.com",
+#     "favourite": true,
+#     "hidden": false,
+#     "id": "216841",
+#     "isLocal": true,
+#     "lastVisitTime": 1687511292617.1628,
+#     "referringVisitId": "0",
+#     "title": "KPIs for kleo network - Google Docs",
+#     "transition": "auto_toplevel",
+#     "typedCount": 0,
+#     "url": "https://docs.google.com/document/d/1lefVLSa8nrIr5LCQOBrC3MaKDYxhfEiv_4wKhSAuEk8/edit?usp=drivesdk",
+#     "visitCount": 2,
+#     "visitId": "680548"
+# }
 
-def domain_exists_or_insert(domain):
-    table = dynamodb.Table("domains")
-    response = table.query(
-        KeyConditionExpression=boto3.dynamodb.conditions.Key('domain').eq(domain)
-    )
-    
-    if response['Items']:
-        print(response['Items'])
-        return response['Items'][0]
-    else:
-        category_group, category_description, category = single_url_request(domain)
-        # Insert domain into the table
-        item =  {'domain': domain,
-                'category_group': category_group,
-                'category_description': category_description, 
-                'category': category}
-        table.put_item(Item=item)
-        return item
-        
+# schema = VisitItemSchema()
+# validated_data = schema.load(data)
 
-def record_exists(user_id, visitTime):
-    table = dynamodb.Table('history')
-    response = table.query(
-       KeyConditionExpression=(
-            Key('user_id').eq(str(user_id)) & 
-            Key('visitTime').eq(Decimal(str(visitTime)))
-        )
-    )
-    print(len(response['Items']))
-    return 'Items' in response and len(response['Items']) > 0
-
-def upload_browsing_data(item, user_id):
-    try:
-        table = dynamodb.Table('history')
-        item["user_id"] = str(user_id)
-        item["favourite"] = False
-        item["hidden"] = False
-        item = json.loads(json.dumps(item), parse_float=Decimal)
-        res = table.put_item(Item=item)
-        return True
-    except:
-        time.sleep(5)
-        pass
-        
-
-def get_history(user_id, from_epoch, to_epoch, regex):
-    table = dynamodb.Table('history')
-    response = table.query(
-        KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
-        FilterExpression="contains(#name_attr, :username)",
-        ExpressionAttributeNames={
-            "#name_attr": "url"
-        },
-        ExpressionAttributeValues={
-            ":username": regex
-        })
-    return response['Items']
-
-def delete_history_item(primary_id):
-    table = dynamodb.Table('history')
-    response = table.delete_item(Key={"item_id": primary_id })
-    return response 
-
-def add_to_favourites(user_id, visitTime):
-    table = dynamodb.Table('history')
-    
-    response = table.update_item(
-        Key={
-            'user_id': user_id,
-            'visitTime': Decimal(visitTime)  # Assuming visitTime is a number (epoch time)
-        },
-        UpdateExpression="set favourite = :d",
-        ExpressionAttributeValues={
-            ':d': True
-        },
-        ReturnValues="UPDATED_NEW"
-    )
-
-    return response
-
-def get_favourites(user_id, domain_name):
-    table = dynamodb.Table('history')
-    response = table.query(
-    KeyConditionExpression=Key('user_id').eq(str(user_id)),
-    FilterExpression="contains(#url_params, :domain) AND favourite = :is_starred",
-    ExpressionAttributeNames={
-            "#url_params": "url"
-        },
-    ExpressionAttributeValues={
-        ":is_starred": True,
-        ":domain": domain_name
-    },
-    ConsistentRead=True
-)
-    return response['Items']
-
-def get_summary(user_id, domain_name):
-    table = dynamodb.Table('history')
-    response = table.query(
-        KeyConditionExpression=Key('user_id').eq(user_id),
-        FilterExpression="contains(#url_params, :domain)",
-        ExpressionAttributeNames={
-            "#url_params": "url"
-        },
-        ExpressionAttributeValues={
-            ":domain": domain_name
-        })
-    return response['Items']
-
+# print(validated_data)

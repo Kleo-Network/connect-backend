@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, request
-from ..models.user import *
+from ..controllers.user import *
 from werkzeug.local import LocalProxy
 
 core = Blueprint('core', __name__)

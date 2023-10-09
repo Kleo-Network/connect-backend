@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, request
-from ..models.history import *
-from ..models.pinned_website import *
-from ..models.graph import *
+from ..controllers.history import *
+from ..controllers.pinned_website import *
+from ..controllers.graph import *
 from werkzeug.local import LocalProxy
 
 core = Blueprint('core', __name__)
