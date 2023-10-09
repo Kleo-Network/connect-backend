@@ -1,24 +1,20 @@
 services:
   redis:
     image: redis
-  web:
-    build:
-      context: .
-    environment:
-      FLASK_APP: run
-      FLASK_DEBUG: 1
-    volumes:
-      - .:/
-    command: flask run -h 0.0.0.0
+  api:
+    build: .
+    command: python run.py
     ports:
-      - 5000:5000
+      - 5001:5001
   celery:
-    build:
-        context: .
-    environment:
-      FLASK_APP: run
-    volumes:
-      - .:/
+    build: .
     command: celery -A run.celery worker --loglevel=info
+    depends_on:
+      - redis
+  flower:
+    build: .
+    command: celery -A run.celery flower
+    ports:
+      - 5555:5555
     depends_on:
       - redis
