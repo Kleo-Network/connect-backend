@@ -32,6 +32,7 @@ def delete_all_history_items():
 
     # Delete each item
     for item in items:
+        print("deleted")
         table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
 
     print(f"Deleted {len(items)} items from the history table.")

@@ -115,7 +115,7 @@ def process_data_by_domain(group_by, history_data):
     output_data = initialization_methods[group_by]()
 
     for entry in history_data:
-        group_value = group_function(int(entry["lastVisitTime"]))
+        group_value = group_function(int(entry["visitTime"]))
         domain = get_domain(entry["url"])
         icon = entry.get("icon", f"https://www.google.com/s2/favicons?domain={domain}&sz=48")
         name = entry["title"]
@@ -128,8 +128,9 @@ def process_data_by_domain(group_by, history_data):
         url_entry = {
             "icon": icon,
             "title": name,
-            "visitTime": int(entry["lastVisitTime"]),
-            "url": url
+            "visitTime": Decimal(entry["visitTime"]),
+            "url": url,
+            "favourite": entry["favourite"]
         }
 
         # Append the URL entry to the list of URLs for the current group
@@ -147,7 +148,7 @@ def process_data(group_by, history_data):
     output_data = initialization_methods[group_by]()
 
     for entry in history_data:
-        group_value = group_function(int(entry["lastVisitTime"]))
+        group_value = group_function(int(entry["visitTime"]))
         category = entry["category"]
         domain = get_domain(entry["url"])
         icon = entry.get("icon", f"https://www.google.com/s2/favicons?domain={domain}&sz=48")
