@@ -1,8 +1,8 @@
-FROM python:latest
+FROM python:3.11.6
 
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
-
-RUN pip install flask celery redis flask-sqlalchemy flask-wtf
-
-WORKDIR /home/vaibhavgeek/kleo/connect/backend/
+COPY . /app
+RUN python -m pip install celery
+RUN python -m pip install -r /app/requirements.txt
+WORKDIR /app
