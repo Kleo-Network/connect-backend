@@ -1,23 +1,32 @@
 from ..modules.history import single_url_request
-from ..controllers.history import upload_browsing_data, domain_exists_or_insert
+from ..controllers.history import *
 
 from celery import shared_task 
 from celery.contrib.abortable import AbortableTask
 import time
 from urllib.parse import urlparse
+import json
+from decimal import Decimal
 
 # create a task to take json and send it for training. 
 @shared_task(bind=True, base=AbortableTask)
 def categorize_history(self, data): 
-    item = data["item"]
+    chunk = data["chunk"]
     user_id = data["user_id"]
-    domain = urlparse(item["url"]).netloc
-    domain_data = domain_exists_or_insert(domain)
-    item["domain"] = domain
-    item["category"] = domain_data["category"]
-    item["category_description"] = domain_data["category_description"]
-    item["category_group"] = domain_data["category_group"]
-    upload_browsing_data(item, user_id)
+    for item in chunk:
+        domain = urlparse(item["url"]).netloc
+        domain_data = domain_exists_or_insert(domain)
+        item["domain"] = domain
+        item["category"] = domain_data["category"]
+        item["category_description"] = domain_data["category_description"]
+        item["category_group"] = domain_data["category_group"]
+        item["user_id"] = user_id
+        item["favourite"] = False
+        item["hidden"] = False
+        item = json.loads(json.dumps(item), parse_float=Decimal)
+        
+    
+    upload_browsing_history_chunk(chunk)
     if self.is_aborted():
         return 'Aborted'
     return True

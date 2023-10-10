@@ -47,8 +47,39 @@ def record_exists(user_id, visitTime):
             Key('visitTime').eq(Decimal(str(visitTime)))
         )
     )
-    print(len(response['Items']))
     return 'Items' in response and len(response['Items']) > 0
+
+def convert_floats_to_decimal(item):
+    for key, value in item.items():
+        if isinstance(value, float):
+            item[key] = Decimal(str(value))
+    return item
+
+def upload_browsing_history_chunk(chunk):
+    filtered_chunk = [convert_floats_to_decimal(item) for item in chunk if not record_exists(item['user_id'], item['visitTime'])]
+    if not filtered_chunk:
+        return False
+    
+    request_items = {
+        'history': [
+            {
+                'PutRequest': {
+                    'Item': item
+                }
+            }
+            for item in filtered_chunk
+            ]
+        }
+    try:
+        response = dynamodb.batch_write_item(RequestItems=request_items)
+        return True
+    except dynamodb.exceptions.ProvisionedThroughputExceededException:
+        print("Provisioned Throughput Exceeded, retrying in 30 seconds...")
+        time.sleep(10)
+        return upload_browsing_history_chunk(chunk)
+    except Exception as e:
+        print(f"Error uploading chunk: {e}")
+        return False
 
 def upload_browsing_data(item, user_id):
     try:
@@ -132,6 +163,7 @@ def get_summary(user_id, domain_name):
         },
         ExpressionAttributeValues={
             ":domain": domain_name
-        })
-    return response['Items']
+        },
+        Select='COUNT')
+    return response['Count']
 
