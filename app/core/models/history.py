@@ -1,16 +1,16 @@
 from marshmallow import Schema, fields, validate, ValidationError
 
 class VisitItemSchema(Schema):
+    id = fields.Str(required=True)
     user_id = fields.Str(required=True, validate=validate.Regexp(r'^uuid-[^-]+-[^-]+-[^-]+-[^-]+$'))
     visitTime = fields.Decimal(required=True)
     domain = fields.Str(required=True)
     favourite = fields.Bool(required=True, default=False)
     hidden = fields.Bool(required=True, default=False)
-    url = fields.Urlrequired=True)
+    url = fields.Url(required=True)
     category = fields.Str()
     category_description = fields.Str()
     category_group = fields.Str()
-    id = fields.Str(required=True)
     isLocal = fields.Bool()
     lastVisitTime = fields.Decimal()
     title = fields.Str()

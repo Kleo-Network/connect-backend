@@ -42,4 +42,4 @@ def get_pinned_summary_domain():
     domain_name = request.args.get('domain_name')
     summary = get_summary(user_id, domain_name)
     fav = get_favourites(user_id, domain_name)
-    return {"total_visit_count": len(summary), "favourites": fav}  
+    return {"total_visit_count": summary, "favourites": fav}  

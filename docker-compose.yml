@@ -22,3 +22,10 @@ services:
     environment:
       - REDIS_URL=redis
       - REDIS_PORT=6379
+  flower:
+    build: .
+    command: celery -A run.celery flower
+    depends_on:
+      - redis
+      - api
+      - celery
