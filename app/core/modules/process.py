@@ -15,7 +15,7 @@ session = boto3.Session(
 )
 dynamodb = session.resource('dynamodb')
 
-def upload_processed_data(user_id, from_epoch, to_epoch):
+def data_cron_job_call(user_id, from_epoch, to_epoch):
     graph_table = dynamodb.Table('graph_data')
     processed_data = process_data_day_wise(user_id, from_epoch, to_epoch)  # Assuming you have this function
     
