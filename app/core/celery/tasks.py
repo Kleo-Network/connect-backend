@@ -31,6 +31,7 @@ def categorize_history(self, data):
         return 'Aborted'
     return True
 
+
 # @celery.task(name='core.tasks.get_icon_from_url')
 # def getIcon(item, user_id):
 #     extracted = tldextract.extract(item["url"])
