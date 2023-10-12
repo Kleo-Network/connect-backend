@@ -1,12 +1,20 @@
 from ..modules.history import single_url_request
 from ..controllers.history import *
 
-from celery import shared_task 
+from celery import shared_task
 from celery.contrib.abortable import AbortableTask
 import time
 from urllib.parse import urlparse
 import json
 from decimal import Decimal
+
+
+@shared_task(name='tasks.hello_world')
+def hello_world():
+    print("Hello, World!")
+
+
+
 
 # create a task to take json and send it for training. 
 @shared_task(bind=True, base=AbortableTask)
