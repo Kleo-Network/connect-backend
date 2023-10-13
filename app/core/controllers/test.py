@@ -39,7 +39,7 @@ def delete_all_history_items():
     print(f"Deleted {len(items)} items from the history table.")
 
 # Call the function to delete all items
-#delete_all_history_items()
+delete_all_history_items()
   # Your list of dictionaries from the history table
 
 # Initialize the output data structure

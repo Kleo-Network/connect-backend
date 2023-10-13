@@ -3,6 +3,8 @@ from ..controllers.history import *
 from werkzeug.local import LocalProxy
 from ..controllers.graph import *
 from ..celery.tasks import *
+from math import ceil
+
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
@@ -28,13 +30,24 @@ def add_to_favourite():
     response = add_to_favourites(user_id, visitTime)
     return response
 
+@core.route('/scan_history_by_url_or_title', methods=['GET'])
+def search():
+    search = request.args.get('search')
+    user_id = request.args.get('user_id')
+    page = request.args.get('page')
+    size = request.args.get('size')
+    response = scan_history_by_url_or_title(user_id, search, page, size)
+    return response
+
 @core.route('/upload', methods=['POST'])
 def upload():
     data = request.get_json()
     history = data["history"]
+    print(len(history))
     # use jwt token for user authentication -> important. 
     # jwt token signed from ethereum address and valid for 45 minutes.  
     user_id = data["user_id"]
+    
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
     for index,chunk in enumerate(chunks):
         task = categorize_history.delay({"chunk": chunk, "user_id": user_id})
@@ -42,7 +55,6 @@ def upload():
     return 'History Upload and Categorization is queued!'
 
 
-from math import ceil
 
 def batch_insert_items(table_name, items, custom_category):
     dynamodb = boto3.resource('dynamodb')

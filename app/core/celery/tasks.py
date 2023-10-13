@@ -31,6 +31,7 @@ def categorize_history(self, data):
         item["user_id"] = user_id
         item["favourite"] = False
         item["hidden"] = False
+        item["visitTime"] = item["lastVisitTime"]
         item = json.loads(json.dumps(item), parse_float=Decimal)
         
     
