@@ -7,6 +7,14 @@ from werkzeug.local import LocalProxy
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
+
+@core.route('/get_domain', methods=["GET"])
+def get_domain():
+    # Initialize the DynamoDB resource and the table
+    domain_string = request.args.get('domain')
+    domains = get_domain_string(domain_string)
+    return domains
+
 @core.route('/get_pinned_websites', methods=["GET"])
 def get_pinned_websites_for_user():
     # Initialize the DynamoDB resource and the table

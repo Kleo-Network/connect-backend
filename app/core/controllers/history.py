@@ -19,6 +19,46 @@ session = boto3.Session(
 )
 dynamodb = session.resource('dynamodb')
 
+def scan_history_by_url_or_title(user_id, search_string, page=1, items_per_page=10):
+    table = dynamodb.Table('history')
+
+    # Calculate the number of scans needed to reach the desired page
+    scans_needed = int(page)
+
+    # Initial params
+    params = {
+        "FilterExpression": "user_id = :user_id AND (contains(#url, :val) OR contains(#title, :val))",
+        "ExpressionAttributeNames": {
+            "#url": "url",
+            "#title": "title"
+        },
+        "ExpressionAttributeValues": {
+            ':val': search_string,
+            ':user_id': user_id
+        },
+        "Limit": int(items_per_page)
+    }
+
+    while scans_needed > 0:
+        # If this isn't the first scan, set the ExclusiveStartKey to the last key from the previous scan
+        if 'LastEvaluatedKey' in params:
+            params['ExclusiveStartKey'] = params['LastEvaluatedKey']
+
+        response = table.scan(**params)
+
+        # If there's no LastEvaluatedKey in the response, then there's no more data to read
+        if 'LastEvaluatedKey' not in response:
+            if scans_needed > 1:
+                # If we still haven't reached our desired page and there's no more data, return an empty list
+                return []
+            break
+        else:
+            # If there is a LastEvaluatedKey, we reduce our scans_needed counter and set the next ExclusiveStartKey
+            params['LastEvaluatedKey'] = response['LastEvaluatedKey']
+            scans_needed -= 1
+
+    return response['Items']
+
 def domain_exists_or_insert(domain):
     table = dynamodb.Table("domains")
     response = table.query(

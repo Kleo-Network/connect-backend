@@ -15,6 +15,16 @@ session = boto3.Session(
 )
 dynamodb = session.resource('dynamodb')
 
+def get_domain_string(domain_string):
+    table = dynamodb.Table('domains')
+    response = table.scan(
+    FilterExpression="begins_with(#dm, :val_domain)",
+     ExpressionAttributeNames={"#dm": "domain"},
+    ExpressionAttributeValues={':val_domain': domain_string}
+    )
+    return response['Items']
+
+
 def get_pinned_website(user_id):
     table = dynamodb.Table('pinned_websites')
     response = table.scan(
