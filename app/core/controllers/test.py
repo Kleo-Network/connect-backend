@@ -19,6 +19,42 @@ session = boto3.Session(
 dynamodb = session.resource('dynamodb')
 
 
+
+def delete_category(cat):
+    table = dynamodb.Table('history')
+    response = table.scan(
+    FilterExpression="category = :category_val",
+    ExpressionAttributeValues={":category_val": cat}
+    )
+    print(response['Items'])
+
+    # Loop through the items and delete each one
+    for item in response['Items']:
+        print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+        table.delete_item(
+            Key={
+                'user_id': item['user_id'],
+                'visitTime': item['visitTime']   # Assuming domain is your sort key
+            }
+        )
+
+    # Check for any remaining items (due to pagination in DynamoDB)
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            FilterExpression="category = :category_val",
+            ExpressionAttributeValues={":category_val": cat},
+            ExclusiveStartKey=response['LastEvaluatedKey']
+        )
+
+        for item in response['Items']:
+            print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+            table.delete_item(
+                Key={
+                    'user_id': item['user_id'],
+                    'visitTime': item['visitTime']   # Assuming domain is your sort key
+                }
+            )
+
 def delete_all_history_items():
     table = dynamodb.Table('history')
     
@@ -39,7 +75,8 @@ def delete_all_history_items():
     print(f"Deleted {len(items)} items from the history table.")
 
 # Call the function to delete all items
-delete_all_history_items()
+delete_category("Pornography")
+delete_category("Search Engines and Portals")
   # Your list of dictionaries from the history table
 
 # Initialize the output data structure
