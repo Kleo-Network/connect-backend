@@ -7,16 +7,8 @@ from boto3.dynamodb.conditions import Key, Attr
 
 import math
 
-aws_access_key = "os.environ.get('AWS_ACCESS_KEY_ID')"
-aws_secret_access_key = "os.environ.get('AWS_SECRET_ACCESS_KEY')"
-aws_region = "ap-south-1"
+from models.aws_session import dynamodb
 
-session = boto3.Session(
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-)
-dynamodb = session.resource('dynamodb')
 
 
 

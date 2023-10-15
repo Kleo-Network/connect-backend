@@ -5,17 +5,8 @@ import math
 from decimal import Decimal
 from collections import OrderedDict
 from boto3.dynamodb.conditions import Key, Attr
+from models.aws_session import dynamodb
 
-aws_access_key = "os.environ.get('AWS_ACCESS_KEY_ID')"
-aws_secret_access_key = "os.environ.get('AWS_SECRET_ACCESS_KEY')"
-aws_region = "ap-south-1"
-
-session = boto3.Session(
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-)
-dynamodb = session.resource('dynamodb')
 
 def get_domain(url):
     return url.split("//")[-1].split("/")[0].split("?")[0]
