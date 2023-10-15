@@ -1,7 +1,7 @@
 # aws_session.py
 
 import boto3
-from constants import *
+from  .constants import *
 
 # Initialize a session using Amazon DynamoDB credentials.
 session = boto3.Session(

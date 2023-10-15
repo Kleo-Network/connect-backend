@@ -3,7 +3,7 @@ from boto3.dynamodb.conditions import Key, Attr
 from decimal import Decimal
 import json
 
-from models.aws_session import dynamodb
+from ..models.aws_session import dynamodb
 
 
 def create_user(user):
