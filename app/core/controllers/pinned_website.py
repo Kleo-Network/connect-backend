@@ -11,7 +11,7 @@ def get_domain_string(domain_string):
     table = dynamodb.Table('domains')
     response = table.scan(
     FilterExpression="contains(#dm, :val_domain)",
-     ExpressionAttributeNames={"#dm": "domain"},
+    ExpressionAttributeNames={"#dm": "domain"},
     ExpressionAttributeValues={':val_domain': domain_string}
     )
     return response['Items']
