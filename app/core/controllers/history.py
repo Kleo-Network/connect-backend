@@ -7,7 +7,7 @@ from collections import defaultdict
 from ..modules.history import single_url_request
 import time
 
-from models.aws_session import dynamodb
+from ..models.aws_session import dynamodb
 
 
 def scan_history_by_url_or_title(user_id, search_string, page=1, items_per_page=10):

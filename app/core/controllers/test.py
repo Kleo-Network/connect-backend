@@ -7,7 +7,7 @@ from boto3.dynamodb.conditions import Key, Attr
 
 import math
 
-from models.aws_session import dynamodb
+from ..models.aws_session import dynamodb
 
 
 

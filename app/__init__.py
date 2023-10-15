@@ -10,7 +10,7 @@ from .config import config as app_config
 
 import os
 
-redis_url = os.environ.get("REDIS_URL", "localhost")
+redis_url = os.environ.get("REDIS_URL", "redis")
 redis_port = os.environ.get("REDIS_PORT", "6379")
 
 def create_app():

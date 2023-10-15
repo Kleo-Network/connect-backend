@@ -4,7 +4,7 @@ from decimal import Decimal
 import json
 import uuid
 
-from models.aws_session import dynamodb
+from ..models.aws_session import dynamodb
 
 
 def get_domain_string(domain_string):

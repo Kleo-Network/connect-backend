@@ -5,7 +5,7 @@ import math
 from decimal import Decimal
 from collections import OrderedDict
 from boto3.dynamodb.conditions import Key, Attr
-from models.aws_session import dynamodb
+from ..models.aws_session import dynamodb
 
 
 def get_domain(url):
