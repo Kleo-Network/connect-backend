@@ -7,17 +7,8 @@ from collections import defaultdict
 from ..modules.history import single_url_request
 import time
 
-# AWS Initialization
-aws_access_key = "AKIA3RWDXTFSIADMEAPE"
-aws_secret_access_key = "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"
-aws_region = "ap-south-1"
+from models.aws_session import dynamodb
 
-session = boto3.Session(
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-)
-dynamodb = session.resource('dynamodb')
 
 def scan_history_by_url_or_title(user_id, search_string, page=1, items_per_page=10):
     table = dynamodb.Table('history')

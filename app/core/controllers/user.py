@@ -3,16 +3,8 @@ from boto3.dynamodb.conditions import Key, Attr
 from decimal import Decimal
 import json
 
-aws_access_key = "AKIA3RWDXTFSIADMEAPE"
-aws_secret_access_key = "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"
-aws_region = "ap-south-1"
+from models.aws_session import dynamodb
 
-session = boto3.Session(
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-)
-dynamodb = session.resource('dynamodb')
 
 def create_user(user):
     table = dynamodb.Table('users')

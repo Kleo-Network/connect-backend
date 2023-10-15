@@ -4,21 +4,13 @@ from decimal import Decimal
 import json
 import uuid
 
-aws_access_key = "AKIA3RWDXTFSIADMEAPE"
-aws_secret_access_key = "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"
-aws_region = "ap-south-1"
+from models.aws_session import dynamodb
 
-session = boto3.Session(
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-)
-dynamodb = session.resource('dynamodb')
 
 def get_domain_string(domain_string):
     table = dynamodb.Table('domains')
     response = table.scan(
-    FilterExpression="begins_with(#dm, :val_domain)",
+    FilterExpression="contains(#dm, :val_domain)",
      ExpressionAttributeNames={"#dm": "domain"},
     ExpressionAttributeValues={':val_domain': domain_string}
     )
