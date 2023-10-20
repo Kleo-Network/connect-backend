@@ -6,9 +6,22 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Key, Attr
 
 import math
+import os
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_DEFAULT_REGION = os.environ.get('AWS_DEFAULT_REGION')
 
-from ..models.aws_session import dynamodb
+import boto3
 
+# Initialize a session using Amazon DynamoDB credentials.
+session = boto3.Session(
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_DEFAULT_REGION
+)
+
+# Create DynamoDB resource.
+dynamodb = session.resource('dynamodb')
 
 
 
@@ -67,74 +80,15 @@ def delete_all_history_items():
     print(f"Deleted {len(items)} items from the history table.")
 
 # Call the function to delete all items
-delete_category("Pornography")
-delete_category("Search Engines and Portals")
+#delete_category("Pornography")
+#delete_category("Search Engines and Portals")
   # Your list of dictionaries from the history table
 
 # Initialize the output data structure
 
-def handle_decimal(obj):
-    """Converts Decimal objects to float for JSON serialization."""
-    if isinstance(obj, Decimal):
-        return float(obj)
-    raise TypeError(repr(obj) + " is not JSON serializable")
 
 # Sample history data
-def get_time_bracket(timestamp):
-    hour = datetime.utcfromtimestamp(timestamp / 1000).hour
-    if 0 <= hour < 4:
-        return '00-04'
-    elif 4 <= hour < 8:
-        return '04-08'
-    elif 8 <= hour < 12:
-        return '08-12'
-    elif 12 <= hour < 16:
-        return '12-16'
-    elif 16 <= hour < 20:
-        return '16-20'
-    else:
-        return '20-24'
-def get_result():
-    results = {}
 
-    table = dynamodb.Table('history')
-    response = table.query(KeyConditionExpression=Key('user_id').eq("1"))
-    data = response['Items']
-    print(len(data))
-    for item in data:
-        date = datetime.utcfromtimestamp(int(item['visitTime']) / 1000).strftime('%Y-%m-%d')
-        bracket = get_time_bracket(int(item['visitTime']))
-        category = item['category']
-        domain = item['domain']
-        user_id = item['user_id']
-        visit_count = item['visitCount']
-
-        # Create unique key for results
-        key = (user_id, date, bracket, category, domain)
-
-        if key in results:
-            results[key] += visit_count
-        else:
-            results[key] = visit_count
-
-    # Transform results into desired output format
-    output_data = []
-    for (user_id, date, bracket, category, domain), category_visit_count in results.items():
-        output_data.append({
-            'user_id': user_id,
-            'date': date,
-            'bracket': bracket,
-            'Category': category,
-            'domain': domain,
-            'domain_visit_count': category_visit_count
-        })
-
-    sorted_output_data = sorted(output_data, key=lambda x: x['date'])
-    print(len(sorted_output_data))
-    json_dumps = json.dumps(sorted_output_data, indent=4,default=handle_decimal)
-    print(json_dumps)
-    return results
-get_result()
 def get_domain(url):
     return url.split("//")[-1].split("/")[0].split("?")[0]
 

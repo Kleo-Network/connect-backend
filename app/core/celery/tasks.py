@@ -1,4 +1,5 @@
 from ..modules.history import single_url_request
+from ..modules.graph_data import *
 from ..controllers.history import *
 
 from celery import shared_task
@@ -9,9 +10,10 @@ import json
 from decimal import Decimal
 
 
-@shared_task(name='tasks.hello_world')
-def hello_world():
-    print("Hello, World!")
+@shared_task(name='tasks.process_graph_data')
+def process_graph_data():
+   items = process_items()
+   batch_insert_items(items)
 
 
 
