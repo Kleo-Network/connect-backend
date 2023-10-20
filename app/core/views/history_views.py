@@ -58,7 +58,6 @@ def upload():
 
 def batch_insert_items(table_name, items, custom_category):
     dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(table_name)
 
     # Split the items into chunks of 25 (DynamoDB's BatchWriteItem limit)
     chunks = [items[i:i + 25] for i in range(0, len(items), 25)]

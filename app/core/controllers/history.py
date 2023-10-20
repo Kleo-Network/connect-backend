@@ -163,13 +163,7 @@ def add_to_favourites(user_id, visitTime):
     return response
 
 def get_favourites(user_id, domain_name):
-    session1 = boto3.Session(
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-    )
-    dynamodb1 = session1.resource('dynamodb')
-    table1 = dynamodb1.Table('history')
+    table1 = dynamodb.Table('history')
     response = table1.query(
     KeyConditionExpression=Key('user_id').eq(user_id),
     FilterExpression="contains(#url_params, :domain) AND favourite = :is_starred",
