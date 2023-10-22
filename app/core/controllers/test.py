@@ -22,9 +22,76 @@ session = boto3.Session(
 
 # Create DynamoDB resource.
 dynamodb = session.resource('dynamodb')
+# users_table = dynamodb.Table('users')
 
+# user_ids = [
+#     '4a29cd40-7981-4969-beea-c712ef80a0d0',
+#     '5962973e-afc3-483f-a53c-fbecd49813f9',
+#     'e09720d3-15cd-4b39-b9ca-e54534f3c31c',
+#     '4c5fce3c-38aa-4199-b72e-73f195c8ab6d',
+#     '05ecb209-8e92-4e2b-a2f0-c0d638f415ae',
+#     '7ab8833b-8f22-487f-9d5a-9fa561ffedd9'
+# ]
 
+# # Use a batch writer to efficiently write multiple items to a DynamoDB table
+# with users_table.batch_writer() as batch:
+#     for user_id in user_ids:
+#         batch.put_item(
+#             Item={
+#                 'id': user_id,
+#                 'proccessed': False,
+#                 'verified': True,
+#                 'gitcoin_passport': False,
+                 
+#             }
+#         )
 
+# print("Batch write successful.")
+# history_table = dynamodb.Table('history')  # change to your table's name
+
+# # Placeholder for unique user IDs
+# unique_user_ids = set()
+
+# # Scan the history_table for unique user IDs
+# response = None
+# while response is None or 'LastEvaluatedKey' in response:
+#     # If this is the first run, we don't have a LastEvaluatedKey yet
+#     if response is None:
+#         response = history_table.scan(
+#             ProjectionExpression="user_id",  # Only retrieve the user_id field
+#         )
+#     else:
+#         # Start the new scan where we left off
+#         response = history_table.scan(
+#             ProjectionExpression="user_id",
+#             ExclusiveStartKey=response['LastEvaluatedKey']  # Continue scanning from the previous point
+#         )
+
+#     for item in response['Items']:
+#         unique_user_ids.add(item['user_id'])
+
+# # At this point, unique_user_ids set contains all unique user IDs
+
+# # Now, if you want to scan the entire table, you can perform another scan without the ProjectionExpression.
+# # This operation might be expensive in terms of read capacity units (RCUs) depending on the size of your table.
+
+# # Placeholder for the full items
+# all_items = []
+
+# # Scan the history_table for all items
+# response = None
+# while response is None or 'LastEvaluatedKey' in response:
+#     # If this is the first run, we don't have a LastEvaluatedKey yet
+#     if response is None:
+#         response = history_table.scan()
+#     else:
+#         # Start the new scan where we left off
+#         response = history_table.scan(
+#             ExclusiveStartKey=response['LastEvaluatedKey']  # Continue scanning from the previous point
+#         )
+
+#     all_items.extend(response['Items'])
+#print(unique_user_ids)
 def delete_category(cat):
     table = dynamodb.Table('history')
     response = table.scan(
