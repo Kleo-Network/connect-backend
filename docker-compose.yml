@@ -5,7 +5,7 @@ services:
       - 6379:6379
   api:
     build: .
-    command: python run.py
+    command: python -w 4 run:app
     environment:
       - REDIS_URL=redis
       - REDIS_PORT=6379

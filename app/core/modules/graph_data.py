@@ -15,9 +15,44 @@ session = boto3.Session(
 dynamodb = session.resource('dynamodb')
 table = dynamodb.Table('history')
 graph_data_table = dynamodb.Table('graph_data')
+users = dynamodb.Table('users')
 
 
+def mark_as_unproccssed():
+    response = users.scan(
+        FilterExpression=boto3.dynamodb.conditions.Attr('process_graph').eq(True)
+    )
+    items = response['Items']
+    for item in items:
+        users.update_item(Key={'id': item['id']},
+                          UpdateExpresion='SET process_graph = :val', 
+                          ExpressionAttributeValues={
+                              ':val': False
+                          },
+                          ReturnValues='UPDATED_USER')
+        
+    return True
 
+def get_user_unprocessed():
+    response = users.scan(
+        FilterExpression=boto3.dynamodb.conditions.Attr('process_graph').eq(False)
+    )
+    if response['Items']:
+        return response['Items'][0]  # Return the first unprocessed user
+    else:
+        return None
+def update_user_processed(user_id, val):
+    response = users.update_item(
+        Key={
+            'id': user_id,  # your primary key column name and value
+        },
+        UpdateExpression='SET process_graph = :val',
+        ExpressionAttributeValues={
+            ':val': val
+        },
+        ReturnValues="UPDATED_NEW"  # Returns all the attributes of the item post update
+    )
+    return response
 def process_items(user_id, day_start=0, day_end = 90):
     # Define the time range (last 24 hours)
     if day_start != 0:
