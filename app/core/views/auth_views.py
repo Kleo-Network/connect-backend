@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, request
+from flask import Blueprint, current_app, request, jsonify
 import jwt
 import os
 from eth_utils import to_hex, from_wei, to_wei
@@ -20,20 +20,19 @@ def create():
     if not signature or not public_address:
         return jsonify(error='Request should have signature and publicAddress'), 400
 
-    #user = User.find_by_public_address(public_address)
-    #if not user:
-     #   return jsonify(error=f'User with publicAddress {public_address} is not found in database'), 401
+    user = check_user_and_return(public_address)
+    if not user:
+        return jsonify(error=f'User with publicAddress {public_address} is not found in database'), 401
 
-    #msg = f"I am signing my one-time nonce: {user.nonce}"
-    #msg_hash = to_wei(msg, "ether")
+    msg = f"I am signing my one-time nonce: {user['nonce']}"
+    msg_hash = to_wei(msg, "ether")
 
-    #recovered_address = Account.recover_message(msg_hash, signature=signature)
+    recovered_address = Account.recover_message(msg_hash, signature=signature)
 
-    #if recovered_address.lower() != public_address.lower():
-    #    return jsonify(error='Signature verification failed'), 401
+    if recovered_address.lower() != public_address.lower():
+        return jsonify(error='Signature verification failed'), 401
 
-    #user.nonce = random.randint(1, 10000)
-    #user.save()
+    update_user_nonce(user['id'], random.randint(1, 10000))
 
     try:
         # Your config should be set in the environment or some config files
