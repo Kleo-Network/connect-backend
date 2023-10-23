@@ -27,6 +27,23 @@ def get_pinned_website(user_id):
     )
     return response['Items']
 
+def remove_pinned_website(user_id,domain):
+    table = dynamodb.Table('pinned_websites')
+    response = table.delete_item(
+            Key={
+                'user_id': user_id,
+                'domain': domain  # your primary key column name and value
+            }
+        )
+    return response
+def check_pinned_website(user_id, domain):
+    table = dynamodb.Table('pinned_websites')
+    response = table.get_item(Key={'user_id': user_id, 'domain_name': domain})
+    if 'Item' in response:
+        return response['Item']
+    else:
+        return None
+
 def add_to_pinned_websites(user_id, domain_name, order, title):
     table = dynamodb.Table('pinned_websites')
     item = {
