@@ -9,7 +9,7 @@ def update_user_nonce(id, nonce):
     table = dynamodb.Table('users')
     response = table.update_item(
             Key={
-                'id': id  # your primary key column name and value
+                'address': id  # your primary key column name and value
             },
             UpdateExpression="SET nonce = :val",  # Update the 'nonce' attribute
             ExpressionAttributeValues={

@@ -153,14 +153,14 @@ def process_data(group_by, history_data):
             }
 
         if domain not in output_data[group_value][category]["domains"]:
-            output_data[group_value][category]["domains"][domain] = {"visitCounterTimeRange": 0, "icon": icon, "name": name}
+            output_data[group_value][category]["domains"][domain] = {"visitCounterTimeRange": 0, "icon": icon, "title": name}
 
         output_data[group_value][category]["domains"][domain]["visitCounterTimeRange"] += 1
         output_data[group_value][category]["totalCategoryVisits"] += 1
 
     for group_value, categories in output_data.items():
         for category, data in categories.items():
-            domains_list = [{"domain": k, "visitCounterTimeRange": v["visitCounterTimeRange"], "icon": v["icon"],  "name": v["name"]} for k, v in data["domains"].items()]
+            domains_list = [{"domain": k, "visitCounterTimeRange": v["visitCounterTimeRange"], "icon": v["icon"],  "title": v["title"]} for k, v in data["domains"].items()]
             output_data[group_value][category]["domains"] = domains_list
 
     return output_data

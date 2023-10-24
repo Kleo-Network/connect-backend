@@ -23,11 +23,25 @@ def get_browsing_history_graph():
     response = graph_query(filter, user_id, from_epoch, to_epoch)
     return response
 
+@core.route('/hide_history_items', methods=['POST'])
+def hide_history_items():
+    user_id = request.args.get('user_id')
+    visitTimes = request.args.get("visit_times")
+    hide = request.args.get("hide")
+    response = hide_history_items_table(user_id, visitTimes, hide)
+    return response
+
 @core.route('/add_to_favourites', methods=['POST'])
 def add_to_favourite():
     user_id = request.args.get('user_id')
     visitTime = request.args.get('visitTime')
-    response = add_to_favourites(user_id, visitTime)
+    response = add_to_favorites(user_id, visitTime)
+    return response
+@core.route('/remove_from_favourites', methods=['POST'])
+def remove_from_favourites():
+    user_id = request.args.get('user_id')
+    url = request.args.get('url')
+    response = remove_from_favorites(user_id,url)
     return response
 
 @core.route('/scan_history_by_url_or_title', methods=['GET'])
@@ -36,7 +50,7 @@ def search():
     user_id = request.args.get('user_id')
     page = request.args.get('page')
     size = request.args.get('size')
-    response = scan_history_by_url_or_title(user_id, search, page, size)
+    response = scan_history_by_url_or_title(user_id, search, size,page)
     return response
 
 @core.route('/upload', methods=['POST'])
