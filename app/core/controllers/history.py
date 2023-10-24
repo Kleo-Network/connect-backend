@@ -6,17 +6,15 @@ import random
 from collections import defaultdict
 from ..modules.history import single_url_request
 import time
+from botocore.exceptions import ClientError
 
 from ..models.aws_session import dynamodb
 
 
-def scan_history_by_url_or_title(user_id, search_string, page=1, items_per_page=10):
+def scan_history_by_url_or_title(user_id, search_string, items_per_page, page = 1):
+
     table = dynamodb.Table('history')
-
-    # Calculate the number of scans needed to reach the desired page
-    scans_needed = int(page)
-
-    # Initial params
+    # Prepare the parameters for the scan operation
     params = {
         "FilterExpression": "user_id = :user_id AND (contains(#url, :val) OR contains(#title, :val))",
         "ExpressionAttributeNames": {
@@ -26,29 +24,31 @@ def scan_history_by_url_or_title(user_id, search_string, page=1, items_per_page=
         "ExpressionAttributeValues": {
             ':val': search_string,
             ':user_id': user_id
-        },
-        "Limit": int(items_per_page)
+        }
     }
 
-    while scans_needed > 0:
-        # If this isn't the first scan, set the ExclusiveStartKey to the last key from the previous scan
-        if 'LastEvaluatedKey' in params:
-            params['ExclusiveStartKey'] = params['LastEvaluatedKey']
-
+    items = []
+    count = 0
+    final_count = int(page) * int(items_per_page)
+    while True:
         response = table.scan(**params)
-
-        # If there's no LastEvaluatedKey in the response, then there's no more data to read
-        if 'LastEvaluatedKey' not in response:
-            if scans_needed > 1:
-                # If we still haven't reached our desired page and there's no more data, return an empty list
-                return []
-            break
+        items.extend(response.get('Items', []))
+        if 'LastEvaluatedKey' in response:
+            params['ExclusiveStartKey'] = response['LastEvaluatedKey']
         else:
-            # If there is a LastEvaluatedKey, we reduce our scans_needed counter and set the next ExclusiveStartKey
-            params['LastEvaluatedKey'] = response['LastEvaluatedKey']
-            scans_needed -= 1
+            break 
+        
+        count = count  + len(response['Items'])
+        if count > int(final_count):
+            break
+    
+    # For example, to get a specific "page" of results:
+    start_index = (int(page) - 1) * int(items_per_page)  # calculate based on your page number and items_per_page
+    end_index = start_index + int(items_per_page)
+    page_items = items[start_index:end_index]
 
-    return response['Items']
+    return page_items  # or return items for all the results without pagination
+
 
 def domain_exists_or_insert(domain):
     table = dynamodb.Table("domains")
@@ -140,38 +140,86 @@ def get_history(user_id, from_epoch, to_epoch, regex):
         })
     return response['Items']
 
+def fetch_history_item(user_id, visitTime):
+    table = dynamodb.Table('history')
+    response = table.query(
+        KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').eq(Decimal(visitTime)))
+    return response['Item']
+
+
 def delete_history_item(primary_id):
     table = dynamodb.Table('history')
     response = table.delete_item(Key={"item_id": primary_id })
     return response 
 
-def add_to_favourites(user_id, visitTime):
-    table = dynamodb.Table('history')
-    
-    response = table.update_item(
-        Key={
-            'user_id': user_id,
-            'visitTime': Decimal(visitTime)  # Assuming visitTime is a number (epoch time)
-        },
-        UpdateExpression="set favourite = :d",
-        ExpressionAttributeValues={
-            ':d': True
-        },
-        ReturnValues="UPDATED_NEW"
-    )
+def add_to_favorites(user_id, visitTime):
+    item = fetch_history_item(user_id,visitTime)
+    table = dynamodb.Table('favourites')
 
-    return response
+    try:
+        response = table.put_item(
+           Item={
+                'user_id': user_id,  # unique identifier for the favorite item
+                'url': item["url"],  # identifier for the user
+                'title': item["title"],
+                'domain': item["domain"],
+                'visitTime': item["visitTime"],
+                'history_id': item["id"]
+            }
+        )
+        return response
+    except ClientError as e:
+        print(f"Error adding item to favorites: {e}")
+        return None
+
+def hide_history_items_table(user_id, visit_times, hide=True):
+    table = dynamodb.Table('history')
+    try:
+        for visit in visit_times:
+            response = table.query(
+            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').eq(Decimal(visit)))
+            response = table.update_item(
+                    Key={
+                        'user_id': user_id,
+                        'visitTime': visit
+                    },
+                    UpdateExpression='SET hidden = :val',
+                    ExpressionAttributeValues={
+                    ':val': hide
+                },
+                ReturnValues="UPDATED_NEW")
+        return True
+    except ClientError as e:
+        print(e)
+        pass
+        return e
+def remove_from_favorites(user_id, url):
+    table = dynamodb.Table('favourites')
+
+    try:
+        response = table.delete_item(
+            Key={
+                'user_id': user_id,
+                'url': url
+            }
+        )
+        return response
+    except ClientError as e:
+        print(f"Error removing item from favorites: {e}")
+        return None
+
 
 def get_favourites(user_id, domain_name):
-    table1 = dynamodb.Table('history')
-    response = table1.query(
+    fav_table = dynamodb.Table('favourites')
+    response = fav_table.query(
     KeyConditionExpression=Key('user_id').eq(user_id),
-    FilterExpression="contains(#url_params, :domain) AND favourite = :is_starred",
+    FilterExpression="contains(#url_params, :domain)",
     ExpressionAttributeNames={
             "#url_params": "url"
         },
     ExpressionAttributeValues={
-        ":is_starred": True,
         ":domain": domain_name
     },
     ConsistentRead=True

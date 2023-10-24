@@ -10,14 +10,13 @@ logger = LocalProxy(lambda: current_app.logger)
 
 @core.route('/get_domain', methods=["GET"])
 def get_domain():
-    # Initialize the DynamoDB resource and the table
     domain_string = request.args.get('domain')
-    domains = get_domain_string(domain_string)
+    user_id = request.args.get('user_id')
+    domains = get_domain_string(user_id,domain_string)
     return domains
 
 @core.route('/get_pinned_websites', methods=["GET"])
 def get_pinned_websites_for_user():
-    # Initialize the DynamoDB resource and the table
     user_id = request.args.get('user_id')
     pinned_Websites = get_pinned_website(user_id)
     return pinned_Websites
@@ -27,7 +26,7 @@ def remove_pinned_website():
     data = request.get_json()
     user_id = data["user_id"]
     domain = data["domain"]
-    if check_pinned_website(user_id, domain) is not None:
+    if check_pinned_website(user_id, domain) is not False:
         remove_pinned_website(user_id,domain)
         return True
     else:
