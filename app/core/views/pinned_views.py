@@ -26,11 +26,11 @@ def remove_pinned_website():
     data = request.get_json()
     user_id = data["user_id"]
     domain = data["domain"]
-    if check_pinned_website(user_id, domain) is not False:
-        remove_pinned_website(user_id,domain)
-        return True
+    if check_pinned_website(user_id, domain) is True:
+        resp = remove_pinned_website_function(user_id,domain)
+        return resp
     else:
-        return False
+        return {"result": False}
 
 @core.route('/add_pinned_website', methods=['POST'])
 def add_pinned_website():
