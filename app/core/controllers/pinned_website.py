@@ -35,19 +35,16 @@ def get_pinned_website(user_id):
 
 def remove_pinned_website_function(user_id,domain):
     table = dynamodb.Table('pinned_websites')
-    print("is this where eror origins")
     response = table.delete_item(
             Key={
                 'user_id': user_id,
                 'domain': domain  # your primary key column name and value
             }
         )
-    print(response)
     return response
 def check_pinned_website(user_id, domain):
     table = dynamodb.Table('pinned_websites')
     response = table.get_item(Key={'user_id': user_id, 'domain': domain})
-    print(response)
     if 'Item' in response:
         return True
     else:
