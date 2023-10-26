@@ -25,9 +25,10 @@ def get_browsing_history_graph():
 
 @core.route('/hide_history_items', methods=['POST'])
 def hide_history_items():
-    user_id = request.args.get('user_id')
-    visitTimes = request.args.get("visit_times")
-    hide = request.args.get("hide")
+    data=request.get_json()
+    user_id = data['user_id']
+    visitTimes = data["visit_times"]
+    hide = data["hide"]
     response = hide_history_items_table(user_id, visitTimes, hide)
     return response
 
@@ -53,13 +54,23 @@ def search():
     response = scan_history_by_url_or_title(user_id, search, size,page)
     return response
 
+@core.route('/delete_history_items', methods=['DELETE'])
+def delete_history_items():
+    data = request.get_json()
+    user_id = data["user_id"]
+    # you need to make this on the basis of celery task!
+    if 'category' in data:
+        delete_category(user_id, data['category'])
+    elif 'regex' in data:
+        delete_history_regex(user_id, data['regex'])
+    elif 'visit_times' in data:
+        delete_history_items(user_id, data['visit_times'])
+    return jsonify({"message": "Deleted Items successfulyy"})
+    
 @core.route('/upload', methods=['POST'])
 def upload():
     data = request.get_json()
     history = data["history"]
-    print(len(history))
-    # use jwt token for user authentication -> important. 
-    # jwt token signed from ethereum address and valid for 45 minutes.  
     user_id = data["user_id"]
     
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
@@ -70,30 +81,3 @@ def upload():
 
 
 
-def batch_insert_items(table_name, items, custom_category):
-    dynamodb = boto3.resource('dynamodb')
-
-    # Split the items into chunks of 25 (DynamoDB's BatchWriteItem limit)
-    chunks = [items[i:i + 25] for i in range(0, len(items), 25)]
-    
-    for chunk in chunks:
-        # Update category for each item in the chunk
-        for item in chunk:
-            item["category"] = custom_category
-
-        request_items = {
-            table_name: [
-                {
-                    'PutRequest': {
-                        'Item': item
-                    }
-                }
-                for item in chunk
-            ]
-        }
-
-        response = dynamodb.batch_write_item(RequestItems=request_items)
-
-        # If there are any unprocessed items, retry them
-        while 'UnprocessedItems' in response and response['UnprocessedItems']:
-            response = dynamodb.batch_write_item(RequestItems=response['UnprocessedItems'])
