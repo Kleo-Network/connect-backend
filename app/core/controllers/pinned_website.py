@@ -17,7 +17,7 @@ def get_domain_string(user_id, domain_string):
     print(response['Items'])
     for item in response['Items']:
         item["pinned"] = check_pinned_website(user_id, item["domain"])
-        item["icon"] = "https://www.google.com/s2/favicons?domain={}m&sz=48".format(item["domain"])
+        item["icon"] = "https://www.google.com/s2/favicons?domain={}&sz=48".format(item["domain"])
     return response['Items']
 
 
@@ -30,7 +30,7 @@ def get_pinned_website(user_id):
         }
     )
     for item in response['Items']:
-        item["icon"] = "https://www.google.com/s2/favicons?domain={}m&sz=48".format(item["domain"])
+        item["icon"] = "https://www.google.com/s2/favicons?domain={}&sz=48".format(item["domain"])
     return response['Items']
 
 def remove_pinned_website_function(user_id,domain):
