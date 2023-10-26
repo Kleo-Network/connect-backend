@@ -7,6 +7,7 @@ from collections import defaultdict
 from ..modules.history import single_url_request
 import time
 from botocore.exceptions import ClientError
+from flask import  jsonify
 
 from ..models.aws_session import dynamodb
 
@@ -142,9 +143,9 @@ def get_history(user_id, from_epoch, to_epoch, regex):
 
 def fetch_history_item(user_id, visitTime):
     table = dynamodb.Table('history')
-    response = table.query(
-        KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').eq(Decimal(visitTime)))
+    response = table.get_item(
+        Key={'user_id': user_id, 'visitTime': Decimal(visitTime)})
+    print(response)
     return response['Item']
 
 
@@ -177,24 +178,26 @@ def hide_history_items_table(user_id, visit_times, hide=True):
     table = dynamodb.Table('history')
     try:
         for visit in visit_times:
+            print("visit object:", {"v":visit, "u":user_id})
             response = table.query(
             KeyConditionExpression=Key('user_id').eq(user_id) & 
                             Key('visitTime').eq(Decimal(visit)))
             response = table.update_item(
                     Key={
                         'user_id': user_id,
-                        'visitTime': visit
+                        'visitTime': Decimal(visit)
                     },
-                    UpdateExpression='SET hidden = :val',
+                    UpdateExpression='SET #hidden = :val',
+                    ExpressionAttributeNames={'#hidden': 'hidden'},
                     ExpressionAttributeValues={
                     ':val': hide
                 },
                 ReturnValues="UPDATED_NEW")
-        return True
+        return jsonify({'message': 'Executed Successfully'}), 200
     except ClientError as e:
         print(e)
         pass
-        return e
+        return jsonify({'error': str(e)}), 200
 def remove_from_favorites(user_id, url):
     table = dynamodb.Table('favourites')
 
@@ -240,3 +243,84 @@ def get_summary(user_id, domain_name):
         Select='COUNT')
     return response['Count']
 
+def delete_history_items(user_id, visit_times):
+    table = dynamodb.Table('history')
+    for visit in visit_times:
+        table.delete_item(
+                Key={
+                    'user_id': user_id,
+                    'visitTime': Decimal(visit)   # Assuming domain is your sort key
+                }
+            )
+    
+
+def delete_history_regex(user_id, regex):
+    table = dynamodb.Table('history')
+    params = {
+        "FilterExpression": "user_id = :user_id AND (contains(#url, :val) OR contains(#title, :val))",
+        "ExpressionAttributeNames": {
+            "#url": "url",
+            "#title": "title"
+        },
+        "ExpressionAttributeValues": {
+            ':val': regex,
+            ':user_id': user_id
+        }
+    }
+    response = table.scan(**params)
+    for item in response['Items']:
+        print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+        table.delete_item(
+            Key={
+                'user_id': item['user_id'],
+                'visitTime': item['visitTime']   # Assuming domain is your sort key
+            }
+        )
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            FilterExpression="category = :category_val",
+            ExpressionAttributeValues={":category_val": cat},
+            ExclusiveStartKey=response['LastEvaluatedKey']
+        )
+
+        for item in response['Items']:
+            print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+            table.delete_item(
+                Key={
+                    'user_id': item['user_id'],
+                    'visitTime': item['visitTime']   # Assuming domain is your sort key
+                }
+            )
+
+def delete_category(user_id, cat):
+    table = dynamodb.Table('history')
+    response = table.scan(
+        FilterExpression="user_id = :user_id AND category = :category_val",
+        ExpressionAttributeValues={":category_val": cat, ":user_id": user_id}
+    )
+
+    # Loop through the items and delete each one
+    for item in response['Items']:
+        print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+        table.delete_item(
+            Key={
+                'user_id': item['user_id'],
+                'visitTime': item['visitTime']   # Assuming domain is your sort key
+            }
+        )
+        
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+           FilterExpression="user_id = :user_id AND category = :category_val",
+            ExpressionAttributeValues={":category_val": cat, ":user_id": user_id},
+            ExclusiveStartKey=response['LastEvaluatedKey']
+        )
+
+        for item in response['Items']:
+            print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+            table.delete_item(
+                Key={
+                    'user_id': item['user_id'],
+                    'visitTime': item['visitTime']   # Assuming domain is your sort key
+                }
+            )
