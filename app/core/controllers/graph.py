@@ -111,6 +111,7 @@ def process_data_by_domain(group_by, history_data):
         icon = entry.get("icon", f"https://www.google.com/s2/favicons?domain={domain}&sz=48")
         name = entry["title"]
         url = entry["url"]
+        hidden = entry["hidden"]
     
         if "urls" not in output_data[group_value]:
             output_data[group_value]["urls"] = []
@@ -121,7 +122,7 @@ def process_data_by_domain(group_by, history_data):
             "title": name,
             "visitTime": Decimal(entry["visitTime"]),
             "url": url,
-            "favourite": entry["favourite"]
+            "hidden": hidden
         }
 
         # Append the URL entry to the list of URLs for the current group
