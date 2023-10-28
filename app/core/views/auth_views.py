@@ -82,6 +82,14 @@ def create():
         public_key_bytes = base58.b58decode(public_address)
         verify_key = nacl.signing.VerifyKey(public_key_bytes)
         signature_bytes = bytes(signature)
-        a = verify_key.verify(msg.encode(), signature_bytes)
-        print("???",a)
-        return jsonify({"abc": "hello"}),200
+        verify_key.verify(msg.encode(), signature_bytes)
+        update_user_nonce(user['address'], random.randint(1, 10000))        
+        try:
+            SECRET = os.environ.get('SECRET', 'default_secret')
+            ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
+
+            access_token = jwt.encode({'payload': {'id': user["id"], 'publicAddress': public_address}},
+                                  SECRET, algorithm=ALGORITHM)
+            return jsonify(accessToken=access_token)
+        except Exception as e:
+            return jsonify(error=str(e)), 500
