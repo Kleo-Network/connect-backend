@@ -6,7 +6,11 @@ import random
 from ..controllers.user import *
 from werkzeug.local import LocalProxy
 from functools import wraps
-from web3 import Web3 
+from web3 import Web3
+import nacl.signing
+import nacl.encoding
+import base58
+
 core = Blueprint('core', __name__)
 w3 = Web3() 
 
@@ -43,34 +47,41 @@ def create():
     data = request.json
     signature = data['signature']
     public_address = data['publicAddress']
-
-    if not signature or not public_address:
+    chain = data['chain']
+    if not signature or not public_address or not chain:
         return jsonify(error='Request should have signature and publicAddress'), 400
 
+    
     user = check_user_and_return(public_address)
-    print(user)
+    
     if not user:
         return jsonify(error=f'User with publicAddress {public_address} is not found in database'), 401
     #msg = f"I am signing my one-time nonce: {str(user['nonce'])}"
-    msg = f"I am signing my one-time nonce: 1"
+    msg = f"Sign in to Kleo"
 
+    if chain == "ethereum":
+        message = encode_defunct(text=msg)
+        recovered_address = w3.eth.account.recover_message(message, signature=signature)
+    
+        if recovered_address.lower() != public_address.lower():
+            return jsonify(error='Signature verification failed'), 401
 
-    message = encode_defunct(text=msg)
+        update_user_nonce(user['address'], random.randint(1, 10000))
 
-    recovered_address = w3.eth.account.recover_message(message, signature=signature)
-    print(recovered_address)
-    if recovered_address.lower() != public_address.lower():
-        return jsonify(error='Signature verification failed'), 401
+        try:
+            # Your config should be set in the environment or some config files
+            SECRET = os.environ.get('SECRET', 'default_secret')
+            ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
 
-    update_user_nonce(user['address'], random.randint(1, 10000))
-
-    try:
-        # Your config should be set in the environment or some config files
-        SECRET = os.environ.get('SECRET', 'default_secret')
-        ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
-
-        access_token = jwt.encode({'payload': {'id': user["id"], 'publicAddress': public_address}},
+            access_token = jwt.encode({'payload': {'id': user["id"], 'publicAddress': public_address}},
                                   SECRET, algorithm=ALGORITHM)
-        return jsonify(accessToken=access_token)
-    except Exception as e:
-        return jsonify(error=str(e)), 500
+            return jsonify(accessToken=access_token)
+        except Exception as e:
+            return jsonify(error=str(e)), 500
+    elif chain == "solana":
+        public_key_bytes = base58.b58decode(public_address)
+        verify_key = nacl.signing.VerifyKey(public_key_bytes)
+        signature_bytes = bytes(signature)
+        a = verify_key.verify(msg.encode(), signature_bytes)
+        print("???",a)
+        return jsonify({"abc": "hello"}),200
