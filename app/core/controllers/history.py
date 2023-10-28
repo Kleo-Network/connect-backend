@@ -220,13 +220,11 @@ def get_favourites(user_id, domain_name):
     KeyConditionExpression=Key('user_id').eq(user_id),
     FilterExpression="contains(#url_params, :domain)",
     ExpressionAttributeNames={
-            "#url_params": "url"
+            "#url_params": "domain"
         },
     ExpressionAttributeValues={
         ":domain": domain_name
-    },
-    ConsistentRead=True
-)
+    })
     return response['Items']
 
 def get_summary(user_id, domain_name):
