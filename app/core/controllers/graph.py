@@ -101,6 +101,15 @@ initialization_methods = {
     'year': initialize_output_for_year
 }
 
+def get_is_favourite(user_id, url):
+    table = dynamodb.Table('favourites')
+    response = table.get_item(
+        Key={'user_id': user_id, 'url': url})
+    if 'Item' in response:
+        return True
+    else:
+        return False
+
 def process_data_by_domain(group_by, history_data):
     group_function = grouping_methods[group_by]
     output_data = initialization_methods[group_by]()
@@ -112,6 +121,7 @@ def process_data_by_domain(group_by, history_data):
         name = entry["title"]
         url = entry["url"]
         hidden = entry["hidden"]
+        favourite = entry["favourite"]
     
         if "urls" not in output_data[group_value]:
             output_data[group_value]["urls"] = []
@@ -122,7 +132,8 @@ def process_data_by_domain(group_by, history_data):
             "title": name,
             "visitTime": Decimal(entry["visitTime"]),
             "url": url,
-            "hidden": hidden
+            "hidden": hidden,
+            "favourite": favourite
         }
 
         # Append the URL entry to the list of URLs for the current group
