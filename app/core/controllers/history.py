@@ -145,7 +145,6 @@ def fetch_history_item(user_id, visitTime):
     table = dynamodb.Table('history')
     response = table.get_item(
         Key={'user_id': user_id, 'visitTime': Decimal(visitTime)})
-    print(response)
     return response['Item']
 
 
@@ -157,8 +156,21 @@ def delete_history_item(primary_id):
 def add_to_favorites(user_id, visitTime):
     item = fetch_history_item(user_id,visitTime)
     table = dynamodb.Table('favourites')
-
+    history_table = dynamodb.Table('history')
+    
     try:
+        response = history_table.update_item(
+                    Key={
+                        'user_id': user_id,
+                        'visitTime': Decimal(visitTime)
+                    },
+                    UpdateExpression='SET #favourite = :val',
+                    ExpressionAttributeNames={'#favourite': 'favourite'},
+                    ExpressionAttributeValues={
+                    ':val': True
+                },
+                ReturnValues="UPDATED_NEW")
+        
         response = table.put_item(
            Item={
                 'user_id': user_id,  # unique identifier for the favorite item
