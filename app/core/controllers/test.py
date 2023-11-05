@@ -6,18 +6,14 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Key, Attr
 
 import math
-import os
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_DEFAULT_REGION = os.environ.get('AWS_DEFAULT_REGION')
 
 import boto3
 
 # Initialize a session using Amazon DynamoDB credentials.
 session = boto3.Session(
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    region_name=AWS_DEFAULT_REGION
+    aws_access_key_id="AKIA3RWDXTFSIADMEAPE",
+    aws_secret_access_key="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",
+    region_name="ap-south-1"
 )
 
 # Create DynamoDB resource.
@@ -237,3 +233,43 @@ def graph_query(group_by_parameter):
     result = process_data(group_by_parameter, history_data)
     return result
 
+def update_history_items_by_user_id(user_id):
+    table = dynamodb.Table('history')
+    
+    # Scan the table to get all items for the given user_id.
+    response = table.scan(
+        FilterExpression=Attr('user_id').eq(user_id)
+    )
+    items = response['Items']
+
+    # Keep scanning until all items are fetched
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            FilterExpression=Attr('user_id').eq(user_id),
+            ExclusiveStartKey=response['LastEvaluatedKey']
+        )
+        items.extend(response['Items'])
+
+    # Update each item
+    for item in items:
+        print("update item with id: {}".format(item["id"]))
+        # Here you can modify the item as needed, e.g.:
+        # item['new_attribute'] = 'new_value'
+        
+        # Call the update_item method to update the item in DynamoDB
+        table.update_item(
+            Key={
+                "user_id": item["user_id"],
+                "visitTime": item["visitTime"]  # Assuming 'visitTime' is the sort key
+            },
+            UpdateExpression="SET user_id = :val",  # Specify your update expression
+            ExpressionAttributeValues={
+                ":val": "0x86B06319b906e61631f7edbe5A3fe2Edb95A3faE"  # Provide the new value
+            }
+        )
+        print(f"Updated item with user_id: {item['user_id']} and visitTime: {item['visitTime']}")
+
+    print(f"Updated {len(items)} items in the history table for user_id: {user_id}.")
+
+# Call the function to update items for a specific user_id
+update_history_items_by_user_id('e09720d3-15cd-4b39-b9ca-e54534f3c31c')
