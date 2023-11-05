@@ -5,6 +5,22 @@ import json
 
 from ..models.aws_session import dynamodb
 
+def check_invite_code(code):
+    table = dynamodb.Table('invite_codes')
+    response = table.get_item(Key={'code': code})
+    if 'Item' in response:
+        counter = response['Item']['count']
+        response_update = table.update_item(Key={'code': code},
+                          UpdateExpression="SET #count = :counter ",
+                          ExpressionAttributeNames={'#count': 'count'},
+                          ExpressionAttributeValues={
+                              ':counter': counter - 1
+                          },
+                          ReturnValues="UPDATED_NEW")
+        return True
+    else:
+        return False
+
 def update_user_nonce(id, nonce):
     table = dynamodb.Table('users')
     response = table.update_item(

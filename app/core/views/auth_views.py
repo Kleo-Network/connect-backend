@@ -41,7 +41,24 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
-
+@core.route('/get_user', methods=["POST"])
+def get_user():
+    data = request.json 
+    address = data['address']
+    user = check_user_and_return(address)
+    if user is not None:
+        return jsonify(user), 200
+    else: 
+        return jsonify({"404": "User not found"}),200
+    
+@core.route('/check_invite_code', methods=["GET"])
+def check_invite_code_api():
+    invite = request.args.get('code')
+    if check_invite_code(invite):
+        return jsonify("OK"), 200
+    else:
+        return jsonify(error='Bad Request'),201
+    
 @core.route('/create_jwt_authentication', methods=["POST"])
 def create():
     data = request.json
