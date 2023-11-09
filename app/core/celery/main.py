@@ -6,9 +6,13 @@ def make_celery(app):
     celery.conf.update(app.config["CELERY_CONFIG"])
     celery.conf.beat_schedule = {
     'hello-world-every-4-seconds': {
-        'task': 'tasks.hello_world',
-        'schedule': timedelta(seconds=4),
+        'task': 'tasks.process_graph_data',
+        'schedule': timedelta(seconds=30),
         },
+    'update-new-graph-data':{
+        'task': 'tasks.update_new_history',
+        'schedule': timedelta(minutes=4)
+       }
     }
     class ContextTask(celery.Task):
         def __call__(self, *args, **kwargs):

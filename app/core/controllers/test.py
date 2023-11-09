@@ -7,11 +7,87 @@ from boto3.dynamodb.conditions import Key, Attr
 
 import math
 
-from ..models.aws_session import dynamodb
+import boto3
 
+# Initialize a session using Amazon DynamoDB credentials.
+session = boto3.Session(
+    aws_access_key_id="AKIA3RWDXTFSIADMEAPE",
+    aws_secret_access_key="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",
+    region_name="ap-south-1"
+)
 
+# Create DynamoDB resource.
+dynamodb = session.resource('dynamodb')
+# users_table = dynamodb.Table('users')
 
+# user_ids = [
+#     '4a29cd40-7981-4969-beea-c712ef80a0d0',
+#     '5962973e-afc3-483f-a53c-fbecd49813f9',
+#     'e09720d3-15cd-4b39-b9ca-e54534f3c31c',
+#     '4c5fce3c-38aa-4199-b72e-73f195c8ab6d',
+#     '05ecb209-8e92-4e2b-a2f0-c0d638f415ae',
+#     '7ab8833b-8f22-487f-9d5a-9fa561ffedd9'
+# ]
 
+# # Use a batch writer to efficiently write multiple items to a DynamoDB table
+# with users_table.batch_writer() as batch:
+#     for user_id in user_ids:
+#         batch.put_item(
+#             Item={
+#                 'id': user_id,
+#                 'proccessed': False,
+#                 'verified': True,
+#                 'gitcoin_passport': False,
+                 
+#             }
+#         )
+
+# print("Batch write successful.")
+# history_table = dynamodb.Table('history')  # change to your table's name
+
+# # Placeholder for unique user IDs
+# unique_user_ids = set()
+
+# # Scan the history_table for unique user IDs
+# response = None
+# while response is None or 'LastEvaluatedKey' in response:
+#     # If this is the first run, we don't have a LastEvaluatedKey yet
+#     if response is None:
+#         response = history_table.scan(
+#             ProjectionExpression="user_id",  # Only retrieve the user_id field
+#         )
+#     else:
+#         # Start the new scan where we left off
+#         response = history_table.scan(
+#             ProjectionExpression="user_id",
+#             ExclusiveStartKey=response['LastEvaluatedKey']  # Continue scanning from the previous point
+#         )
+
+#     for item in response['Items']:
+#         unique_user_ids.add(item['user_id'])
+
+# # At this point, unique_user_ids set contains all unique user IDs
+
+# # Now, if you want to scan the entire table, you can perform another scan without the ProjectionExpression.
+# # This operation might be expensive in terms of read capacity units (RCUs) depending on the size of your table.
+
+# # Placeholder for the full items
+# all_items = []
+
+# # Scan the history_table for all items
+# response = None
+# while response is None or 'LastEvaluatedKey' in response:
+#     # If this is the first run, we don't have a LastEvaluatedKey yet
+#     if response is None:
+#         response = history_table.scan()
+#     else:
+#         # Start the new scan where we left off
+#         response = history_table.scan(
+#             ExclusiveStartKey=response['LastEvaluatedKey']  # Continue scanning from the previous point
+#         )
+
+#     all_items.extend(response['Items'])
+#print(unique_user_ids)
 def delete_category(cat):
     table = dynamodb.Table('history')
     response = table.scan(
@@ -67,74 +143,15 @@ def delete_all_history_items():
     print(f"Deleted {len(items)} items from the history table.")
 
 # Call the function to delete all items
-delete_category("Pornography")
-delete_category("Search Engines and Portals")
+#delete_category("Pornography")
+#delete_category("Search Engines and Portals")
   # Your list of dictionaries from the history table
 
 # Initialize the output data structure
 
-def handle_decimal(obj):
-    """Converts Decimal objects to float for JSON serialization."""
-    if isinstance(obj, Decimal):
-        return float(obj)
-    raise TypeError(repr(obj) + " is not JSON serializable")
 
 # Sample history data
-def get_time_bracket(timestamp):
-    hour = datetime.utcfromtimestamp(timestamp / 1000).hour
-    if 0 <= hour < 4:
-        return '00-04'
-    elif 4 <= hour < 8:
-        return '04-08'
-    elif 8 <= hour < 12:
-        return '08-12'
-    elif 12 <= hour < 16:
-        return '12-16'
-    elif 16 <= hour < 20:
-        return '16-20'
-    else:
-        return '20-24'
-def get_result():
-    results = {}
 
-    table = dynamodb.Table('history')
-    response = table.query(KeyConditionExpression=Key('user_id').eq("1"))
-    data = response['Items']
-    print(len(data))
-    for item in data:
-        date = datetime.utcfromtimestamp(int(item['visitTime']) / 1000).strftime('%Y-%m-%d')
-        bracket = get_time_bracket(int(item['visitTime']))
-        category = item['category']
-        domain = item['domain']
-        user_id = item['user_id']
-        visit_count = item['visitCount']
-
-        # Create unique key for results
-        key = (user_id, date, bracket, category, domain)
-
-        if key in results:
-            results[key] += visit_count
-        else:
-            results[key] = visit_count
-
-    # Transform results into desired output format
-    output_data = []
-    for (user_id, date, bracket, category, domain), category_visit_count in results.items():
-        output_data.append({
-            'user_id': user_id,
-            'date': date,
-            'bracket': bracket,
-            'Category': category,
-            'domain': domain,
-            'domain_visit_count': category_visit_count
-        })
-
-    sorted_output_data = sorted(output_data, key=lambda x: x['date'])
-    print(len(sorted_output_data))
-    json_dumps = json.dumps(sorted_output_data, indent=4,default=handle_decimal)
-    print(json_dumps)
-    return results
-get_result()
 def get_domain(url):
     return url.split("//")[-1].split("/")[0].split("?")[0]
 
@@ -216,3 +233,43 @@ def graph_query(group_by_parameter):
     result = process_data(group_by_parameter, history_data)
     return result
 
+def update_history_items_by_user_id(user_id):
+    table = dynamodb.Table('history')
+    
+    # Scan the table to get all items for the given user_id.
+    response = table.scan(
+        FilterExpression=Attr('user_id').eq(user_id)
+    )
+    items = response['Items']
+
+    # Keep scanning until all items are fetched
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            FilterExpression=Attr('user_id').eq(user_id),
+            ExclusiveStartKey=response['LastEvaluatedKey']
+        )
+        items.extend(response['Items'])
+
+    # Update each item
+    for item in items:
+        print("update item with id: {}".format(item["id"]))
+        # Here you can modify the item as needed, e.g.:
+        # item['new_attribute'] = 'new_value'
+        
+        # Call the update_item method to update the item in DynamoDB
+        table.update_item(
+            Key={
+                "user_id": item["user_id"],
+                "visitTime": item["visitTime"]  # Assuming 'visitTime' is the sort key
+            },
+            UpdateExpression="SET user_id = :val",  # Specify your update expression
+            ExpressionAttributeValues={
+                ":val": "0x86B06319b906e61631f7edbe5A3fe2Edb95A3faE"  # Provide the new value
+            }
+        )
+        print(f"Updated item with user_id: {item['user_id']} and visitTime: {item['visitTime']}")
+
+    print(f"Updated {len(items)} items in the history table for user_id: {user_id}.")
+
+# Call the function to update items for a specific user_id
+update_history_items_by_user_id('e09720d3-15cd-4b39-b9ca-e54534f3c31c')
