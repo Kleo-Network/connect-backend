@@ -101,6 +101,15 @@ initialization_methods = {
     'year': initialize_output_for_year
 }
 
+def get_is_favourite(user_id, url):
+    table = dynamodb.Table('favourites')
+    response = table.get_item(
+        Key={'user_id': user_id, 'url': url})
+    if 'Item' in response:
+        return True
+    else:
+        return False
+
 def process_data_by_domain(group_by, history_data):
     group_function = grouping_methods[group_by]
     output_data = initialization_methods[group_by]()
@@ -111,6 +120,8 @@ def process_data_by_domain(group_by, history_data):
         icon = entry.get("icon", f"https://www.google.com/s2/favicons?domain={domain}&sz=48")
         name = entry["title"]
         url = entry["url"]
+        hidden = entry["hidden"]
+        favourite = entry["favourite"]
     
         if "urls" not in output_data[group_value]:
             output_data[group_value]["urls"] = []
@@ -121,7 +132,8 @@ def process_data_by_domain(group_by, history_data):
             "title": name,
             "visitTime": Decimal(entry["visitTime"]),
             "url": url,
-            "favourite": entry["favourite"]
+            "hidden": hidden,
+            "favourite": favourite
         }
 
         # Append the URL entry to the list of URLs for the current group
@@ -153,14 +165,14 @@ def process_data(group_by, history_data):
             }
 
         if domain not in output_data[group_value][category]["domains"]:
-            output_data[group_value][category]["domains"][domain] = {"visitCounterTimeRange": 0, "icon": icon, "name": name}
+            output_data[group_value][category]["domains"][domain] = {"visitCounterTimeRange": 0, "icon": icon, "title": name}
 
         output_data[group_value][category]["domains"][domain]["visitCounterTimeRange"] += 1
         output_data[group_value][category]["totalCategoryVisits"] += 1
 
     for group_value, categories in output_data.items():
         for category, data in categories.items():
-            domains_list = [{"domain": k, "visitCounterTimeRange": v["visitCounterTimeRange"], "icon": v["icon"],  "name": v["name"]} for k, v in data["domains"].items()]
+            domains_list = [{"domain": k, "visitCounterTimeRange": v["visitCounterTimeRange"], "icon": v["icon"],  "title": v["title"]} for k, v in data["domains"].items()]
             output_data[group_value][category]["domains"] = domains_list
 
     return output_data
@@ -178,11 +190,33 @@ def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None
                             ExpressionAttributeValues={
                                 ":domain_name": domain
                             })
-        result = process_data_by_domain(group_by_parameter, response['Items'])
+        items = response['Items']
+        while 'LastEvaluatedKey' in response:
+            response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
+                            FilterExpression="contains(#url_attr, :domain_name)",
+                            ExpressionAttributeNames={
+                                "#url_attr": "url"
+                            },
+                            ExpressionAttributeValues={
+                                ":domain_name": domain
+                            },
+                            ExclusiveStartKey=response['LastEvaluatedKey'])
+            items.extend(response['Items'])
+            
+        result = process_data_by_domain(group_by_parameter, items)
     else:
         response = table.query(
                             KeyConditionExpression=Key('user_id').eq(user_id) & 
                             Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)))
-        result = process_data(group_by_parameter, response['Items'])
+        items = response['Items']
+        while 'LastEvaluatedKey' in response:
+            response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
+                            ExclusiveStartKey=response['LastEvaluatedKey'] )
+            items.extend(response['Items'])
+        result = process_data(group_by_parameter, items)
     
     return result

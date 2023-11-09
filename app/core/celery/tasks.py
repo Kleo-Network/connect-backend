@@ -1,4 +1,5 @@
 from ..modules.history import single_url_request
+from ..modules.graph_data import *
 from ..controllers.history import *
 
 from celery import shared_task
@@ -9,11 +10,18 @@ import json
 from decimal import Decimal
 
 
-@shared_task(name='tasks.hello_world')
-def hello_world():
-    print("Hello, World!")
+@shared_task(name='tasks.process_graph_data')
+def process_graph_data():
+    user = get_user_unprocessed()
+    
+    if user:
+        items = process_items(user["id"])
+        batch_insert_items(items)
+        update_user_processed(user["id"], True)
 
-
+@shared_task(name='tasks.update_new_history')
+def update_new_history():
+    mark_as_unproccssed()
 
 
 # create a task to take json and send it for training. 
