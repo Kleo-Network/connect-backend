@@ -5,7 +5,7 @@ services:
       - 6379:6379
   api:
     build: .
-    command: gunicorn -w 4 run:app
+    command: gunicorn -w 4 --bind 0.0.0.0:5001 run:app
     environment:
       - REDIS_URL=redis
       - REDIS_PORT=6379
