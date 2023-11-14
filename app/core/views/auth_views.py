@@ -79,11 +79,12 @@ def create():
     if chain == "ethereum":
         message = encode_defunct(text=msg)
         recovered_address = w3.eth.account.recover_message(message, signature=signature)
-    
+        
         if recovered_address.lower() != public_address.lower():
             return jsonify(error='Signature verification failed'), 401
 
-        update_user_nonce(user['address'], random.randint(1, 10000))
+        
+        update_user_nonce(user['id'], random.randint(1, 10000))
 
         try:
             # Your config should be set in the environment or some config files

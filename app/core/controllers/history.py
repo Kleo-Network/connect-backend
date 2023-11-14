@@ -103,11 +103,13 @@ def upload_browsing_history_chunk(chunk):
             ]
         }
     try:
+        print("request_items", request_items)
         response = dynamodb.batch_write_item(RequestItems=request_items)
         return True
-    except dynamodb.exceptions.ProvisionedThroughputExceededException:
+    except boto3.exceptions.ProvisionedThroughputExceededException:
         print("Provisioned Throughput Exceeded, retrying in 30 seconds...")
         time.sleep(10)
+        return True
         return upload_browsing_history_chunk(chunk)
     except Exception as e:
         print(f"Error uploading chunk: {e}")

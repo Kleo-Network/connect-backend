@@ -2,7 +2,7 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from decimal import Decimal
 import json
-
+import uuid 
 from ..models.aws_session import dynamodb
 
 def check_invite_code(code):
@@ -25,7 +25,7 @@ def update_user_nonce(id, nonce):
     table = dynamodb.Table('users')
     response = table.update_item(
             Key={
-                'address': id  # your primary key column name and value
+                'id': id  # your primary key column name and value
             },
             UpdateExpression="SET nonce = :val",  # Update the 'nonce' attribute
             ExpressionAttributeValues={
@@ -37,14 +37,23 @@ def update_user_nonce(id, nonce):
 
 def check_user_and_return(address):
     table = dynamodb.Table('users')
-    response = table.get_item(Key={'address': address})
+    response = table.get_item(Key={'id': address})
     if 'Item' in response:
         return response['Item']
     else:
-        return None
+        user = {}
+        user["id"] = address
+        user["gitcoin_passport"] = False
+        user["nonce"] = str(uuid.uuid4())
+        response = table.put_item(Item=user)
+        return user
     
-def create_user(user):
+def create_user_from_address(id):
     table = dynamodb.Table('users')
+    user = {}
+    user["id"] = id
+    user["gitcoin_passport"] = False
+    user["nonce"] = str(uuid.uuid4())
     response = table.put_item(Item=user)
     return response
 

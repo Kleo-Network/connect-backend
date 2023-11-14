@@ -142,6 +142,7 @@ def delete_all_history_items():
 
     print(f"Deleted {len(items)} items from the history table.")
 
+delete_all_history_items()
 # Call the function to delete all items
 #delete_category("Pornography")
 #delete_category("Search Engines and Portals")
