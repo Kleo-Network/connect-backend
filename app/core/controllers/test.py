@@ -8,6 +8,12 @@ from boto3.dynamodb.conditions import Key, Attr
 import math
 
 import boto3
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)  # or int(obj) if the context requires integer values
+        return super(DecimalEncoder, self).default(obj)
+
 
 # Initialize a session using Amazon DynamoDB credentials.
 session = boto3.Session(
@@ -18,6 +24,64 @@ session = boto3.Session(
 
 # Create DynamoDB resource.
 dynamodb = session.resource('dynamodb')
+
+import datetime
+from collections import defaultdict
+
+def process_data_by_timeframe(graph_data, timeframe):
+    # Helper function to convert Unix timestamp to datetime
+    def unix_to_datetime(unix_timestamp):
+        if isinstance(unix_timestamp, Decimal):
+            unix_timestamp = int(unix_timestamp)
+        return datetime.datetime.utcfromtimestamp(unix_timestamp)
+
+    # Helper function to get the time key (week, day, hour, month) from a datetime object
+    def get_time_key(dt, timeframe):
+        if timeframe == 'daily':
+            return dt.strftime('%Y-%m-%d')
+        elif timeframe == 'weekly':
+            return f"Week {dt.isocalendar()[1]}"
+        elif timeframe == 'monthly':
+            return dt.strftime('%Y-%m')
+        else:
+            raise ValueError("Invalid timeframe")
+
+    # Initialize the data structure
+    organized_data = defaultdict(lambda: defaultdict(lambda: {"domains": [], "totalCategoryVisits": 0}))
+
+    # Process each record
+    for record in graph_data:
+        time_key = get_time_key(unix_to_datetime(record["date"]), timeframe)
+
+        for visit in record["data"]:
+            category = f"Category: {visit['Category']}"
+            domain_info = {
+                "domain": visit["domain"],
+                "icon": f"https://www.google.com/s2/favicons?domain={visit['domain']}&sz=48",
+                "name": visit["domain"],
+                "visitCounterTimeRange": visit["visit_count"]
+            }
+
+            organized_data[time_key][category]["domains"].append(domain_info)
+            organized_data[time_key][category]["totalCategoryVisits"] += visit["visit_count"]
+
+    # Convert defaultdict to regular dict for final output
+    return {time_key: dict(categories) for time_key, categories in organized_data.items()}
+
+# Example usage:
+# Replace `your_data` with the actual data fetched from DynamoDB
+# timeframe = 'weekly'  # Can be 'hourly', 'daily', 'weekly', or 'monthly'
+table = dynamodb.Table('graph_data')
+response = table.scan()
+items = response['Items']
+print(len(items))
+
+items = items[0:5]
+print(items)
+
+processed_data = process_data_by_timeframe(items, 'daily')
+print(json.dumps(processed_data, cls=DecimalEncoder))
+
 # users_table = dynamodb.Table('users')
 
 # user_ids = [
@@ -88,61 +152,61 @@ dynamodb = session.resource('dynamodb')
 
 #     all_items.extend(response['Items'])
 #print(unique_user_ids)
-def delete_category(cat):
-    table = dynamodb.Table('history')
-    response = table.scan(
-    FilterExpression="category = :category_val",
-    ExpressionAttributeValues={":category_val": cat}
-    )
-    print(response['Items'])
+# def delete_category(cat):
+#     table = dynamodb.Table('history')
+#     response = table.scan(
+#     FilterExpression="category = :category_val",
+#     ExpressionAttributeValues={":category_val": cat}
+#     )
+#     print(response['Items'])
 
-    # Loop through the items and delete each one
-    for item in response['Items']:
-        print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
-        table.delete_item(
-            Key={
-                'user_id': item['user_id'],
-                'visitTime': item['visitTime']   # Assuming domain is your sort key
-            }
-        )
+#     # Loop through the items and delete each one
+#     for item in response['Items']:
+#         print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+#         table.delete_item(
+#             Key={
+#                 'user_id': item['user_id'],
+#                 'visitTime': item['visitTime']   # Assuming domain is your sort key
+#             }
+#         )
 
-    # Check for any remaining items (due to pagination in DynamoDB)
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(
-            FilterExpression="category = :category_val",
-            ExpressionAttributeValues={":category_val": cat},
-            ExclusiveStartKey=response['LastEvaluatedKey']
-        )
+#     # Check for any remaining items (due to pagination in DynamoDB)
+#     while 'LastEvaluatedKey' in response:
+#         response = table.scan(
+#             FilterExpression="category = :category_val",
+#             ExpressionAttributeValues={":category_val": cat},
+#             ExclusiveStartKey=response['LastEvaluatedKey']
+#         )
 
-        for item in response['Items']:
-            print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
-            table.delete_item(
-                Key={
-                    'user_id': item['user_id'],
-                    'visitTime': item['visitTime']   # Assuming domain is your sort key
-                }
-            )
+#         for item in response['Items']:
+#             print(f"Deleting item with user_id: {item['user_id']} and domain: {item['domain']}")
+#             table.delete_item(
+#                 Key={
+#                     'user_id': item['user_id'],
+#                     'visitTime': item['visitTime']   # Assuming domain is your sort key
+#                 }
+#             )
 
-def delete_all_history_items():
-    table = dynamodb.Table('history')
+# def delete_all_history_items():
+#     table = dynamodb.Table('history')
     
-    # Scan the table to get all items.
-    response = table.scan()
-    items = response['Items']
+#     # Scan the table to get all items.
+#     response = table.scan()
+#     items = response['Items']
 
-    # Keep scanning until all items are fetched
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response['Items'])
+#     # Keep scanning until all items are fetched
+#     while 'LastEvaluatedKey' in response:
+#         response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+#         items.extend(response['Items'])
 
-    # Delete each item
-    for item in items:
-        print("deleted")
-        table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
+#     # Delete each item
+#     for item in items:
+#         print("deleted")
+#         table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
 
-    print(f"Deleted {len(items)} items from the history table.")
+#     print(f"Deleted {len(items)} items from the history table.")
 
-delete_all_history_items()
+#delete_all_history_items()
 # Call the function to delete all items
 #delete_category("Pornography")
 #delete_category("Search Engines and Portals")
@@ -153,124 +217,124 @@ delete_all_history_items()
 
 # Sample history data
 
-def get_domain(url):
-    return url.split("//")[-1].split("/")[0].split("?")[0]
+# def get_domain(url):
+#     return url.split("//")[-1].split("/")[0].split("?")[0]
 
-# Grouping by hours of the day
-def group_by_hour(timestamp):
-    dt_object = datetime.utcfromtimestamp(timestamp/1000)  # Convert to seconds
-    hour = dt_object.hour
-    if 0 <= hour < 4:
-        return "00-04"
-    elif 4 <= hour < 8:
-        return "04-08"
-    elif 8 <= hour < 12:
-        return "08-12"
-    elif 12 <= hour < 16:
-        return "12-16"
-    elif 16 <= hour < 20:
-        return "16-20"
-    elif 20 <= hour < 24:
-        return "20-24"
+# # Grouping by hours of the day
+# def group_by_hour(timestamp):
+#     dt_object = datetime.utcfromtimestamp(timestamp/1000)  # Convert to seconds
+#     hour = dt_object.hour
+#     if 0 <= hour < 4:
+#         return "00-04"
+#     elif 4 <= hour < 8:
+#         return "04-08"
+#     elif 8 <= hour < 12:
+#         return "08-12"
+#     elif 12 <= hour < 16:
+#         return "12-16"
+#     elif 16 <= hour < 20:
+#         return "16-20"
+#     elif 20 <= hour < 24:
+#         return "20-24"
 
-# Grouping by days of the week
-def group_by_day(timestamp):
-    dt_object = datetime.utcfromtimestamp(timestamp/1000)
-    return dt_object.strftime('%A')
+# # Grouping by days of the week
+# def group_by_day(timestamp):
+#     dt_object = datetime.utcfromtimestamp(timestamp/1000)
+#     return dt_object.strftime('%A')
 
-# Grouping by weeks of the month
-def group_by_week(timestamp):
-    dt_object = datetime.utcfromtimestamp(timestamp/1000)
-    day_of_month = dt_object.day
-    week_of_month = math.ceil(day_of_month / 7.0)
-    return f"Week {week_of_month}"
+# # Grouping by weeks of the month
+# def group_by_week(timestamp):
+#     dt_object = datetime.utcfromtimestamp(timestamp/1000)
+#     day_of_month = dt_object.day
+#     week_of_month = math.ceil(day_of_month / 7.0)
+#     return f"Week {week_of_month}"
 
-grouping_methods = {
-    'hour': group_by_hour,
-    'day': group_by_day,
-    'week': group_by_week
-}
+# grouping_methods = {
+#     'hour': group_by_hour,
+#     'day': group_by_day,
+#     'week': group_by_week
+# }
 
-def process_data(group_by, history_data):
-    # Choose the grouping method based on the parameter
-    group_function = grouping_methods[group_by]
+# def process_data(group_by, history_data):
+#     # Choose the grouping method based on the parameter
+#     group_function = grouping_methods[group_by]
 
-    # Empty output data
-    output_data = {}
+#     # Empty output data
+#     output_data = {}
 
-    for entry in history_data:
-        group_value = group_function(int(entry["lastVisitTime"]))
-        category = entry["category"]
-        domain = get_domain(entry["url"])
+#     for entry in history_data:
+#         group_value = group_function(int(entry["lastVisitTime"]))
+#         category = entry["category"]
+#         domain = get_domain(entry["url"])
 
-        if group_value not in output_data:
-            output_data[group_value] = {}
+#         if group_value not in output_data:
+#             output_data[group_value] = {}
 
-        if category not in output_data[group_value]:
-            output_data[group_value][category] = {
-                "domains": {},
-                "totalCategoryVisits": 0
-            }
+#         if category not in output_data[group_value]:
+#             output_data[group_value][category] = {
+#                 "domains": {},
+#                 "totalCategoryVisits": 0
+#             }
         
-        if domain not in output_data[group_value][category]["domains"]:
-            output_data[group_value][category]["domains"][domain] = 0
+#         if domain not in output_data[group_value][category]["domains"]:
+#             output_data[group_value][category]["domains"][domain] = 0
         
-        output_data[group_value][category]["domains"][domain] += 1
-        output_data[group_value][category]["totalCategoryVisits"] += 1
+#         output_data[group_value][category]["domains"][domain] += 1
+#         output_data[group_value][category]["totalCategoryVisits"] += 1
 
-    # Convert domain data to desired output format
-    for group_value, categories in output_data.items():
-        for category, data in categories.items():
-            domains_list = [{"domain": k, "visitCounterTimeRange": v} for k, v in data["domains"].items()]
-            output_data[group_value][category]["domains"] = domains_list
+#     # Convert domain data to desired output format
+#     for group_value, categories in output_data.items():
+#         for category, data in categories.items():
+#             domains_list = [{"domain": k, "visitCounterTimeRange": v} for k, v in data["domains"].items()]
+#             output_data[group_value][category]["domains"] = domains_list
 
-    return output_data
+#     return output_data
 
-# To use:
-def graph_query(group_by_parameter):
-    table = dynamodb.Table('history')
-    response = table.scan()
-    history_data = response['Items']
-    result = process_data(group_by_parameter, history_data)
-    return result
+# # To use:
+# def graph_query(group_by_parameter):
+#     table = dynamodb.Table('history')
+#     response = table.scan()
+#     history_data = response['Items']
+#     result = process_data(group_by_parameter, history_data)
+#     return result
 
-def update_history_items_by_user_id(user_id):
-    table = dynamodb.Table('history')
+# def update_history_items_by_user_id(user_id):
+#     table = dynamodb.Table('history')
     
-    # Scan the table to get all items for the given user_id.
-    response = table.scan(
-        FilterExpression=Attr('user_id').eq(user_id)
-    )
-    items = response['Items']
+#     # Scan the table to get all items for the given user_id.
+#     response = table.scan(
+#         FilterExpression=Attr('user_id').eq(user_id)
+#     )
+#     items = response['Items']
 
-    # Keep scanning until all items are fetched
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(
-            FilterExpression=Attr('user_id').eq(user_id),
-            ExclusiveStartKey=response['LastEvaluatedKey']
-        )
-        items.extend(response['Items'])
+#     # Keep scanning until all items are fetched
+#     while 'LastEvaluatedKey' in response:
+#         response = table.scan(
+#             FilterExpression=Attr('user_id').eq(user_id),
+#             ExclusiveStartKey=response['LastEvaluatedKey']
+#         )
+#         items.extend(response['Items'])
 
-    # Update each item
-    for item in items:
-        print("update item with id: {}".format(item["id"]))
-        # Here you can modify the item as needed, e.g.:
-        # item['new_attribute'] = 'new_value'
+#     # Update each item
+#     for item in items:
+#         print("update item with id: {}".format(item["id"]))
+#         # Here you can modify the item as needed, e.g.:
+#         # item['new_attribute'] = 'new_value'
         
-        # Call the update_item method to update the item in DynamoDB
-        table.update_item(
-            Key={
-                "user_id": item["user_id"],
-                "visitTime": item["visitTime"]  # Assuming 'visitTime' is the sort key
-            },
-            UpdateExpression="SET user_id = :val",  # Specify your update expression
-            ExpressionAttributeValues={
-                ":val": "0x86B06319b906e61631f7edbe5A3fe2Edb95A3faE"  # Provide the new value
-            }
-        )
-        print(f"Updated item with user_id: {item['user_id']} and visitTime: {item['visitTime']}")
+#         # Call the update_item method to update the item in DynamoDB
+#         table.update_item(
+#             Key={
+#                 "user_id": item["user_id"],
+#                 "visitTime": item["visitTime"]  # Assuming 'visitTime' is the sort key
+#             },
+#             UpdateExpression="SET user_id = :val",  # Specify your update expression
+#             ExpressionAttributeValues={
+#                 ":val": "0x86B06319b906e61631f7edbe5A3fe2Edb95A3faE"  # Provide the new value
+#             }
+#         )
+#         print(f"Updated item with user_id: {item['user_id']} and visitTime: {item['visitTime']}")
 
-    print(f"Updated {len(items)} items in the history table for user_id: {user_id}.")
+#     print(f"Updated {len(items)} items in the history table for user_id: {user_id}.")
 
 # Call the function to update items for a specific user_id
-update_history_items_by_user_id('e09720d3-15cd-4b39-b9ca-e54534f3c31c')
+#update_history_items_by_user_id('e09720d3-15cd-4b39-b9ca-e54534f3c31c')

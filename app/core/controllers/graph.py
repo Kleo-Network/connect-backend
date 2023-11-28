@@ -6,6 +6,54 @@ from decimal import Decimal
 from collections import OrderedDict
 from boto3.dynamodb.conditions import Key, Attr
 from ..models.aws_session import dynamodb
+import datetime
+from collections import defaultdict
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)  # or int(obj) if the context requires integer values
+        return super(DecimalEncoder, self).default(obj)
+
+def process_data_by_timeframe(graph_data, timeframe):
+    # Helper function to convert Unix timestamp to datetime
+    def unix_to_datetime(unix_timestamp):
+        if isinstance(unix_timestamp, Decimal):
+            unix_timestamp = int(unix_timestamp)
+        return datetime.datetime.utcfromtimestamp(unix_timestamp)
+
+    # Helper function to get the time key (week, day, hour, month) from a datetime object
+    def get_time_key(dt, timeframe):
+        if timeframe == 'daily':
+            return dt.strftime('%Y-%m-%d')
+        elif timeframe == 'weekly':
+            return f"Week {dt.isocalendar()[1]}"
+        elif timeframe == 'monthly':
+            return dt.strftime('%Y-%m')
+        else:
+            raise ValueError("Invalid timeframe")
+
+    # Initialize the data structure
+    organized_data = defaultdict(lambda: defaultdict(lambda: {"domains": [], "totalCategoryVisits": 0}))
+
+    # Process each record
+    for record in graph_data:
+        time_key = get_time_key(unix_to_datetime(record["date"]), timeframe)
+
+        for visit in record["data"]:
+            category = f"Category: {visit['Category']}"
+            domain_info = {
+                "domain": visit["domain"],
+                "icon": f"https://www.google.com/s2/favicons?domain={visit['domain']}&sz=48",
+                "name": visit["domain"],
+                "visitCounterTimeRange": visit["visit_count"]
+            }
+
+            organized_data[time_key][category]["domains"].append(domain_info)
+            organized_data[time_key][category]["totalCategoryVisits"] += visit["visit_count"]
+
+    # Convert defaultdict to regular dict for final output
+    return {time_key: dict(categories) for time_key, categories in organized_data.items()}
+
 
 
 def get_domain(url):
@@ -178,45 +226,21 @@ def process_data(group_by, history_data):
     return output_data
 
 def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None):
-    table = dynamodb.Table('history')
-    if domain is not None:
+    table = dynamodb.Table('graph_data')
+    response = table.query(
+                        KeyConditionExpression=Key('user_id').eq(user_id) & 
+                        Key('date').between(Decimal(from_epoch), Decimal(to_epoch)))
+    items = response['Items']
+    print(items)
+    while 'LastEvaluatedKey' in response:
         response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
-                            FilterExpression="contains(#url_attr, :domain_name)",
-                            ExpressionAttributeNames={
-                                "#url_attr": "url"
-                            },
-                            ExpressionAttributeValues={
-                                ":domain_name": domain
-                            })
-        items = response['Items']
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
-                            FilterExpression="contains(#url_attr, :domain_name)",
-                            ExpressionAttributeNames={
-                                "#url_attr": "url"
-                            },
-                            ExpressionAttributeValues={
-                                ":domain_name": domain
-                            },
-                            ExclusiveStartKey=response['LastEvaluatedKey'])
-            items.extend(response['Items'])
-            
-        result = process_data_by_domain(group_by_parameter, items)
+                        KeyConditionExpression=Key('user_id').eq(user_id) & 
+                        Key('date').between(Decimal(from_epoch), Decimal(to_epoch)),
+                        ExclusiveStartKey=response['LastEvaluatedKey'] )
+        items.extend(response['Items'])
+    if group_by_parameter == 'hourly':
+        result = items
     else:
-        response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)))
-        items = response['Items']
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
-                            ExclusiveStartKey=response['LastEvaluatedKey'] )
-            items.extend(response['Items'])
-        result = process_data(group_by_parameter, items)
+        result = process_data_by_timeframe(items, group_by_parameter)
     
     return result
