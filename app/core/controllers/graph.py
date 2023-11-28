@@ -23,11 +23,11 @@ def process_data_by_timeframe(graph_data, timeframe):
 
     # Helper function to get the time key (week, day, hour, month) from a datetime object
     def get_time_key(dt, timeframe):
-        if timeframe == 'daily':
+        if timeframe == 'day':
             return dt.strftime('%Y-%m-%d')
-        elif timeframe == 'weekly':
+        elif timeframe == 'week':
             return f"Week {dt.isocalendar()[1]}"
-        elif timeframe == 'monthly':
+        elif timeframe == 'month':
             return dt.strftime('%Y-%m')
         else:
             raise ValueError("Invalid timeframe")
