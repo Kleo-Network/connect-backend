@@ -225,6 +225,36 @@ def process_data(group_by, history_data):
 
     return output_data
 
+def graph_query_pinned(group_by_parameter, user_id, from_epoch, to_epoch, domain = None):
+    table = dynamodb.Table('history')
+    response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
+                            FilterExpression="contains(#url_attr, :domain_name)",
+                            ExpressionAttributeNames={
+                                "#url_attr": "url"
+                            },
+                            ExpressionAttributeValues={
+                                ":domain_name": domain
+                            })
+    items = response['Items']
+    while 'LastEvaluatedKey' in response:
+        response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
+                            FilterExpression="contains(#url_attr, :domain_name)",
+                            ExpressionAttributeNames={
+                                "#url_attr": "url"
+                            },
+                            ExpressionAttributeValues={
+                                ":domain_name": domain
+                            },
+                            ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response['Items'])
+            
+    result = process_data_by_domain(group_by_parameter, items)
+    return result
+
 def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None):
     table = dynamodb.Table('graph_data')
     response = table.query(
