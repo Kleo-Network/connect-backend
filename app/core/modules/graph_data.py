@@ -3,6 +3,8 @@ from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime, timedelta
 import os
 import time
+from botocore.exceptions import ClientError
+from decimal import Decimal
 
 
 # Initialize a session using Amazon DynamoDB credentials.
@@ -18,6 +20,19 @@ graph_data_table = dynamodb.Table('graph_data')
 users = dynamodb.Table('users')
 
 
+def mark_history_processed(user_id, visitTime):
+    table.update_item(
+                    Key={
+                        'user_id': user_id,
+                        'visitTime': Decimal(visitTime)
+                    },
+                    UpdateExpression='SET #proccessed = :val',
+                    ExpressionAttributeNames={'#proccessed': 'proccessed'},
+                    ExpressionAttributeValues={
+                    ':val': True
+                },
+                ReturnValues="UPDATED_NEW")
+    return True
 def mark_as_unproccssed():
     response = users.scan(
         FilterExpression=boto3.dynamodb.conditions.Attr('process_graph').eq(True)
@@ -25,11 +40,11 @@ def mark_as_unproccssed():
     items = response['Items']
     for item in items:
         users.update_item(Key={'id': item['id']},
-                          UpdateExpresion='SET process_graph = :val', 
+                          UpdateExpression='SET process_graph = :val', 
                           ExpressionAttributeValues={
                               ':val': False
                           },
-                          ReturnValues='UPDATED_USER')
+                          ReturnValues='UPDATED_NEW')
         
     return True
 
@@ -53,7 +68,9 @@ def update_user_processed(user_id, val):
         ReturnValues="UPDATED_NEW"  # Returns all the attributes of the item post update
     )
     return response
-def process_items(user_id, day_start=0, day_end = 90):
+def process_items(user_id, day_start=0, day_end = 365):
+    history_table = dynamodb.Table('history')
+
     # Define the time range (last 24 hours)
     if day_start != 0:
         now = datetime.now() - timedelta(days=day_start)
@@ -64,34 +81,33 @@ def process_items(user_id, day_start=0, day_end = 90):
     # Timestamps in milliseconds
     start_timestamp = int(previous_timestamp.timestamp() * 1000)
     end_timestamp = int(now.timestamp() * 1000)
-
+    
     # Pagination
     unprocessed_items = []
     last_evaluated_key = None
 
-    while True:
-        query_params = {
-            'KeyConditionExpression': Key('user_id').eq(user_id) & 
-                                      Key('visitTime').between(start_timestamp, end_timestamp)
-        }
+    
+    scan_params = {
+        'FilterExpression': Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(start_timestamp, end_timestamp) & 
+                            Attr('processed').eq(False)
+    }
 
-        if last_evaluated_key:
-            query_params['ExclusiveStartKey'] = last_evaluated_key
-
-        response = table.query(**query_params)
+       
+    try:
+        response = history_table.scan(**scan_params)
+    except:
+        time.sleep(4)
+        response = history_table.scan(**scan_params)
         
-        unprocessed_items.extend(response['Items'])
 
-        last_evaluated_key = response.get('LastEvaluatedKey')
-        if not last_evaluated_key:
-            break
 
     # Process and categorize each item, then mark as processed
     user_data = {}
     write_items = []
-    print(len(unprocessed_items))
-    for item in response['Items']:
+    for item in unprocessed_items:
     # Extracting needed information
+        mark_history_processed(item["user_id"], item["visitTime"])
         user_id = item['user_id']
         visit_epoch = float(item['visitTime'])
         visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')  # date from epoch
@@ -144,6 +160,8 @@ def process_items(user_id, day_start=0, day_end = 90):
 
         # Insert the item into DynamoDB table
             write_items.append(item)
+    
+    batch_insert_items(write_items)
     return write_items
     # for user_id, dates in user_data.items():
     #     for date, data in dates.items():
@@ -151,11 +169,10 @@ def process_items(user_id, day_start=0, day_end = 90):
     
 # Execute the process
 def batch_insert_items(items):
-    # Split the items into chunks of 25 (DynamoDB's BatchWriteItem limit)
+
     chunks = [items[i:i + 25] for i in range(0, len(items), 25)]
-    
+
     for chunk in chunks:
-        # Update category for each item in the chunk
         request_items = {
             'graph_data': [
                 {
@@ -167,7 +184,24 @@ def batch_insert_items(items):
             ]
         }
 
-        response = dynamodb.batch_write_item(RequestItems=request_items)
+        attempt = 0
+        while attempt < 5:  # Limit to 5 retries
+            try:
+                response = dynamodb.batch_write_item(RequestItems=request_items)
+                print("Batch write successful.")
+                print(response)
+                break  # Exit the loop if successful
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ProvisionedThroughputExceededException':
+                    print("Provisioned Throughput Exceeded, retrying...")
+                    attempt += 1
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    print(f"Error uploading chunk: {e}")
+                    return False
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                return False
     return True
         # If there are any unprocessed items, retry them
         

@@ -49,7 +49,7 @@ def get_pinned_data_domain():
     to_epoch = request.args.get('to')
     domain_name = request.args.get('domain_name')
     filter = request.args.get('filter')
-    response = graph_query(filter, user_id, from_epoch, to_epoch, domain_name)
+    response = graph_query_pinned(filter, user_id, from_epoch, to_epoch, domain_name)
     return response
 
 
