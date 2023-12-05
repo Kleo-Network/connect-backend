@@ -4,7 +4,7 @@ from werkzeug.local import LocalProxy
 from ..controllers.graph import *
 from ..celery.tasks import *
 from math import ceil
-
+from celery import chord
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
@@ -77,10 +77,16 @@ def upload():
     data = request.get_json()
     history = data["history"]
     user_id = data["user_id"]
+    if "signup" in data:
+        signup = data["signup"]
+    else:
+        signup = False
     
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
-    for index,chunk in enumerate(chunks):
-        task = categorize_history.delay({"chunk": chunk, "user_id": user_id})
+    tasks = [categorize_history.s({"chunk": chunk, "user_id": user_id}) for chunk in chunks]
+    params = {"user_id": user_id, "signup": signup}
+    callback = process_graph_data.s(params)
+    chord(tasks)(callback)
         
     return 'History Upload and Categorization is queued!'
 

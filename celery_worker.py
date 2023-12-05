@@ -3,7 +3,7 @@ import logging
 from celery.app.log import TaskFormatter
 from celery.signals import after_setup_task_logger
 
-from app import celery, create_app
+from app import create_app
 
 app = create_app()
 app.app_context().push()

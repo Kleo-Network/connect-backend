@@ -9,17 +9,56 @@ from urllib.parse import urlparse
 import json
 from decimal import Decimal
 
+@shared_task(name='tasks.test_task')
+def test_task(task_results, user_id):
+    print(user_id)
+    print(task_results)
+    print("test task executed after uploading everything, right?")
 
-@shared_task(name='tasks.process_graph_data')
-def process_graph_data():
-    user = get_user_unprocessed()
-    if user:
-        process_items(user["id"])
-        update_user_processed(user["id"], True)
+@shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)
+def process_pinned_graph_data(user,domain):
+    for counter in range(1,180):
+        process_pinned_domain_items_for_graph.delay(user,domain,counter)
+
+@shared_task(name='tasks.process_graph_data', base=AbortableTask)
+def process_graph_data(task_results,params):
+    user_id = params["user_id"]
+    signup = params["signup"]
+    print(task_results)
+    print("user")
+    print(user_id)
+    
+    print("signup")
+    print(signup)
+    if signup is False:
+        if user_id is None:
+            user_details = get_user_unprocessed_graph()
+            user_id = user_details["id"]
+        process_items(user_id)
+    else:
+        if user_id is not None:
+            print("user_id")
+            print(user_id)
+            process_items(user_id)
+            for counter in range(1, 180):
+                process_items(user_id, counter)
+        
 
 @shared_task(name='tasks.update_new_history')
-def update_new_history():
-    mark_as_unproccssed()
+def update_new_history_graph_data():
+    mark_as_unproccssed('process_graph')
+
+@shared_task(name='tasks.update_new_history_pinned')
+def update_new_history_pinned():
+    mark_as_unproccssed('process_graph_pinned')
+
+@shared_task(base=AbortableTask)
+def process_items_for_graph(user, counter):
+    process_items(user, counter)
+
+@shared_task(base=AbortableTask)
+def process_pinned_domain_items_for_graph(user, domain,day_start):
+    process_items_pinned_data(user, domain,day_start)
 
 # create a task to take json and send it for training. 
 @shared_task(bind=True, base=AbortableTask)

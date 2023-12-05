@@ -6,7 +6,7 @@ from decimal import Decimal
 from collections import OrderedDict
 from boto3.dynamodb.conditions import Key, Attr
 from ..models.aws_session import dynamodb
-import datetime
+
 from collections import defaultdict
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -19,7 +19,7 @@ def process_data_by_timeframe(graph_data, timeframe):
     def unix_to_datetime(unix_timestamp):
         if isinstance(unix_timestamp, Decimal):
             unix_timestamp = int(unix_timestamp)
-        return datetime.datetime.utcfromtimestamp(unix_timestamp)
+        return datetime.utcfromtimestamp(unix_timestamp)
 
     # Helper function to get the time key (week, day, hour, month) from a datetime object
     def get_time_key(dt, timeframe):
@@ -226,34 +226,19 @@ def process_data(group_by, history_data):
     return output_data
 
 def graph_query_pinned(group_by_parameter, user_id, from_epoch, to_epoch, domain = None):
-    table = dynamodb.Table('history')
+    table = dynamodb.Table('pinned_graph_data')
+    user_id_key = f"{user_id}#{domain}"
     response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
-                            FilterExpression="contains(#url_attr, :domain_name)",
-                            ExpressionAttributeNames={
-                                "#url_attr": "url"
-                            },
-                            ExpressionAttributeValues={
-                                ":domain_name": domain
-                            })
+                        KeyConditionExpression=Key('domain_user_id').eq(user_id_key) & 
+                        Key('date').between(Decimal(from_epoch), Decimal(to_epoch)))
     items = response['Items']
     while 'LastEvaluatedKey' in response:
         response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(from_epoch), Decimal(to_epoch)),
-                            FilterExpression="contains(#url_attr, :domain_name)",
-                            ExpressionAttributeNames={
-                                "#url_attr": "url"
-                            },
-                            ExpressionAttributeValues={
-                                ":domain_name": domain
-                            },
-                            ExclusiveStartKey=response['LastEvaluatedKey'])
+                        KeyConditionExpression=Key('domain_user_id').eq(user_id_key) & 
+                        Key('date').between(Decimal(from_epoch), Decimal(to_epoch)),
+                        ExclusiveStartKey=response['LastEvaluatedKey'] )
         items.extend(response['Items'])
-            
-    result = process_data_by_domain(group_by_parameter, items)
-    return result
+    return items
 
 def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None):
     table = dynamodb.Table('graph_data')
@@ -261,7 +246,7 @@ def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None
                         KeyConditionExpression=Key('user_id').eq(user_id) & 
                         Key('date').between(Decimal(from_epoch), Decimal(to_epoch)))
     items = response['Items']
-    print(items)
+   
     while 'LastEvaluatedKey' in response:
         response = table.query(
                         KeyConditionExpression=Key('user_id').eq(user_id) & 

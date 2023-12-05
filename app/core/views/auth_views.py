@@ -77,9 +77,10 @@ def create():
     msg = f"Sign in to Kleo"
 
     if chain == "ethereum":
+        print("ethereum")
         message = encode_defunct(text=msg)
         recovered_address = w3.eth.account.recover_message(message, signature=signature)
-        
+        print(recovered_address)
         if recovered_address.lower() != public_address.lower():
             return jsonify(error='Signature verification failed'), 401
 

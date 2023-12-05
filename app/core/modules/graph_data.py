@@ -1,11 +1,14 @@
 import boto3
+import time
+
 from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime, timedelta
 import os
-import time
 from botocore.exceptions import ClientError
 from decimal import Decimal
+from collections import defaultdict
 
+from ..controllers.graph import *
 
 # Initialize a session using Amazon DynamoDB credentials.
 session = boto3.Session(
@@ -18,10 +21,126 @@ dynamodb = session.resource('dynamodb')
 table = dynamodb.Table('history')
 graph_data_table = dynamodb.Table('graph_data')
 users = dynamodb.Table('users')
+processor = dynamodb.Table('processor')
 
+def batch_insert_items(items):
+    dynamodb = session.resource('dynamodb')
+    chunks = [items[i:i + 25] for i in range(0, len(items), 25)]
+    for chunk in chunks:
+        request_items = {
+            'graph_data': [
+                {
+                    'PutRequest': {
+                        'Item': item
+                    }
+                }
+                for item in chunk
+            ]
+        }
+        print("chunk")
+        print(request_items)
+
+        try:
+            response = dynamodb.batch_write_item(RequestItems=request_items)
+            print("Batch write successful.")
+            print(response)
+            break  # Exit the loop if successful
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ProvisionedThroughputExceededException':
+                print("Provisioned Throughput Exceeded, retrying...")
+                attempt += 1
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                print(f"Error uploading chunk: {e}")
+                return False
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return False
+    return True
+
+def process_items_pinned_data(user_id, pinned_domain, day_start=0):
+    if day_start != 0:
+        now = (datetime.now()).date() - timedelta(days=day_start)
+    else:
+        now = datetime.now()
+    
+    now = datetime.combine(now, datetime.min.time())
+    date=now.timestamp()
+    previous_timestamp = now - timedelta(days=1)
+    print("#1")
+    start_timestamp = int(previous_timestamp.timestamp() * 1000)
+    end_timestamp = int(now.timestamp() * 1000)
+    table = dynamodb.Table('history')
+    response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
+                            FilterExpression="contains(#url_attr, :domain_name)",
+                            ExpressionAttributeNames={
+                                "#url_attr": "url"
+                            },
+                            ExpressionAttributeValues={
+                                ":domain_name": pinned_domain
+                            })
+    items = response['Items']
+    print("#2")
+    while 'LastEvaluatedKey' in response:
+        response = table.query(
+                            KeyConditionExpression=Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
+                            FilterExpression="contains(#url_attr, :domain_name)",
+                            ExpressionAttributeNames={
+                                "#url_attr": "url"
+                            },
+                            ExpressionAttributeValues={
+                                ":domain_name": pinned_domain
+                            },
+                            ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response['Items'])
+            
+    
+    print("#3")
+    print(items)
+    output = defaultdict(lambda: defaultdict(lambda: {"data": defaultdict(int)}))
+
+    for item in items:
+        date_date = datetime.fromtimestamp(float(item["visitTime"]) / 1000.0)
+        date_epoch = date_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        date_str = int(date_epoch.timestamp())
+        time_bracket = get_hour_bracket(float(item["visitTime"]))
+
+        user_id = item["user_id"]
+        output[user_id][date_str]["data"][time_bracket] += 1
+
+    # Convert the output to the desired format
+    formatted_output = []
+    for user_id, dates in output.items():
+        for date, data in dates.items():
+            formatted_output.append({
+                "user_id": user_id,
+                "date": date,
+                "data": [{"time_bracket": tb, "visitCount": count} for tb, count in data["data"].items()]
+            })
+    
+    graph_data_pinned_table = dynamodb.Table('pinned_graph_data')
+    for record in formatted_output:
+        user_domain_key = f"{record['user_id']}#{pinned_domain}"
+        data_json = json.dumps(record['data'])  # Convert the data to a JSON string
+
+        # Construct the item to insert
+        item = {
+            'domain_user_id': user_domain_key,
+            'date': Decimal(record['date']),
+            'domain': pinned_domain,
+            'data': data_json
+        }
+
+        graph_data_pinned_table.put_item(Item=item)
+    return formatted_output
 
 def mark_history_processed(user_id, visitTime):
-    table.update_item(
+    table = dynamodb.Table('history')
+    try:
+        table.update_item(
                     Key={
                         'user_id': user_id,
                         'visitTime': Decimal(visitTime)
@@ -32,15 +151,30 @@ def mark_history_processed(user_id, visitTime):
                     ':val': True
                 },
                 ReturnValues="UPDATED_NEW")
+    except: 
+        time.sleep(4)
+        table.update_item(
+                    Key={
+                        'user_id': user_id,
+                        'visitTime': Decimal(visitTime)
+                    },
+                    UpdateExpression='SET #proccessed = :val',
+                    ExpressionAttributeNames={'#proccessed': 'proccessed'},
+                    ExpressionAttributeValues={
+                    ':val': True
+                },
+                ReturnValues="UPDATED_NEW")
+        
     return True
-def mark_as_unproccssed():
+def mark_as_unproccssed(field_name):
     response = users.scan(
-        FilterExpression=boto3.dynamodb.conditions.Attr('process_graph').eq(True)
+        FilterExpression=boto3.dynamodb.conditions.Attr(field_name).eq(True)
     )
     items = response['Items']
     for item in items:
         users.update_item(Key={'id': item['id']},
-                          UpdateExpression='SET process_graph = :val', 
+                          UpdateExpression='SET #field_name = :val', 
+                          ExpressionAttributeNames={'#field_name': field_name},
                           ExpressionAttributeValues={
                               ':val': False
                           },
@@ -48,7 +182,16 @@ def mark_as_unproccssed():
         
     return True
 
-def get_user_unprocessed():
+def get_user_unprocessed_pinned_graph():
+    response = users.scan(
+        FilterExpression=boto3.dynamodb.conditions.Attr('process_graph_pinned').eq(False)
+    )
+    if response['Items']:
+        return response['Items'][0]  # Return the first unprocessed user
+    else:
+        return None
+
+def get_user_unprocessed_graph():
     response = users.scan(
         FilterExpression=boto3.dynamodb.conditions.Attr('process_graph').eq(False)
     )
@@ -68,53 +211,54 @@ def update_user_processed(user_id, val):
         ReturnValues="UPDATED_NEW"  # Returns all the attributes of the item post update
     )
     return response
-def process_items(user_id, day_start=0, day_end = 365):
-    history_table = dynamodb.Table('history')
 
-    # Define the time range (last 24 hours)
+def process_items(user_id, day_start=0):
+    history_table = dynamodb.Table('history')
     if day_start != 0:
-        now = datetime.now() - timedelta(days=day_start)
+        now = (datetime.now()).date() - timedelta(days=day_start)
     else:
-        now = datetime.now() 
+        now = datetime.now()
     
-    previous_timestamp = now - timedelta(days=day_end)
+    now = datetime.combine(now, datetime.min.time())
+    date=now.timestamp()
+    previous_timestamp = now - timedelta(days=1)
     # Timestamps in milliseconds
     start_timestamp = int(previous_timestamp.timestamp() * 1000)
     end_timestamp = int(now.timestamp() * 1000)
     
-    # Pagination
     unprocessed_items = []
     last_evaluated_key = None
-
-    
-    scan_params = {
+    while True:
+        scan_params = {
         'FilterExpression': Key('user_id').eq(user_id) & 
                             Key('visitTime').between(start_timestamp, end_timestamp) & 
-                            Attr('processed').eq(False)
-    }
-
+                            (Attr('processed').eq(False) | ~Attr('processed').exists() | Attr('processed').eq(True))
+        }
+    
        
-    try:
-        response = history_table.scan(**scan_params)
-    except:
-        time.sleep(4)
-        response = history_table.scan(**scan_params)
-        
+        try:
+            response = history_table.scan(**scan_params)
+        except:
+            time.sleep(4)
+            response = history_table.scan(**scan_params)
 
+        unprocessed_items.extend(response['Items'])
 
-    # Process and categorize each item, then mark as processed
+        last_evaluated_key = response.get('LastEvaluatedKey')
+        if not last_evaluated_key:
+            break
+
     user_data = {}
     write_items = []
+    count  = 0
     for item in unprocessed_items:
-    # Extracting needed information
         mark_history_processed(item["user_id"], item["visitTime"])
         user_id = item['user_id']
         visit_epoch = float(item['visitTime'])
         visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')  # date from epoch
         category = item['category']
         domain = item['domain']
-
-    # Constructing structured data
+        
         if user_id not in user_data:
             user_data[user_id] = {}
 
@@ -131,79 +275,39 @@ def process_items(user_id, day_start=0, day_end = 365):
                 break
 
         if existing_entry:
-        # If found, we increment the 'visit_count' by 1
             existing_entry['visit_count'] += 1
         else:
-        # If not, we create a new entry
             new_entry = {
-            "hour_bracket": hour_bracket,
-            "Category": category,
-            "domain": domain,
-            "visit_count": 1
-        }
+                "hour_bracket": hour_bracket,
+                "Category": category,
+                "domain": domain,
+                "visit_count": 1
+            }
             user_data[user_id][visit_date].append(new_entry)
-# Now `user_data` contains the structured data per user. You can further process it as needed, or save it to another DynamoDB table or a different kind of storage.
-
-# To display the data or do other operations, you can iterate through `user_data`:
-    for user_id, dates in user_data.items():
-        for date, data in dates.items():
-            date_obj = datetime.strptime(date, '%Y-%m-%d')
-            epoch_time = int(time.mktime(date_obj.timetuple()))
-        # Prepare the data item for insertion
-        # 'user_id' and 'date' are the primary keys of the 'graph_data' table
-        # 'data' is the JSON-serialized version of the aggregated data
+    
+    for d_, dates in user_data.items():
+        for d, data in dates.items():
             item = {
             'user_id': user_id,
-            'date': epoch_time,
+            'date': Decimal(date),
             'data': data  # converting the data into a JSON string
             }
-
-        # Insert the item into DynamoDB table
             write_items.append(item)
     
+    print(write_items)
     batch_insert_items(write_items)
+    response = processor.put_item(
+        Item={
+            'user_id': user_id,
+            'date': Decimal(date),
+            'process_graph': True
+        }
+    )
     return write_items
     # for user_id, dates in user_data.items():
     #     for date, data in dates.items():
     #         print(f"User ID: {user_id}, Date: {date}, Data: {json.dumps(data)}")
     
-# Execute the process
-def batch_insert_items(items):
-
-    chunks = [items[i:i + 25] for i in range(0, len(items), 25)]
-
-    for chunk in chunks:
-        request_items = {
-            'graph_data': [
-                {
-                    'PutRequest': {
-                        'Item': item
-                    }
-                }
-                for item in chunk
-            ]
-        }
-
-        attempt = 0
-        while attempt < 5:  # Limit to 5 retries
-            try:
-                response = dynamodb.batch_write_item(RequestItems=request_items)
-                print("Batch write successful.")
-                print(response)
-                break  # Exit the loop if successful
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'ProvisionedThroughputExceededException':
-                    print("Provisioned Throughput Exceeded, retrying...")
-                    attempt += 1
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                else:
-                    print(f"Error uploading chunk: {e}")
-                    return False
-            except Exception as e:
-                print(f"Unexpected error: {e}")
-                return False
-    return True
-        # If there are any unprocessed items, retry them
         
 def get_hour_bracket(epoch_time):
     hour = datetime.utcfromtimestamp(epoch_time / 1000.0).hour  # DynamoDB timestamp is in milliseconds
@@ -221,3 +325,4 @@ def get_hour_bracket(epoch_time):
         return "20-24"
 
 # Organizing the data
+print(datetime.now())
