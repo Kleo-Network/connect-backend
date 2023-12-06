@@ -14,6 +14,25 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)  # or int(obj) if the context requires integer values
         return super(DecimalEncoder, self).default(obj)
 
+def process_data_for_day(items):
+    result = {}
+    for entry in items:
+        for item in entry['data']:
+            hour_bracket = item['hour_bracket']
+            category = item['Category']
+            domain = item['domain']
+            visit_count = int(item['visit_count'])
+
+            if hour_bracket not in result:
+                result[hour_bracket] = {}
+
+            if category not in result[hour_bracket]:
+                result[hour_bracket][category] = {'domains': [], 'totalCategoryVisits': 0}
+
+            result[hour_bracket][category]['domains'].append({'domain': domain, 'visit_count': visit_count, 'icon': f"https://www.google.com/s2/favicons?domain={domain}&sz=48", 'name': domain})
+            result[hour_bracket][category]['totalCategoryVisits'] += visit_count
+    return result
+
 def process_data_by_timeframe(graph_data, timeframe):
     # Helper function to convert Unix timestamp to datetime
     def unix_to_datetime(unix_timestamp):
@@ -24,11 +43,11 @@ def process_data_by_timeframe(graph_data, timeframe):
     # Helper function to get the time key (week, day, hour, month) from a datetime object
     def get_time_key(dt, timeframe):
         if timeframe == 'week':
-            return dt.strftime('%Y-%m-%d')
+            return dt.strftime('%A')
         elif timeframe == 'month':
             return f"Week {dt.isocalendar()[1]}"
         elif timeframe == 'year':
-            return dt.strftime('%Y-%m')
+            return dt.strftime('%B')
         else:
             raise ValueError("Invalid timeframe")
 
@@ -254,7 +273,7 @@ def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None
                         ExclusiveStartKey=response['LastEvaluatedKey'] )
         items.extend(response['Items'])
     if group_by_parameter == 'day':
-        result = items
+        result = process_data_for_day(items)
     else:
         result = process_data_by_timeframe(items, group_by_parameter)
     
