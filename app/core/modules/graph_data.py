@@ -213,6 +213,7 @@ def update_user_processed(user_id, val):
     return response
 
 def process_items(user_id, day_start=0):
+    print("process items start?")
     history_table = dynamodb.Table('history')
     if day_start != 0:
         now = (datetime.now()).date() - timedelta(days=day_start)
@@ -225,17 +226,17 @@ def process_items(user_id, day_start=0):
     # Timestamps in milliseconds
     start_timestamp = int(previous_timestamp.timestamp() * 1000)
     end_timestamp = int(now.timestamp() * 1000)
-    
+    print(start_timestamp)
+    print(end_timestamp)
     unprocessed_items = []
     last_evaluated_key = None
     while True:
         scan_params = {
         'FilterExpression': Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(start_timestamp, end_timestamp) & 
-                            (Attr('processed').eq(False) | ~Attr('processed').exists() | Attr('processed').eq(True))
+                            Key('visitTime').between(start_timestamp, end_timestamp)
         }
-    
-       
+        if last_evaluated_key is not None:
+            scan_params['ExclusiveStartKey'] = last_evaluated_key
         try:
             response = history_table.scan(**scan_params)
         except:
@@ -243,8 +244,8 @@ def process_items(user_id, day_start=0):
             response = history_table.scan(**scan_params)
 
         unprocessed_items.extend(response['Items'])
-
         last_evaluated_key = response.get('LastEvaluatedKey')
+        print(last_evaluated_key)
         if not last_evaluated_key:
             break
 
@@ -252,7 +253,6 @@ def process_items(user_id, day_start=0):
     write_items = []
     count  = 0
     for item in unprocessed_items:
-        mark_history_processed(item["user_id"], item["visitTime"])
         user_id = item['user_id']
         visit_epoch = float(item['visitTime'])
         visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')  # date from epoch
@@ -294,8 +294,9 @@ def process_items(user_id, day_start=0):
             }
             write_items.append(item)
     
-    print(write_items)
-    batch_insert_items(write_items)
+    for item in write_items:
+        response = graph_data_table.put_item(Item=item)
+        print(response)
     response = processor.put_item(
         Item={
             'user_id': user_id,

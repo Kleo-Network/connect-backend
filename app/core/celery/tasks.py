@@ -21,10 +21,9 @@ def process_pinned_graph_data(user,domain):
         process_pinned_domain_items_for_graph.delay(user,domain,counter)
 
 @shared_task(name='tasks.process_graph_data', base=AbortableTask)
-def process_graph_data(task_results,params):
+def process_graph_data(params):
     user_id = params["user_id"]
     signup = params["signup"]
-    print(task_results)
     print("user")
     print(user_id)
     
@@ -37,9 +36,7 @@ def process_graph_data(task_results,params):
         process_items(user_id)
     else:
         if user_id is not None:
-            print("user_id")
-            print(user_id)
-            process_items(user_id)
+            process_items(user_id,0)
             for counter in range(1, 180):
                 process_items(user_id, counter)
         

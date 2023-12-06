@@ -1,7 +1,7 @@
 {
     "client": "Thunder Client",
     "collectionName": "Kleo Connect",
-    "dateExported": "2023-10-26T13:47:52.782Z",
+    "dateExported": "2023-12-06T02:27:53.973Z",
     "version": "1.1",
     "folders": [
         {
@@ -32,11 +32,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "f4528172-291e-4236-a1dc-857e3eb30de4",
             "name": "Get Summary Pinned ",
-            "url": "https://api.kleo.network/api/v1/core/pinned/get_pinned_summary_domain?user_id=e09720d3-15cd-4b39-b9ca-e54534f3c31c&domain_name=youtube.com",
+            "url": "http://127.0.0.1:5001/api/v1/core/pinned/get_pinned_summary_domain?user_id=e09720d3-15cd-4b39-b9ca-e54534f3c31c&domain_name=google.com",
             "method": "GET",
             "sortNum": 10000,
             "created": "2023-10-02T03:35:53.082Z",
-            "modified": "2023-10-15T22:23:01.825Z",
+            "modified": "2023-10-28T11:33:33.186Z",
             "headers": [],
             "params": [
                 {
@@ -46,7 +46,7 @@
                 },
                 {
                     "name": "domain_name",
-                    "value": "youtube.com",
+                    "value": "google.com",
                     "isPath": false
                 }
             ],
@@ -57,16 +57,16 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
             "name": "Kleo Connect Authentication ",
-            "url": "http://127.0.0.1:5001/api/v1/core/auth/create_jwt_authentication",
+            "url": "https://api.kleo.network/api/v1/core/auth/create_jwt_authentication",
             "method": "POST",
             "sortNum": 10000,
             "created": "2023-10-24T17:36:13.845Z",
-            "modified": "2023-10-24T22:36:01.515Z",
+            "modified": "2023-11-09T16:05:08.797Z",
             "headers": [],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{ \"publicAddress\": \"0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee\", \"signature\": \"0x696ec943a4ee0ae10a0cbe5c5d469d2795acb5726921a5a0f83562c646dd85e75a584e106dd0e7b01d75f5a7ecc4e4b06629cb597376cc988873f1613690fe241b\"\n}",
+                "raw": "{ \"publicAddress\": \"0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee\",\n    \"signature\": \"0x3bf25f65ab346164199a6caf9df788b333b4a852d25b785e6f022eaf34d8058e41c03cbd434255b352d104db183efbad02c148af0152f74777debf04337d33d51c\",\n    \"chain\": \"ethereum\"\n}",
                 "form": []
             },
             "tests": []
@@ -76,36 +76,36 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "f4528172-291e-4236-a1dc-857e3eb30de4",
             "name": "Get Pinned Data History Items",
-            "url": "http://127.0.0.1:5001/api/v1/core/pinned/get_pinned_data_domain?user_id=1&from=1694369940000&to=1696960289735.0000&domain_name=youtube.com&filter=year",
+            "url": "http://127.0.0.1:5001/api/v1/core/pinned/get_pinned_data_domain?user_id=0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee&from=0&to=9696960289735.0000&domain_name=docs.google.com&filter=month",
             "method": "GET",
             "sortNum": 20000,
             "created": "2023-10-02T08:54:51.485Z",
-            "modified": "2023-10-10T18:19:44.902Z",
+            "modified": "2023-12-05T00:58:19.973Z",
             "headers": [],
             "params": [
                 {
                     "name": "user_id",
-                    "value": "1",
+                    "value": "0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee",
                     "isPath": false
                 },
                 {
                     "name": "from",
-                    "value": "1694369940000",
+                    "value": "0",
                     "isPath": false
                 },
                 {
                     "name": "to",
-                    "value": "1696960289735.0000",
+                    "value": "9696960289735.0000",
                     "isPath": false
                 },
                 {
                     "name": "domain_name",
-                    "value": "youtube.com",
+                    "value": "docs.google.com",
                     "isPath": false
                 },
                 {
                     "name": "filter",
-                    "value": "year",
+                    "value": "month",
                     "isPath": false
                 }
             ],
@@ -120,12 +120,31 @@
             "method": "POST",
             "sortNum": 20000,
             "created": "2023-10-06T12:20:04.048Z",
-            "modified": "2023-10-09T14:57:32.033Z",
+            "modified": "2023-12-05T23:55:34.353Z",
             "headers": [],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{\n  \"history\": [\n    {\n    \"id\": \"216841\",\n    \"isLocal\": true,\n    \"referringVisitId\": \"0\",\n    \"transition\": \"link\",\n    \"visitId\": \"680549\",\n    \"visitTime\": 1687511292617.2628,\n    \"title\": \"KPIs for kleo network - Google Docs\",\n    \"lastVisitTime\": 1687511292617.1628,\n    \"typedCount\": 0,\n    \"url\": \"https://docs.google.com/document/d/1lefVLSa8nrIr5LCQOBrC3MaKDYxhfEiv_4wKhSAuEk8/edit?usp=drivesdk\",\n    \"visitCount\": 2\n  },\n  {\n    \"id\": \"216841\",\n    \"isLocal\": true,\n    \"referringVisitId\": \"0\",\n    \"transition\": \"auto_toplevel\",\n    \"visitId\": \"680548\",\n    \"visitTime\": 1687511286634.251,\n    \"title\": \"KPIs for kleo network - Google Docs\",\n    \"lastVisitTime\": 1687511292617.1628,\n    \"typedCount\": 0,\n    \"url\": \"https://docs.google.com/document/d/1lefVLSa8nrIr5LCQOBrC3MaKDYxhfEiv_4wKhSAuEk8/edit?usp=drivesdk\",\n    \"visitCount\": 2\n  }\n    ],\n    \"user_id\": \"uuid-uuid-uuid-uuid\"\n}",
+                "raw": "{\n  \"history\": [\n    {\n    \"id\": \"123456\",\n    \"isLocal\": true,\n    \"referringVisitId\": \"0\",\n    \"transition\": \"link\",\n    \"visitId\": \"680549\",\n    \"visitTime\": 1701646199002.1628,\n    \"title\": \"KPIs for kleo network - Google Docs\",\n    \"lastVisitTime\": 1701646199002.1628,\n    \"typedCount\": 0,\n    \"url\": \"https://docs.google.com/document/d/1lefVLSa8nrIr5LCQOBrC3MaKDYxhfEiv_4wKhSAuEk8/edit?usp=drivesdk\",\n    \"visitCount\": 2\n  },\n  {\n    \"id\": \"216841\",\n    \"isLocal\": true,\n    \"referringVisitId\": \"0\",\n    \"transition\": \"auto_toplevel\",\n    \"visitId\": \"680548\",\n    \"visitTime\": 1701646199213.251,\n    \"title\": \"KPIs for kleo network - Google Docs\",\n    \"lastVisitTime\": 1701646199213.1628,\n    \"typedCount\": 0,\n    \"url\": \"https://docs.google.com/document/d/1lefVLSa8nrIr5LCQOBrC3MaKDYxhfEiv_4wKhSAuEk8/edit?usp=drivesdk\",\n    \"visitCount\": 2\n  }\n    ],\n    \"user_id\": \"0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee\",\n    \"signup\": true\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "c8ceedb2-6626-4b5c-8522-3e02f4a8eb18",
+            "colId": "793cb479-56de-4f49-884b-f8690d3be148",
+            "containerId": "58c5d46d-22d4-454b-92e0-f40b1ca78a82",
+            "name": "Process Items",
+            "url": "http://127.0.0.1:5001/api/v1/core/history/process_items",
+            "method": "POST",
+            "sortNum": 25000,
+            "created": "2023-12-06T00:05:23.585Z",
+            "modified": "2023-12-06T00:05:53.981Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n    \"user_id\": \"0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee\",\n    \"signup\": true\n}",
                 "form": []
             },
             "tests": []
@@ -163,31 +182,6 @@
             "headers": []
         },
         {
-            "_id": "a450a7e1-067d-43ef-bee3-812a89b2bacc",
-            "colId": "793cb479-56de-4f49-884b-f8690d3be148",
-            "containerId": "58c5d46d-22d4-454b-92e0-f40b1ca78a82",
-            "name": "Add to Favourites",
-            "url": "http://127.0.0.1:5001/api/v1/core/history/add_to_favourites?user_id=uuid-uuid-uuid-uuid&visitTime=1687511286634.651",
-            "method": "POST",
-            "sortNum": 40000,
-            "created": "2023-10-02T08:50:42.798Z",
-            "modified": "2023-10-09T12:50:34.205Z",
-            "headers": [],
-            "params": [
-                {
-                    "name": "user_id",
-                    "value": "uuid-uuid-uuid-uuid",
-                    "isPath": false
-                },
-                {
-                    "name": "visitTime",
-                    "value": "1687511286634.651",
-                    "isPath": false
-                }
-            ],
-            "tests": []
-        },
-        {
             "_id": "a78d0693-e572-48ed-8463-835ca99203fc",
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "f4528172-291e-4236-a1dc-857e3eb30de4",
@@ -221,12 +215,12 @@
             "method": "POST",
             "sortNum": 50000,
             "created": "2023-10-01T20:46:02.310Z",
-            "modified": "2023-10-25T21:10:26.165Z",
+            "modified": "2023-12-06T02:07:14.709Z",
             "headers": [],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{\n  \"user_id\": \"e09720d3-15cd-4b39-b9ca-e54534f3c31c\",\n  \"domain\": \"www.netflix.com\",\n  \"order\": \"2\",\n  \"title\": \"Netflix\"\n}",
+                "raw": "{\n  \"user_id\": \"0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee\",\n  \"domain\": \"youtube.com\",\n  \"order\": \"2\",\n  \"title\": \"Youtube\"\n}",
                 "form": []
             },
             "tests": []
@@ -236,21 +230,16 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "58c5d46d-22d4-454b-92e0-f40b1ca78a82",
             "name": "Search History Query",
-            "url": "http://127.0.0.1:5001/api/v1/core/history/scan_history_by_url_or_title?user_id=4c5fce3c-38aa-4199-b72e-73f195c8ab6d&search=youtube.com&page=1&size=50",
+            "url": "http://127.0.0.1:5001/api/v1/core/history/scan_history_by_url_or_title?user_id=4c5fce3c-38aa-4199-b72e-73f195c8ab6d&page=1&size=50&search",
             "method": "GET",
             "sortNum": 50000,
             "created": "2023-10-13T07:25:05.561Z",
-            "modified": "2023-10-24T17:03:31.886Z",
+            "modified": "2023-10-28T11:44:13.813Z",
             "headers": [],
             "params": [
                 {
                     "name": "user_id",
                     "value": "4c5fce3c-38aa-4199-b72e-73f195c8ab6d",
-                    "isPath": false
-                },
-                {
-                    "name": "search",
-                    "value": "youtube.com",
                     "isPath": false
                 },
                 {
@@ -262,6 +251,11 @@
                     "name": "size",
                     "value": "50",
                     "isPath": false
+                },
+                {
+                    "name": "search",
+                    "value": "",
+                    "isPath": false
                 }
             ],
             "tests": []
@@ -271,31 +265,31 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "58c5d46d-22d4-454b-92e0-f40b1ca78a82",
             "name": "Get All Bottom Graph Data ",
-            "url": "http://127.0.0.1:5001/api/v1/core/history/get_browsing_history_graph?user_id=e09720d3-15cd-4b39-b9ca-e54534f3c31c&from=1694192828508&to=1696784828508&filter=year",
+            "url": "http://127.0.0.1:5001/api/v1/core/history/get_browsing_history_graph?user_id=0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee&from=1701224287.102&to=1701829087.102&filter=week",
             "method": "GET",
             "sortNum": 60000,
             "created": "2023-10-03T10:04:05.148Z",
-            "modified": "2023-10-26T10:13:46.892Z",
+            "modified": "2023-12-06T02:23:16.310Z",
             "headers": [],
             "params": [
                 {
                     "name": "user_id",
-                    "value": "e09720d3-15cd-4b39-b9ca-e54534f3c31c",
+                    "value": "0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee",
                     "isPath": false
                 },
                 {
                     "name": "from",
-                    "value": "1694192828508",
+                    "value": "1701224287.102",
                     "isPath": false
                 },
                 {
                     "name": "to",
-                    "value": "1696784828508",
+                    "value": "1701829087.102",
                     "isPath": false
                 },
                 {
                     "name": "filter",
-                    "value": "year",
+                    "value": "week",
                     "isPath": false
                 }
             ],
@@ -329,12 +323,12 @@
             "method": "POST",
             "sortNum": 140000,
             "created": "2023-10-26T10:06:04.054Z",
-            "modified": "2023-10-26T11:33:40.956Z",
+            "modified": "2023-10-28T11:26:20.600Z",
             "headers": [],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{\n  \"user_id\": \"4c5fce3c-38aa-4199-b72e-73f195c8ab6d\",\n  \"visit_times\": [\"1694361753459.708\", \"1694361753638.05\"],\n  \"hide\": true\n}",
+                "raw": "{\n  \"user_id\": \"e09720d3-15cd-4b39-b9ca-e54534f3c31c\",\n  \"visit_times\": [\"1696258278615.207\", \"1694361753638.05\"],\n  \"hide\": true\n}",
                 "form": []
             },
             "tests": []
@@ -344,21 +338,21 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "58c5d46d-22d4-454b-92e0-f40b1ca78a82",
             "name": "Mark as Favourite",
-            "url": "http://127.0.0.1:5001/api/v1/core/history/add_to_favourites?user_id=4c5fce3c-38aa-4199-b72e-73f195c8ab6d&visitTime=1694361753459.708",
+            "url": "http://127.0.0.1:5001/api/v1/core/history/add_to_favourites?user_id=e09720d3-15cd-4b39-b9ca-e54534f3c31c&visitTime=1696258278615.207",
             "method": "POST",
             "sortNum": 150000,
             "created": "2023-10-26T11:34:30.987Z",
-            "modified": "2023-10-26T11:35:39.053Z",
+            "modified": "2023-10-28T11:29:48.740Z",
             "headers": [],
             "params": [
                 {
                     "name": "user_id",
-                    "value": "4c5fce3c-38aa-4199-b72e-73f195c8ab6d",
+                    "value": "e09720d3-15cd-4b39-b9ca-e54534f3c31c",
                     "isPath": false
                 },
                 {
                     "name": "visitTime",
-                    "value": "1694361753459.708",
+                    "value": "1696258278615.207",
                     "isPath": false
                 }
             ],
@@ -404,6 +398,70 @@
             "body": {
                 "type": "json",
                 "raw": "{\n  \"user_id\": \"4c5fce3c-38aa-4199-b72e-73f195c8ab6d\",\n  \"category\": \"Streaming Media and Download\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "dac6cde7-82e0-4f41-b730-e312bcf2ea73",
+            "colId": "793cb479-56de-4f49-884b-f8690d3be148",
+            "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
+            "name": "Get User from Address ",
+            "url": "http://127.0.0.1:5001/api/v1/core/auth/get_user?address",
+            "method": "POST",
+            "sortNum": 170000,
+            "created": "2023-11-04T17:08:32.462Z",
+            "modified": "2023-11-04T17:10:31.312Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "address",
+                    "value": "",
+                    "isPath": false
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"address\": \"Fxvsijq8RmHZsCFTsoEdpWju9fyh1U6cVQosVLSJHj3D\"\n}",
+                "form": []
+            },
+            "tests": []
+        },
+        {
+            "_id": "001373cf-9cce-43f3-8b90-eb67858c4932",
+            "colId": "793cb479-56de-4f49-884b-f8690d3be148",
+            "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
+            "name": "Check Invite Code",
+            "url": "http://127.0.0.1:5001/api/v1/core/auth/check_invite_code?code=ETHLISBON",
+            "method": "GET",
+            "sortNum": 180000,
+            "created": "2023-11-04T20:56:58.952Z",
+            "modified": "2023-11-04T20:57:47.359Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "code",
+                    "value": "ETHLISBON",
+                    "isPath": false
+                }
+            ],
+            "tests": []
+        },
+        {
+            "_id": "e316712d-f881-44df-b6c0-e597364ec7ad",
+            "colId": "793cb479-56de-4f49-884b-f8690d3be148",
+            "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
+            "name": "Create User",
+            "url": "http://127.0.0.1:5001/api/v1/core/user/create_user",
+            "method": "POST",
+            "sortNum": 190000,
+            "created": "2023-11-12T19:16:59.255Z",
+            "modified": "2023-11-12T19:19:26.095Z",
+            "headers": [],
+            "params": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"address\": \"0x57e7b7f1C1a8782aC9d3c4d730051bD60068AEee\"\n}",
                 "form": []
             },
             "tests": []

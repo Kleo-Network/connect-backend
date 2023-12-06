@@ -23,11 +23,11 @@ def process_data_by_timeframe(graph_data, timeframe):
 
     # Helper function to get the time key (week, day, hour, month) from a datetime object
     def get_time_key(dt, timeframe):
-        if timeframe == 'day':
+        if timeframe == 'week':
             return dt.strftime('%Y-%m-%d')
-        elif timeframe == 'week':
-            return f"Week {dt.isocalendar()[1]}"
         elif timeframe == 'month':
+            return f"Week {dt.isocalendar()[1]}"
+        elif timeframe == 'year':
             return dt.strftime('%Y-%m')
         else:
             raise ValueError("Invalid timeframe")
@@ -253,7 +253,7 @@ def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None
                         Key('date').between(Decimal(from_epoch), Decimal(to_epoch)),
                         ExclusiveStartKey=response['LastEvaluatedKey'] )
         items.extend(response['Items'])
-    if group_by_parameter == 'hourly':
+    if group_by_parameter == 'day':
         result = items
     else:
         result = process_data_by_timeframe(items, group_by_parameter)

@@ -84,11 +84,19 @@ def upload():
     
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
     tasks = [categorize_history.s({"chunk": chunk, "user_id": user_id}) for chunk in chunks]
+    print("tasks")
     params = {"user_id": user_id, "signup": signup}
-    callback = process_graph_data.s(params)
+    callback = test_task.s(params)
     chord(tasks)(callback)
         
     return 'History Upload and Categorization is queued!'
 
-
+@core.route('/process_items', methods=['POST'])
+def process_items_post_upload():
+    data = request.get_json()
+    user_id = data["user_id"]
+    signup = data["signup"]
+    params = {"user_id": user_id, "signup": signup}
+    process_graph_data.delay(params)
+    return "Processing Items!"
 
