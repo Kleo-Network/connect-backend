@@ -60,7 +60,7 @@ def search():
     return response
 
 @core.route('/delete_history_items', methods=['DELETE'])
-def delete_history_items():
+def delete_history_items_api():
     data = request.get_json()
     user_id = data["user_id"]
     # you need to make this on the basis of celery task!

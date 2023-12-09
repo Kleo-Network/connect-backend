@@ -39,6 +39,8 @@ def scan_history_by_url_or_title(user_id, search_string, items_per_page, page = 
         else:
             break 
         
+        if len(items) < int(items_per_page):
+            break
         count = count  + len(response['Items'])
         if count > int(final_count):
             break

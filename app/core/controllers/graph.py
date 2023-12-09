@@ -59,7 +59,7 @@ def process_data_by_timeframe(graph_data, timeframe):
         time_key = get_time_key(unix_to_datetime(record["date"]), timeframe)
 
         for visit in record["data"]:
-            category = f"Category: {visit['Category']}"
+            category = f"{visit['Category']}"
             domain_info = {
                 "domain": visit["domain"],
                 "icon": f"https://www.google.com/s2/favicons?domain={visit['domain']}&sz=48",

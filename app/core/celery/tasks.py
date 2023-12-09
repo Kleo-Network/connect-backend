@@ -24,15 +24,9 @@ def process_pinned_graph_data(user,domain):
 def process_graph_data(params):
     user_id = params["user_id"]
     signup = params["signup"]
-    print("user")
-    print(user_id)
-    
-    print("signup")
-    print(signup)
-    if signup is False:
-        if user_id is None:
-            user_details = get_user_unprocessed_graph()
-            user_id = user_details["id"]
+    if signup is False and user_id is None:
+        user_details = get_user_unprocessed_graph()
+        user_id = user_details["id"]
         process_items(user_id)
     else:
         if user_id is not None:

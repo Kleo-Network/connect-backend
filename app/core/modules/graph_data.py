@@ -213,7 +213,7 @@ def update_user_processed(user_id, val):
     return response
 
 def process_items(user_id, day_start=0):
-    print("process items start?")
+   
     history_table = dynamodb.Table('history')
     if day_start != 0:
         now = (datetime.now()).date() - timedelta(days=day_start)
@@ -290,13 +290,13 @@ def process_items(user_id, day_start=0):
             item = {
             'user_id': user_id,
             'date': Decimal(date),
-            'data': data  # converting the data into a JSON string
+            'data': data ,
+            'last_update': time.time()
             }
             write_items.append(item)
     
     for item in write_items:
         response = graph_data_table.put_item(Item=item)
-        print(response)
     response = processor.put_item(
         Item={
             'user_id': user_id,
