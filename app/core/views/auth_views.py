@@ -64,7 +64,7 @@ def check_invite_code_api():
 @core.route('/test_api', methods=['GET'])
 @token_required
 def test_api(**kwargs):
-    public_address = kwargs.get('user_data')
+    public_address = kwargs.get('user_data')['payload']['publicAddress']
     return jsonify({'message': f'Test API accessed by user with public address: {public_address}'})
     
 @core.route('/create_jwt_authentication', methods=["POST"])

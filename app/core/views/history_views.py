@@ -5,7 +5,7 @@ from ..controllers.graph import *
 from ..celery.tasks import *
 from math import ceil
 from celery import chord
-from auth_views import token_required
+from .auth_views import token_required
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
@@ -22,6 +22,13 @@ def get_browsing_history_graph(**kwargs):
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
     filter = request.args.get('filter')
+    user = get_process_graph_previous_history('user_id')
+    if filter == "day" and user["process_graph"] == "False":
+        response = {"processing": True}
+        return response 
+    if filter == "month" and user["process_graph_previous_history"] == False:
+        response = {"prcessing": True}
+        return response        
     response = graph_query(filter, user_id, from_epoch, to_epoch)
     return response
 
@@ -38,6 +45,8 @@ def hide_history_items(**kwargs):
     user_id = data['user_id']
     visitTimes = data["visit_times"]
     hide = data["hide"]
+    if user_id != kwargs.get('user_data')['payload']['publicAddress']:
+        return 501
     response = hide_history_items_table(user_id, visitTimes, hide)
     return response
 
@@ -46,6 +55,8 @@ def hide_history_items(**kwargs):
 def add_to_favourite(**kwargs):
     user_id = request.args.get('user_id')
     visitTime = request.args.get('visitTime')
+    if user_id != kwargs.get('user_data')['payload']['publicAddress']:
+        return 501
     response = add_to_favorites(user_id, visitTime)
     return response
 @core.route('/remove_from_favourites', methods=['POST'])
@@ -53,6 +64,8 @@ def add_to_favourite(**kwargs):
 def remove_from_favourites(**kwargs):
     user_id = request.args.get('user_id')
     url = request.args.get('url')
+    if user_id != kwargs.get('user_data')['payload']['publicAddress']:
+        return 501
     response = remove_from_favorites(user_id,url)
     return response
 
@@ -63,14 +76,18 @@ def search(**kwargs):
     user_id = request.args.get('user_id')
     page = request.args.get('page')
     size = request.args.get('size')
+    if user_id != kwargs.get('user_data')['payload']['publicAddress']:
+        return 501
     response = scan_history_by_url_or_title(user_id, search, size,page)
     return response
 
 @core.route('/delete_history_items', methods=['DELETE'])
 @token_required
-def delete_history_items_api():
+def delete_history_items_api(**kwargs):
     data = request.get_json()
     user_id = data["user_id"]
+    if user_id != kwargs.get('user_data')['payload']['publicAddress']:
+        return 501
     # you need to make this on the basis of celery task!
     if 'category' in data:
         delete_category(user_id, data['category'])
@@ -101,11 +118,14 @@ def upload():
     return 'History Upload and Categorization is queued!'
 
 @core.route('/process_items', methods=['POST'])
-def process_items_post_upload():
+@token_required
+def process_items_post_upload(**kwargs):
     data = request.get_json()
     user_id = data["user_id"]
     signup = data["signup"]
     params = {"user_id": user_id, "signup": signup}
+    if user_id != kwargs.get('user_data')['payload']['publicAddress']:
+        return 501
     process_graph_data.delay(params)
     return "Processing Items!"
 

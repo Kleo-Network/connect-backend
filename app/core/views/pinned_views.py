@@ -3,6 +3,7 @@ from ..controllers.history import *
 from ..controllers.pinned_website import *
 from ..controllers.graph import *
 from werkzeug.local import LocalProxy
+from .auth_views import token_required
 
 core = Blueprint('core', __name__)
 
@@ -16,12 +17,14 @@ def get_domain():
     return domains
 
 @core.route('/get_pinned_websites', methods=["GET"])
+@token_required
 def get_pinned_websites_for_user():
     user_id = request.args.get('user_id')
     pinned_Websites = get_pinned_website(user_id)
     return pinned_Websites
 
 @core.route('/remove_pinned_website', methods=['POST'])
+@token_required
 def remove_pinned_website():
     data = request.get_json()
     user_id = data["user_id"]
@@ -33,6 +36,7 @@ def remove_pinned_website():
         return {"result": False}
 
 @core.route('/add_pinned_website', methods=['POST'])
+@token_required
 def add_pinned_website():
     data = request.get_json()
     user_id = data["user_id"]
@@ -43,6 +47,7 @@ def add_pinned_website():
     return response
 
 @core.route('/get_pinned_data_domain', methods=['GET'])
+@token_required
 def get_pinned_data_domain():
     user_id = request.args.get('user_id')
     from_epoch = request.args.get('from')
@@ -54,6 +59,7 @@ def get_pinned_data_domain():
 
 
 @core.route('/get_pinned_summary_domain', methods=['GET'])
+@token_required
 def get_pinned_summary_domain():
     user_id = request.args.get('user_id')
     domain_name = request.args.get('domain_name')

@@ -33,6 +33,8 @@ def process_graph_data(params):
             process_items(user_id,0)
             for counter in range(1, 180):
                 process_items(user_id, counter)
+            update_user_processed_previous_history(user_id, True)
+            
         
 
 @shared_task(name='tasks.update_new_history')

@@ -212,6 +212,25 @@ def update_user_processed(user_id, val):
     )
     return response
 
+def get_process_graph_previous_history(user_id):
+    response = users.get_item(
+        Key={'id': user_id})
+    return response['Item']
+
+def update_user_processed_previous_history(user_id, val):
+    response = users.update_item(
+        Key={
+            'id': user_id,  # your primary key column name and value
+        },
+        UpdateExpression='SET process_graph_previous_history = :val',
+        ExpressionAttributeValues={
+            ':val': val
+        },
+        ReturnValues="UPDATED_NEW"  # Returns all the attributes of the item post update
+    )
+    return response
+
+
 def process_items(user_id, day_start=0):
    
     history_table = dynamodb.Table('history')
