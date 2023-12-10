@@ -5,6 +5,7 @@ from ..controllers.graph import *
 from ..celery.tasks import *
 from math import ceil
 from celery import chord
+from auth_views import token_required
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
@@ -15,7 +16,8 @@ def before_request_func():
     current_app.logger.name = 'core'
 
 @core.route('/get_browsing_history_graph', methods=["GET"])
-def get_browsing_history_graph():
+@token_required
+def get_browsing_history_graph(**kwargs):
     user_id = request.args.get('user_id')
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
@@ -24,12 +26,14 @@ def get_browsing_history_graph():
     return response
 
 @core.route('/get_favourites_domain', methods=['GET'])
-def get_favourites_domain():
+@token_required
+def get_favourites_domain(**kwargs):
     user_id = request.args.get('user_id')
     resposne = get_favourites_domain(user_id)
 
 @core.route('/hide_history_items', methods=['POST'])
-def hide_history_items():
+@token_required
+def hide_history_items(**kwargs):
     data=request.get_json()
     user_id = data['user_id']
     visitTimes = data["visit_times"]
@@ -38,20 +42,23 @@ def hide_history_items():
     return response
 
 @core.route('/add_to_favourites', methods=['POST'])
-def add_to_favourite():
+@token_required
+def add_to_favourite(**kwargs):
     user_id = request.args.get('user_id')
     visitTime = request.args.get('visitTime')
     response = add_to_favorites(user_id, visitTime)
     return response
 @core.route('/remove_from_favourites', methods=['POST'])
-def remove_from_favourites():
+@token_required
+def remove_from_favourites(**kwargs):
     user_id = request.args.get('user_id')
     url = request.args.get('url')
     response = remove_from_favorites(user_id,url)
     return response
 
 @core.route('/scan_history_by_url_or_title', methods=['GET'])
-def search():
+@token_required
+def search(**kwargs):
     search = request.args.get('search')
     user_id = request.args.get('user_id')
     page = request.args.get('page')
@@ -60,6 +67,7 @@ def search():
     return response
 
 @core.route('/delete_history_items', methods=['DELETE'])
+@token_required
 def delete_history_items_api():
     data = request.get_json()
     user_id = data["user_id"]
@@ -73,6 +81,7 @@ def delete_history_items_api():
     return jsonify({"message": "Deleted Items successfulyy"})
     
 @core.route('/upload', methods=['POST'])
+@token_required
 def upload():
     data = request.get_json()
     history = data["history"]
@@ -84,7 +93,7 @@ def upload():
     
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
     tasks = [categorize_history.s({"chunk": chunk, "user_id": user_id}) for chunk in chunks]
-    print("tasks")
+    
     params = {"user_id": user_id, "signup": signup}
     callback = test_task.s(params)
     chord(tasks)(callback)

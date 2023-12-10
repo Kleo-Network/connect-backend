@@ -22,8 +22,10 @@ def token_required(f):
         token = None
 
         if 'Authorization' in request.headers:
+            print("abs")
             try:
-                token = request.headers['Authorization'].split(" ")[1]
+                print(request.headers['Authorization'].split(" "))
+                token = request.headers['Authorization'].split(" ")[0]
             except IndexError:
                 return jsonify({'message': 'Bearer token malformed.'}), 401
 
@@ -32,7 +34,7 @@ def token_required(f):
 
         try:
             # Decode the token
-            data = jwt.decode(token, os.environ.get("SECRET_KEY"), algorithms=["HS256"])
+            data = jwt.decode(token, os.environ.get('SECRET', 'default_secret'), algorithms=["HS256"])
         except:
             return jsonify({'message': 'Token is invalid or expired.'}), 401
 
@@ -58,6 +60,12 @@ def check_invite_code_api():
         return jsonify("OK"), 200
     else:
         return jsonify(error='Bad Request'),201
+
+@core.route('/test_api', methods=['GET'])
+@token_required
+def test_api(**kwargs):
+    public_address = kwargs.get('user_data')
+    return jsonify({'message': f'Test API accessed by user with public address: {public_address}'})
     
 @core.route('/create_jwt_authentication', methods=["POST"])
 def create():
@@ -73,14 +81,13 @@ def create():
     
     if not user:
         return jsonify(error=f'User with publicAddress {public_address} is not found in database'), 401
-    #msg = f"I am signing my one-time nonce: {str(user['nonce'])}"
-    msg = f"Sign in to Kleo"
+    msg = f"I am signing my one-time nonce: {str(user['nonce'])}"
 
     if chain == "ethereum":
         print("ethereum")
         message = encode_defunct(text=msg)
         recovered_address = w3.eth.account.recover_message(message, signature=signature)
-        print(recovered_address)
+        
         if recovered_address.lower() != public_address.lower():
             return jsonify(error='Signature verification failed'), 401
 
@@ -92,7 +99,7 @@ def create():
             SECRET = os.environ.get('SECRET', 'default_secret')
             ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
 
-            access_token = jwt.encode({'payload': {'id': user["id"], 'publicAddress': public_address}},
+            access_token = jwt.encode({'payload': {'publicAddress': public_address, 'nonce': user['nonce']}},
                                   SECRET, algorithm=ALGORITHM)
             return jsonify(accessToken=access_token)
         except Exception as e:
