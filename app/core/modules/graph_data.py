@@ -310,7 +310,7 @@ def process_items(user_id, day_start=0):
             'user_id': user_id,
             'date': Decimal(date),
             'data': data ,
-            'last_update': time.time()
+            'last_update': Decimal(time.time())
             }
             write_items.append(item)
     

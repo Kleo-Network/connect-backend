@@ -99,7 +99,7 @@ def delete_history_items_api(**kwargs):
     
 @core.route('/upload', methods=['POST'])
 @token_required
-def upload():
+def upload(**kwargs):
     data = request.get_json()
     history = data["history"]
     user_id = data["user_id"]
@@ -118,14 +118,12 @@ def upload():
     return 'History Upload and Categorization is queued!'
 
 @core.route('/process_items', methods=['POST'])
-@token_required
-def process_items_post_upload(**kwargs):
+def process_items_post_upload():
     data = request.get_json()
     user_id = data["user_id"]
     signup = data["signup"]
     params = {"user_id": user_id, "signup": signup}
-    if user_id != kwargs.get('user_data')['payload']['publicAddress']:
-        return 501
+    
     process_graph_data.delay(params)
     return "Processing Items!"
 

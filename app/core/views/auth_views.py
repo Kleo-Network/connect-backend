@@ -87,7 +87,8 @@ def create():
         print("ethereum")
         message = encode_defunct(text=msg)
         recovered_address = w3.eth.account.recover_message(message, signature=signature)
-        
+        print(recovered_address)
+        print(public_address)
         if recovered_address.lower() != public_address.lower():
             return jsonify(error='Signature verification failed'), 401
 
@@ -99,7 +100,7 @@ def create():
             SECRET = os.environ.get('SECRET', 'default_secret')
             ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
 
-            access_token = jwt.encode({'payload': {'publicAddress': public_address, 'nonce': user['nonce']}},
+            access_token = jwt.encode({'payload': {'publicAddress': public_address}},
                                   SECRET, algorithm=ALGORITHM)
             return jsonify(accessToken=access_token)
         except Exception as e:
