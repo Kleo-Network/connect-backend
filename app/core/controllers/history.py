@@ -12,7 +12,7 @@ from flask import  jsonify
 from ..models.aws_session import dynamodb
 
 
-def scan_history_by_url_or_title(user_id, search_string, items_per_page, page = 1):
+def scan_history_by_url_or_title(user_id, search_string, items_per_page=50, page = 1):
 
     table = dynamodb.Table('history')
     # Prepare the parameters for the scan operation

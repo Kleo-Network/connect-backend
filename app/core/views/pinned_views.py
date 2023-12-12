@@ -18,14 +18,14 @@ def get_domain():
 
 @core.route('/get_pinned_websites', methods=["GET"])
 @token_required
-def get_pinned_websites_for_user():
+def get_pinned_websites_for_user(**kwargs):
     user_id = request.args.get('user_id')
     pinned_Websites = get_pinned_website(user_id)
     return pinned_Websites
 
 @core.route('/remove_pinned_website', methods=['POST'])
 @token_required
-def remove_pinned_website():
+def remove_pinned_website(**kwargs):
     data = request.get_json()
     user_id = data["user_id"]
     domain = data["domain"]
@@ -37,7 +37,7 @@ def remove_pinned_website():
 
 @core.route('/add_pinned_website', methods=['POST'])
 @token_required
-def add_pinned_website():
+def add_pinned_website(**kwargs):
     data = request.get_json()
     user_id = data["user_id"]
     domain = data["domain"]
@@ -48,7 +48,7 @@ def add_pinned_website():
 
 @core.route('/get_pinned_data_domain', methods=['GET'])
 @token_required
-def get_pinned_data_domain():
+def get_pinned_data_domain(**kwargs):
     user_id = request.args.get('user_id')
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
@@ -60,7 +60,7 @@ def get_pinned_data_domain():
 
 @core.route('/get_pinned_summary_domain', methods=['GET'])
 @token_required
-def get_pinned_summary_domain():
+def get_pinned_summary_domain(**kwargs):
     user_id = request.args.get('user_id')
     domain_name = request.args.get('domain_name')
     summary = get_summary(user_id, domain_name)

@@ -22,7 +22,7 @@ def get_browsing_history_graph(**kwargs):
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
     filter = request.args.get('filter')
-    user = get_process_graph_previous_history('user_id')
+    user = get_process_graph_previous_history(user_id)
     if filter == "day" and user["process_graph"] == "False":
         response = {"processing": True}
         return response 

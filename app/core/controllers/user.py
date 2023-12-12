@@ -44,6 +44,8 @@ def check_user_and_return(address):
         user = {}
         user["id"] = address
         user["gitcoin_passport"] = False
+        user["process_graph_previous_history"] = False
+        user["process_graph"] = False
         user["nonce"] = str(uuid.uuid4())
         response = table.put_item(Item=user)
         return user
