@@ -1,7 +1,7 @@
 {
     "client": "Thunder Client",
     "collectionName": "Kleo Connect",
-    "dateExported": "2023-12-06T02:27:53.973Z",
+    "dateExported": "2023-12-12T19:41:08.231Z",
     "version": "1.1",
     "folders": [
         {
@@ -57,16 +57,16 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
             "name": "Kleo Connect Authentication ",
-            "url": "https://api.kleo.network/api/v1/core/auth/create_jwt_authentication",
+            "url": "https://127.0.0.1:5001/api/v1/core/auth/create_jwt_authentication",
             "method": "POST",
             "sortNum": 10000,
             "created": "2023-10-24T17:36:13.845Z",
-            "modified": "2023-11-09T16:05:08.797Z",
+            "modified": "2023-12-09T18:19:08.473Z",
             "headers": [],
             "params": [],
             "body": {
                 "type": "json",
-                "raw": "{ \"publicAddress\": \"0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee\",\n    \"signature\": \"0x3bf25f65ab346164199a6caf9df788b333b4a852d25b785e6f022eaf34d8058e41c03cbd434255b352d104db183efbad02c148af0152f74777debf04337d33d51c\",\n    \"chain\": \"ethereum\"\n}",
+                "raw": "{ \"publicAddress\": \"0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee\",\n    \"signature\": \"0x19a757d8c2dc745d790403f702e62144c51bc1923457691685a2dee8b32d28aa30a4fe700b70350f4a8696be34855ea7dcbf95986857e9be987badad0cdf68241b\",\n    \"chain\": \"ethereum\"\n}",
                 "form": []
             },
             "tests": []
@@ -76,11 +76,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "f4528172-291e-4236-a1dc-857e3eb30de4",
             "name": "Get Pinned Data History Items",
-            "url": "http://127.0.0.1:5001/api/v1/core/pinned/get_pinned_data_domain?user_id=0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee&from=0&to=9696960289735.0000&domain_name=docs.google.com&filter=month",
+            "url": "https://api.kleo.network/api/v1/core/pinned/get_pinned_data_domain?user_id=0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee&from=0&to=9696960289735.0000&domain_name=youtube.com&filter=month",
             "method": "GET",
             "sortNum": 20000,
             "created": "2023-10-02T08:54:51.485Z",
-            "modified": "2023-12-05T00:58:19.973Z",
+            "modified": "2023-12-09T18:17:51.307Z",
             "headers": [],
             "params": [
                 {
@@ -100,7 +100,7 @@
                 },
                 {
                     "name": "domain_name",
-                    "value": "docs.google.com",
+                    "value": "youtube.com",
                     "isPath": false
                 },
                 {
@@ -154,11 +154,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "f4528172-291e-4236-a1dc-857e3eb30de4",
             "name": "Get Pinned Websites",
-            "url": "http://127.0.0.1:5001/api/v1/core/pinned/get_pinned_websites?user_id=e09720d3-15cd-4b39-b9ca-e54534f3c31c",
+            "url": "https://api.kleo.network/api/v1/core/pinned/get_pinned_websites?user_id=e09720d3-15cd-4b39-b9ca-e54534f3c31c",
             "method": "GET",
             "sortNum": 30000,
             "created": "2023-10-01T20:57:20.186Z",
-            "modified": "2023-10-24T17:04:27.260Z",
+            "modified": "2023-12-09T18:18:11.386Z",
             "headers": [],
             "params": [
                 {
@@ -265,11 +265,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "58c5d46d-22d4-454b-92e0-f40b1ca78a82",
             "name": "Get All Bottom Graph Data ",
-            "url": "http://127.0.0.1:5001/api/v1/core/history/get_browsing_history_graph?user_id=0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee&from=1701224287.102&to=1701829087.102&filter=week",
+            "url": "http://127.0.0.1:5001/api/v1/core/history/get_browsing_history_graph?user_id=0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee&from=1701224287.102&to=1701829087.102&filter=day",
             "method": "GET",
             "sortNum": 60000,
             "created": "2023-10-03T10:04:05.148Z",
-            "modified": "2023-12-06T02:23:16.310Z",
+            "modified": "2023-12-06T03:36:48.308Z",
             "headers": [],
             "params": [
                 {
@@ -289,7 +289,7 @@
                 },
                 {
                     "name": "filter",
-                    "value": "week",
+                    "value": "day",
                     "isPath": false
                 }
             ],
@@ -407,11 +407,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
             "name": "Get User from Address ",
-            "url": "http://127.0.0.1:5001/api/v1/core/auth/get_user?address",
+            "url": "https://api.kleo.network/api/v1/core/auth/get_user?address",
             "method": "POST",
             "sortNum": 170000,
             "created": "2023-11-04T17:08:32.462Z",
-            "modified": "2023-11-04T17:10:31.312Z",
+            "modified": "2023-12-11T19:13:56.904Z",
             "headers": [],
             "params": [
                 {
@@ -422,7 +422,7 @@
             ],
             "body": {
                 "type": "json",
-                "raw": "{\n  \"address\": \"Fxvsijq8RmHZsCFTsoEdpWju9fyh1U6cVQosVLSJHj3D\"\n}",
+                "raw": "{\n  \"address\": \"0x86b06319b906e61631f7edbe5a3fe2edb95a3fae\"\n}",
                 "form": []
             },
             "tests": []
@@ -432,11 +432,11 @@
             "colId": "793cb479-56de-4f49-884b-f8690d3be148",
             "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
             "name": "Check Invite Code",
-            "url": "http://127.0.0.1:5001/api/v1/core/auth/check_invite_code?code=ETHLISBON",
+            "url": "https://api.kleo.network/api/v1/core/auth/check_invite_code?code=ETHLISBON",
             "method": "GET",
             "sortNum": 180000,
             "created": "2023-11-04T20:56:58.952Z",
-            "modified": "2023-11-04T20:57:47.359Z",
+            "modified": "2023-12-06T04:17:45.232Z",
             "headers": [],
             "params": [
                 {
@@ -464,6 +464,30 @@
                 "raw": "{\n  \"address\": \"0x57e7b7f1C1a8782aC9d3c4d730051bD60068AEee\"\n}",
                 "form": []
             },
+            "tests": []
+        },
+        {
+            "_id": "daf04f92-e8fc-4900-abcb-0ee2f9aeb907",
+            "colId": "793cb479-56de-4f49-884b-f8690d3be148",
+            "containerId": "16cf2b29-1a36-45e6-81f4-052742a5a8ee",
+            "name": "Test API Auth",
+            "url": "http://127.0.0.1:5001/api/v1/core/auth/test_api",
+            "method": "GET",
+            "sortNum": 200000,
+            "created": "2023-12-09T18:01:42.256Z",
+            "modified": "2023-12-11T04:10:56.990Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Thunder Client auth header "
+                },
+                {
+                    "name": "User-Agent",
+                    "value": "Thunder Client (https://www.thunderclient.com)",
+                    "isDisabled": true
+                }
+            ],
+            "params": [],
             "tests": []
         }
     ]
