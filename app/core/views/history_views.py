@@ -23,12 +23,12 @@ def get_browsing_history_graph(**kwargs):
     to_epoch = request.args.get('to')
     filter = request.args.get('filter')
     user = get_process_graph_previous_history(user_id)
-    if filter == "day" and user["process_graph"] == "False":
-        response = {"processing": True}
-        return response 
-    if filter == "month" and user["process_graph_previous_history"] == False:
-        response = {"prcessing": True}
-        return response        
+    # if filter == "day" and user["process_graph"] == "False":
+    #     response = {"processing": True}
+    #     return response 
+    # if filter == "month" and user["process_graph_previous_history"] == False:
+    #     response = {"prcessing": True}
+    #     return response        
     response = graph_query(filter, user_id, from_epoch, to_epoch)
     return response
 
@@ -103,16 +103,11 @@ def upload(**kwargs):
     data = request.get_json()
     history = data["history"]
     user_id = data["user_id"]
-    if "signup" in data:
-        signup = data["signup"]
-    else:
-        signup = False
     
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
     tasks = [categorize_history.s({"chunk": chunk, "user_id": user_id}) for chunk in chunks]
     
-    params = {"user_id": user_id, "signup": signup}
-    callback = test_task.s(params)
+    callback = upload_history_next_two_days.s(user_id)
     chord(tasks)(callback)
         
     return 'History Upload and Categorization is queued!'

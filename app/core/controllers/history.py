@@ -93,7 +93,7 @@ def upload_browsing_history_chunk(chunk):
     filtered_chunk = [convert_floats_to_decimal(item) for item in chunk if not record_exists(item['user_id'], item['visitTime'])]
     if not filtered_chunk:
         return False
-    
+    print(chunk)
     request_items = {
         'history': [
             {

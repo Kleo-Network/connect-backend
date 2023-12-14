@@ -28,175 +28,175 @@ dynamodb = session.resource('dynamodb')
 from collections import defaultdict
 
 
-def get_hour_bracket(epoch_time):
-    hour = datetime.utcfromtimestamp(epoch_time / 1000.0).hour  # DynamoDB timestamp is in milliseconds
-    if 0 <= hour < 4:
-        return "00-04"
-    elif 4 <= hour < 8:
-        return "04-08"
-    elif 8 <= hour < 12:
-        return "08-12"
-    elif 12 <= hour < 16:
-        return "12-16"
-    elif 16 <= hour < 20:
-        return "16-20"
-    else:
-        return "20-24"
+# def get_hour_bracket(epoch_time):
+#     hour = datetime.utcfromtimestamp(epoch_time / 1000.0).hour  # DynamoDB timestamp is in milliseconds
+#     if 0 <= hour < 4:
+#         return "00-04"
+#     elif 4 <= hour < 8:
+#         return "04-08"
+#     elif 8 <= hour < 12:
+#         return "08-12"
+#     elif 12 <= hour < 16:
+#         return "12-16"
+#     elif 16 <= hour < 20:
+#         return "16-20"
+#     else:
+#         return "20-24"
 
 
-def get_pinned_graph_view(user_id, domain):
-    user_domain_key = f"{user_id}#{domain}"
-    graph_data_pinned_table = dynamodb.Table('pinned_graph_data')
-    now = datetime.now()
-    one_year_from_now = now - timedelta(days=900)
-    start_date = int(one_year_from_now.timestamp())
-    end_date = int(now.timestamp())
+# def get_pinned_graph_view(user_id, domain):
+#     user_domain_key = f"{user_id}#{domain}"
+#     graph_data_pinned_table = dynamodb.Table('pinned_graph_data')
+#     now = datetime.now()
+#     one_year_from_now = now - timedelta(days=900)
+#     start_date = int(one_year_from_now.timestamp())
+#     end_date = int(now.timestamp())
 
-    try:
-        response = graph_data_pinned_table.query(
-            KeyConditionExpression=Key('domain_user_id').eq(user_domain_key) & 
-                                    Key('date').between(Decimal(start_date), Decimal(end_date))
-        )
-        print(start_date)
-        print(end_date)
-        items = response.get('Items', [])
-        return items
-    except Exception as e:
-        print(f"Error querying table: {e}")
-        return []  
+#     try:
+#         response = graph_data_pinned_table.query(
+#             KeyConditionExpression=Key('domain_user_id').eq(user_domain_key) & 
+#                                     Key('date').between(Decimal(start_date), Decimal(end_date))
+#         )
+#         print(start_date)
+#         print(end_date)
+#         items = response.get('Items', [])
+#         return items
+#     except Exception as e:
+#         print(f"Error querying table: {e}")
+#         return []  
 
 
 
-def process_items_pinned_data(user_id, pinned_domain, days_counter=365):
-    now = datetime.now()
-    now = datetime.combine(now, datetime.min.time())
-    date=now.timestamp()
-    previous_timestamp = now - timedelta(days=days_counter)
+# def process_items_pinned_data(user_id, pinned_domain, days_counter=365):
+#     now = datetime.now()
+#     now = datetime.combine(now, datetime.min.time())
+#     date=now.timestamp()
+#     previous_timestamp = now - timedelta(days=days_counter)
 
-    start_timestamp = int(previous_timestamp.timestamp() * 1000)
-    end_timestamp = int(now.timestamp() * 1000)
-    table = dynamodb.Table('history')
-    response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
-                            FilterExpression="contains(#url_attr, :domain_name)",
-                            ExpressionAttributeNames={
-                                "#url_attr": "url"
-                            },
-                            ExpressionAttributeValues={
-                                ":domain_name": pinned_domain
-                            })
-    items = response['Items']
+#     start_timestamp = int(previous_timestamp.timestamp() * 1000)
+#     end_timestamp = int(now.timestamp() * 1000)
+#     table = dynamodb.Table('history')
+#     response = table.query(
+#                             KeyConditionExpression=Key('user_id').eq(user_id) & 
+#                             Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
+#                             FilterExpression="contains(#url_attr, :domain_name)",
+#                             ExpressionAttributeNames={
+#                                 "#url_attr": "url"
+#                             },
+#                             ExpressionAttributeValues={
+#                                 ":domain_name": pinned_domain
+#                             })
+#     items = response['Items']
    
-    while 'LastEvaluatedKey' in response:
-        response = table.query(
-                            KeyConditionExpression=Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
-                            FilterExpression="contains(#url_attr, :domain_name)",
-                            ExpressionAttributeNames={
-                                "#url_attr": "url"
-                            },
-                            ExpressionAttributeValues={
-                                ":domain_name": pinned_domain
-                            },
-                            ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response['Items'])
+#     while 'LastEvaluatedKey' in response:
+#         response = table.query(
+#                             KeyConditionExpression=Key('user_id').eq(user_id) & 
+#                             Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
+#                             FilterExpression="contains(#url_attr, :domain_name)",
+#                             ExpressionAttributeNames={
+#                                 "#url_attr": "url"
+#                             },
+#                             ExpressionAttributeValues={
+#                                 ":domain_name": pinned_domain
+#                             },
+#                             ExclusiveStartKey=response['LastEvaluatedKey'])
+#         items.extend(response['Items'])
             
     
-    output = defaultdict(lambda: defaultdict(lambda: {"data": defaultdict(int)}))
+#     output = defaultdict(lambda: defaultdict(lambda: {"data": defaultdict(int)}))
 
-    for item in items:
-        date_date = datetime.fromtimestamp(float(item["visitTime"]) / 1000.0)
-        date_epoch = date_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        date_str = int(date_epoch.timestamp())
-        time_bracket = get_hour_bracket(float(item["visitTime"]))
+#     for item in items:
+#         date_date = datetime.fromtimestamp(float(item["visitTime"]) / 1000.0)
+#         date_epoch = date_date.replace(hour=0, minute=0, second=0, microsecond=0)
+#         date_str = int(date_epoch.timestamp())
+#         time_bracket = get_hour_bracket(float(item["visitTime"]))
 
-        user_id = item["user_id"]
-        output[user_id][date_str]["data"][time_bracket] += 1
+#         user_id = item["user_id"]
+#         output[user_id][date_str]["data"][time_bracket] += 1
 
-    # Convert the output to the desired format
-    formatted_output = []
-    for user_id, dates in output.items():
-        for date, data in dates.items():
-            formatted_output.append({
-                "user_id": user_id,
-                "date": date,
-                "data": [{"time_bracket": tb, "visitCount": count} for tb, count in data["data"].items()]
-            })
+#     # Convert the output to the desired format
+#     formatted_output = []
+#     for user_id, dates in output.items():
+#         for date, data in dates.items():
+#             formatted_output.append({
+#                 "user_id": user_id,
+#                 "date": date,
+#                 "data": [{"time_bracket": tb, "visitCount": count} for tb, count in data["data"].items()]
+#             })
     
-    graph_data_pinned_table = dynamodb.Table('pinned_graph_data')
-    for record in formatted_output:
-        user_domain_key = f"{record['user_id']}#{pinned_domain}"
-        data_json = json.dumps(record['data'])  # Convert the data to a JSON string
+#     graph_data_pinned_table = dynamodb.Table('pinned_graph_data')
+#     for record in formatted_output:
+#         user_domain_key = f"{record['user_id']}#{pinned_domain}"
+#         data_json = json.dumps(record['data'])  # Convert the data to a JSON string
 
-        # Construct the item to insert
-        item = {
-            'domain_user_id': user_domain_key,
-            'date': Decimal(record['date']),
-            'domain': pinned_domain,
-            'data': data_json
-        }
+#         # Construct the item to insert
+#         item = {
+#             'domain_user_id': user_domain_key,
+#             'date': Decimal(record['date']),
+#             'domain': pinned_domain,
+#             'data': data_json
+#         }
 
-        graph_data_pinned_table.put_item(Item=item)
-    return formatted_output
+#         graph_data_pinned_table.put_item(Item=item)
+#     return formatted_output
 
 
-# a = process_items_pinned_data("0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee", "docs.google.com")
-print(get_pinned_graph_view("0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee", "docs.google.com"))
-# print(a)
-def process_data_by_timeframe(graph_data, timeframe):
-    # Helper function to convert Unix timestamp to datetime
-    def unix_to_datetime(unix_timestamp):
-        if isinstance(unix_timestamp, Decimal):
-            unix_timestamp = int(unix_timestamp)
-        return datetime.datetime.utcfromtimestamp(unix_timestamp)
+# # a = process_items_pinned_data("0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee", "docs.google.com")
+# # print(get_pinned_graph_view("0x57e7b7f1c1a8782ac9d3c4d730051bd60068aeee", "docs.google.com"))
+# # print(a)
+# def process_data_by_timeframe(graph_data, timeframe):
+#     # Helper function to convert Unix timestamp to datetime
+#     def unix_to_datetime(unix_timestamp):
+#         if isinstance(unix_timestamp, Decimal):
+#             unix_timestamp = int(unix_timestamp)
+#         return datetime.datetime.utcfromtimestamp(unix_timestamp)
 
-    # Helper function to get the time key (week, day, hour, month) from a datetime object
-    def get_time_key(dt, timeframe):
-        if timeframe == 'daily':
-            return dt.strftime('%Y-%m-%d')
-        elif timeframe == 'weekly':
-            return f"Week {dt.isocalendar()[1]}"
-        elif timeframe == 'monthly':
-            return dt.strftime('%Y-%m')
-        else:
-            raise ValueError("Invalid timeframe")
+#     # Helper function to get the time key (week, day, hour, month) from a datetime object
+#     def get_time_key(dt, timeframe):
+#         if timeframe == 'daily':
+#             return dt.strftime('%Y-%m-%d')
+#         elif timeframe == 'weekly':
+#             return f"Week {dt.isocalendar()[1]}"
+#         elif timeframe == 'monthly':
+#             return dt.strftime('%Y-%m')
+#         else:
+#             raise ValueError("Invalid timeframe")
 
-    # Initialize the data structure
-    organized_data = defaultdict(lambda: defaultdict(lambda: {"domains": [], "totalCategoryVisits": 0}))
+#     # Initialize the data structure
+#     organized_data = defaultdict(lambda: defaultdict(lambda: {"domains": [], "totalCategoryVisits": 0}))
 
-    # Process each record
-    for record in graph_data:
-        time_key = get_time_key(unix_to_datetime(record["date"]), timeframe)
+#     # Process each record
+#     for record in graph_data:
+#         time_key = get_time_key(unix_to_datetime(record["date"]), timeframe)
 
-        for visit in record["data"]:
-            category = f"Category: {visit['Category']}"
-            domain_info = {
-                "domain": visit["domain"],
-                "icon": f"https://www.google.com/s2/favicons?domain={visit['domain']}&sz=48",
-                "name": visit["domain"],
-                "visitCounterTimeRange": visit["visit_count"]
-            }
+#         for visit in record["data"]:
+#             category = f"Category: {visit['Category']}"
+#             domain_info = {
+#                 "domain": visit["domain"],
+#                 "icon": f"https://www.google.com/s2/favicons?domain={visit['domain']}&sz=48",
+#                 "name": visit["domain"],
+#                 "visitCounterTimeRange": visit["visit_count"]
+#             }
 
-            organized_data[time_key][category]["domains"].append(domain_info)
-            organized_data[time_key][category]["totalCategoryVisits"] += visit["visit_count"]
+#             organized_data[time_key][category]["domains"].append(domain_info)
+#             organized_data[time_key][category]["totalCategoryVisits"] += visit["visit_count"]
 
-    # Convert defaultdict to regular dict for final output
-    return {time_key: dict(categories) for time_key, categories in organized_data.items()}
+#     # Convert defaultdict to regular dict for final output
+#     return {time_key: dict(categories) for time_key, categories in organized_data.items()}
 
 # Example usage:
 # Replace `your_data` with the actual data fetched from DynamoDB
 # timeframe = 'weekly'  # Can be 'hourly', 'daily', 'weekly', or 'monthly'
-table = dynamodb.Table('graph_data')
-response = table.scan()
-items = response['Items']
-print(len(items))
+# table = dynamodb.Table('graph_data')
+# response = table.scan()
+# items = response['Items']
+# print(len(items))
 
-items = items[0:5]
-print(items)
+# items = items[0:5]
+# print(items)
 
-processed_data = process_data_by_timeframe(items, 'daily')
-print(json.dumps(processed_data, cls=DecimalEncoder))
+# processed_data = process_data_by_timeframe(items, 'daily')
+# print(json.dumps(processed_data, cls=DecimalEncoder))
 
 # users_table = dynamodb.Table('users')
 
@@ -303,26 +303,33 @@ print(json.dumps(processed_data, cls=DecimalEncoder))
 #                 }
 #             )
 
-# def delete_all_history_items():
-#     table = dynamodb.Table('history')
+def delete_all_history_items(user_id):
+    table = dynamodb.Table('history')
     
-#     # Scan the table to get all items.
-#     response = table.scan()
-#     items = response['Items']
+    # Scan the table to get all items.
+    response = table.scan(FilterExpression=Attr('user_id').eq(user_id))
 
-#     # Keep scanning until all items are fetched
-#     while 'LastEvaluatedKey' in response:
-#         response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-#         items.extend(response['Items'])
+    items = response['Items']
+    counter =0
+    for item in items:
+        print(counter)
+        counter = counter + 1
+        table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
+    # Keep scanning until all items are fetched
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response['Items'])
 
-#     # Delete each item
-#     for item in items:
-#         print("deleted")
-#         table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
+    # Delete each item
+    counter =0
+    for item in items:
+        print(counter)
+        counter + 1
+        table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
 
-#     print(f"Deleted {len(items)} items from the history table.")
+    print(f"Deleted {len(items)} items from the history table.")
 
-#delete_all_history_items()
+delete_all_history_items("0x86b06319b906e61631f7edbe5a3fe2edb95a3fae")
 # Call the function to delete all items
 #delete_category("Pornography")
 #delete_category("Search Engines and Portals")

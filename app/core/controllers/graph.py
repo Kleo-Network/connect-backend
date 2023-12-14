@@ -29,7 +29,7 @@ def process_data_for_day(items):
             if category not in result[hour_bracket]:
                 result[hour_bracket][category] = {'domains': [], 'totalCategoryVisits': 0}
 
-            result[hour_bracket][category]['domains'].append({'domain': domain, 'visit_count': visit_count, 'icon': f"https://www.google.com/s2/favicons?domain={domain}&sz=48", 'name': domain})
+            result[hour_bracket][category]['domains'].append({'domain': domain, 'visitCounterTimeRange': visit_count, 'icon': f"https://www.google.com/s2/favicons?domain={domain}&sz=48", 'name': domain})
             result[hour_bracket][category]['totalCategoryVisits'] += visit_count
     return result
 

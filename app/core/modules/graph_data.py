@@ -166,6 +166,33 @@ def mark_history_processed(user_id, visitTime):
                 ReturnValues="UPDATED_NEW")
         
     return True
+
+def update_counter_user_previous(user_id):
+    response = users.update_item(
+        Key={
+            'id': user_id,  # your primary key column name and value
+        },
+        UpdateExpression='SET process_graph_previous_history = :val',
+        ExpressionAttributeValues={
+            ':val': True
+        },
+        ReturnValues="UPDATED_NEW"  # Returns all the attributes of the item post update
+    )
+    return True
+
+def update_counter(user_id, counter):
+    response = users.update_item(
+        Key={
+            'id': user_id,  # your primary key column name and value
+        },
+        UpdateExpression='SET process_graph_previous_history_counter = :val',
+        ExpressionAttributeValues={
+            ':val': counter
+        },
+        ReturnValues="UPDATED_NEW"  # Returns all the attributes of the item post update
+    )
+    return True
+
 def mark_as_unproccssed(field_name):
     response = users.scan(
         FilterExpression=boto3.dynamodb.conditions.Attr(field_name).eq(True)
@@ -190,6 +217,16 @@ def get_user_unprocessed_pinned_graph():
         return response['Items'][0]  # Return the first unprocessed user
     else:
         return None
+
+def get_user_unprocessed_graph_previous_history():
+    response = users.scan(
+        FilterExpression=boto3.dynamodb.conditions.Attr('process_graph_previous_history').eq(False)
+    )
+    if response['Items']:
+        return response['Items'][0]  # Return the first unprocessed user
+    else:
+        return None
+    
 
 def get_user_unprocessed_graph():
     response = users.scan(
@@ -230,6 +267,88 @@ def update_user_processed_previous_history(user_id, val):
     )
     return response
 
+def process_items_from_to(user_id, start_timestamp, end_timestamp):
+   
+    history_table = dynamodb.Table('history')
+    unprocessed_items = []
+    last_evaluated_key = None
+    while True:
+        scan_params = {
+        'FilterExpression': Key('user_id').eq(user_id) & 
+                            Key('visitTime').between(start_timestamp, end_timestamp)
+        }
+        print("scan params")
+        print(scan_params)
+        if last_evaluated_key is not None:
+            scan_params['ExclusiveStartKey'] = last_evaluated_key
+        try:
+            response = history_table.scan(**scan_params)
+        except:
+            time.sleep(4)
+            response = history_table.scan(**scan_params)
+
+        unprocessed_items.extend(response['Items'])
+        last_evaluated_key = response.get('LastEvaluatedKey')
+        print(last_evaluated_key)
+        print(response['Items'])
+        if not last_evaluated_key:
+            break
+
+    user_data = {}
+    write_items = []
+    for item in unprocessed_items:
+        user_id = item['user_id']
+        visit_epoch = float(item['visitTime'])
+        visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')  # date from epoch
+        visit_date_epoch = datetime.timestamp(visit_date)
+        category = item['category']
+        domain = item['domain']
+        
+        if user_id not in user_data:
+            user_data[user_id] = {}
+
+        if visit_date_epoch not in user_data[user_id]:
+            user_data[user_id][visit_date_epoch] = []
+
+        hour_bracket = get_hour_bracket(visit_epoch)
+
+    # Search for an existing entry that matches the hour bracket, category, and domain
+        existing_entry = None
+        for entry in user_data[user_id][visit_date_epoch]:
+            if entry['hour_bracket'] == hour_bracket and entry['Category'] == category and entry['domain'] == domain:
+                existing_entry = entry
+                break
+
+        if existing_entry:
+            existing_entry['visit_count'] += 1
+        else:
+            new_entry = {
+                "hour_bracket": hour_bracket,
+                "Category": category,
+                "domain": domain,
+                "visit_count": 1
+            }
+            user_data[user_id][visit_date_epoch].append(new_entry)
+    
+    for d_, dates in user_data.items():
+        for date, data in dates.items():
+            item = {
+            'user_id': user_id,
+            'date': Decimal(date),
+            'data': data,
+            }
+            write_items.append(item)
+    
+    for item in write_items:
+        response = graph_data_table.put_item(Item=item)
+    response = processor.put_item(
+        Item={
+            'user_id': user_id,
+            'date': Decimal(date),
+            'process_graph': True
+        }
+    )
+    return write_items
 
 def process_items(user_id, day_start=0):
    
@@ -245,6 +364,7 @@ def process_items(user_id, day_start=0):
     # Timestamps in milliseconds
     start_timestamp = int(previous_timestamp.timestamp() * 1000)
     end_timestamp = int(now.timestamp() * 1000)
+    print(user_id)
     print(start_timestamp)
     print(end_timestamp)
     unprocessed_items = []
@@ -254,6 +374,8 @@ def process_items(user_id, day_start=0):
         'FilterExpression': Key('user_id').eq(user_id) & 
                             Key('visitTime').between(start_timestamp, end_timestamp)
         }
+        print("scan params")
+        print(scan_params)
         if last_evaluated_key is not None:
             scan_params['ExclusiveStartKey'] = last_evaluated_key
         try:
@@ -265,6 +387,7 @@ def process_items(user_id, day_start=0):
         unprocessed_items.extend(response['Items'])
         last_evaluated_key = response.get('LastEvaluatedKey')
         print(last_evaluated_key)
+        print(response['Items'])
         if not last_evaluated_key:
             break
 
@@ -312,6 +435,8 @@ def process_items(user_id, day_start=0):
             'data': data ,
             'last_update': Decimal(time.time())
             }
+            print("Someshit man?")
+            print(item)
             write_items.append(item)
     
     for item in write_items:

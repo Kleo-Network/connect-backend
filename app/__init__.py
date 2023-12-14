@@ -23,7 +23,7 @@ def create_app():
     # app.config["CELERY_CONFIG"] = {
     #     "broker_url": f"redis://{redis_url}:{redis_port}",
     #     "result_backend": f"redis://{redis_url}:{redis_port}"
-    # }    
+    # } 
     app.config["CELERY_CONFIG"] = {
         "broker_url": f"redis://localhost:{redis_port}",
         "result_backend": f"redis://localhost:{redis_port}"

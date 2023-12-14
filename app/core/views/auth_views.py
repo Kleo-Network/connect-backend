@@ -22,9 +22,7 @@ def token_required(f):
         token = None
 
         if 'Authorization' in request.headers:
-            print("abs")
             try:
-                print(request.headers['Authorization'].split(" "))
                 token = request.headers['Authorization'].split(" ")[0]
             except IndexError:
                 return jsonify({'message': 'Bearer token malformed.'}), 401
