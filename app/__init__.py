@@ -20,14 +20,14 @@ def create_app():
     logging.config.dictConfig(app_config[APPLICATION_ENV].LOGGING)
     app = Flask(app_config[APPLICATION_ENV].APP_NAME)
     app.config.from_object(app_config[APPLICATION_ENV])
-    # app.config["CELERY_CONFIG"] = {
-    #     "broker_url": f"redis://{redis_url}:{redis_port}",
-    #     "result_backend": f"redis://{redis_url}:{redis_port}"
-    # } 
     app.config["CELERY_CONFIG"] = {
-        "broker_url": f"redis://localhost:{redis_port}",
-        "result_backend": f"redis://localhost:{redis_port}"
-    }    
+        "broker_url": f"redis://{redis_url}:{redis_port}",
+        "result_backend": f"redis://{redis_url}:{redis_port}"
+    } 
+    # app.config["CELERY_CONFIG"] = {
+    #     "broker_url": f"redis://localhost:{redis_port}",
+    #     "result_backend": f"redis://localhost:{redis_port}"
+    # }    
     CORS(app, resources={r'/api/*': {'origins': '*'}})
     celery = make_celery(app)
     celery.set_default()

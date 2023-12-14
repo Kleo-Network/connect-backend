@@ -250,9 +250,17 @@ def update_user_processed(user_id, val):
     return response
 
 def get_process_graph_previous_history(user_id):
-    response = users.get_item(
+    try:
+        response = users.get_item(
         Key={'id': user_id})
-    return response['Item']
+    
+        if 'Item' in response:
+            return response['Item']
+        else:
+            print(response)
+    except:
+        time.sleep(1)
+        get_process_graph_previous_history(user_id)
 
 def update_user_processed_previous_history(user_id, val):
     response = users.update_item(
@@ -360,6 +368,7 @@ def process_items(user_id, day_start=0):
     
     now = datetime.combine(now, datetime.min.time())
     date=now.timestamp()
+    print(date)
     previous_timestamp = now - timedelta(days=1)
     # Timestamps in milliseconds
     start_timestamp = int(previous_timestamp.timestamp() * 1000)
@@ -435,8 +444,6 @@ def process_items(user_id, day_start=0):
             'data': data ,
             'last_update': Decimal(time.time())
             }
-            print("Someshit man?")
-            print(item)
             write_items.append(item)
     
     for item in write_items:

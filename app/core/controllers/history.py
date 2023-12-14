@@ -60,11 +60,9 @@ def domain_exists_or_insert(domain):
     )
     
     if response['Items']:
-        print(response['Items'])
         return response['Items'][0]
     else:
         category_group, category_description, category = single_url_request(domain)
-        # Insert domain into the table
         item =  {'domain': domain,
                 'category_group': category_group,
                 'category_description': category_description, 
@@ -75,13 +73,17 @@ def domain_exists_or_insert(domain):
 
 def record_exists(user_id, visitTime):
     table = dynamodb.Table('history')
-    response = table.query(
+    try:
+        response = table.query(
        KeyConditionExpression=(
             Key('user_id').eq(str(user_id)) & 
             Key('visitTime').eq(Decimal(str(visitTime)))
         )
-    )
-    return 'Items' in response and len(response['Items']) > 0
+        )
+        return 'Items' in response and len(response['Items']) > 0
+    except:
+        time.sleep(5)
+        record_exists(user_id, visitTime)
 
 def convert_floats_to_decimal(item):
     for key, value in item.items():
@@ -93,7 +95,7 @@ def upload_browsing_history_chunk(chunk):
     filtered_chunk = [convert_floats_to_decimal(item) for item in chunk if not record_exists(item['user_id'], item['visitTime'])]
     if not filtered_chunk:
         return False
-    print(chunk)
+    
     request_items = {
         'history': [
             {

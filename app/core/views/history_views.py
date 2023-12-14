@@ -23,12 +23,12 @@ def get_browsing_history_graph(**kwargs):
     to_epoch = request.args.get('to')
     filter = request.args.get('filter')
     user = get_process_graph_previous_history(user_id)
-    # if filter == "day" and user["process_graph"] == "False":
-    #     response = {"processing": True}
-    #     return response 
-    # if filter == "month" and user["process_graph_previous_history"] == False:
-    #     response = {"prcessing": True}
-    #     return response        
+    if filter == "day" and user["process_graph"] == "False":
+        response = {"processing": True}
+        return response 
+    if filter == "month" and user["process_graph_previous_history"] == False:
+        response = {"prcessing": True}
+        return response        
     response = graph_query(filter, user_id, from_epoch, to_epoch)
     return response
 

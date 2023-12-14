@@ -10,18 +10,15 @@ import json
 from decimal import Decimal
 
 
-
-@shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)
-def process_pinned_graph_data(user,domain):
-    for counter in range(1,180):
-        process_pinned_domain_items_for_graph.delay(user,domain,counter)
-
 @shared_task(name='tasks.process_graph_data', base=AbortableTask)
 def process_graph_data(params=None):
     if params is None:
         user_details = get_user_unprocessed_graph()
         user_id = user_details["id"]
-        process_items(user_id)
+        user = get_process_graph_previous_history(user_id)
+        if user["process_graph_previous_history"] == False:
+            for counter in range(0, 90):
+                process_items_for_graph_fn.delay(user_id, counter)
     else:
         user_id = params["user_id"]
         signup = params["signup"]
@@ -40,20 +37,21 @@ def update_new_history_graph_data():
 @shared_task(name='tasks.process_previous_history')
 def upload_history_next_two_days(task_results,user_id):
     user = get_process_graph_previous_history(user_id)
-    counter = user["process_graph_previous_history_counter"]
-    update_counter(user_id, counter+1)
-    if counter > 180:
-         update_counter_user_previous(user)
-    if counter > 2:
-        process_items(user_id, counter - 2)
+    process_date_timestamp = task_results[0]
+    print(process_date_timestamp)
+    process_date = datetime.utcfromtimestamp(process_date_timestamp)
+    current_date = datetime.utcnow()
+    difference = (current_date - process_date).days
+    print(difference)
+    if difference > 2:
+        print("more than 2 days difference.")
+    
 
 @shared_task(name='tasks.process_items_for_graph',base=AbortableTask)
 def process_items_for_graph_fn(user, counter):
     process_items(user, counter)
 
-@shared_task(base=AbortableTask)
-def process_pinned_domain_items_for_graph(user, domain,day_start):
-    process_items_pinned_data(user, domain,day_start)
+
 
 # create a task to take json and send it for training. 
 @shared_task(bind=True, base=AbortableTask)
@@ -71,16 +69,25 @@ def categorize_history(self, data):
         item["favourite"] = False
         item["hidden"] = False
         item["visitTime"] = item["lastVisitTime"]
-        
+        timestamp = item["lastVisitTime"] / 1000 
+        date_time = datetime.fromtimestamp(timestamp)
         item = json.loads(json.dumps(item), parse_float=Decimal)
         
     
     upload_browsing_history_chunk(chunk)
     if self.is_aborted():
         return 'Aborted'
-    return True
+    last_processed_timestamp = datetime.timestamp(date_time)
+    return last_processed_timestamp
 
+@shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)
+def process_pinned_graph_data(user,domain):
+    for counter in range(1,180):
+        process_pinned_domain_items_for_graph.delay(user,domain,counter)
 
+@shared_task(base=AbortableTask)
+def process_pinned_domain_items_for_graph(user, domain,day_start):
+    process_items_pinned_data(user, domain,day_start)
 # @celery.task(name='core.tasks.get_icon_from_url')
 # def getIcon(item, user_id):
 #     extracted = tldextract.extract(item["url"])
