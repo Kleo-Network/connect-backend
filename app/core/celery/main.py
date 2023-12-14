@@ -9,7 +9,7 @@ def make_celery(app):
     celery.conf.beat_schedule = {
     'process-graphs-from-history': {
         'task': 'tasks.process_graph_data',
-        'schedule': timedelta(minutes=7),
+        'schedule': timedelta(seconds=13),
         },
     'update-new-graphs':{
         'task': 'tasks.update_new_history',

@@ -16,16 +16,21 @@ def process_graph_data(params=None):
         user_details = get_user_unprocessed_graph()
         user_id = user_details["id"]
         user = get_process_graph_previous_history(user_id)
+        if user["process_graph"] == False and user["process_graph_previous_history"] == True:
+            process_items(user_id)
+            update_user_processed(user_id, True)
         if user["process_graph_previous_history"] == False:
             for counter in range(0, 90):
                 process_items_for_graph_fn.delay(user_id, counter)
+            update_user_processed_previous_history(user_id, True)
+            
     else:
         user_id = params["user_id"]
         signup = params["signup"]
         if user_id is not None and signup is True:
             process_items(user_id,0)
             for counter in range(1, 180):
-                process_items(user_id, counter)
+                process_items_for_graph_fn.delay(user_id, counter)
             update_user_processed_previous_history(user_id, True)
             
         
