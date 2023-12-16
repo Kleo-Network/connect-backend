@@ -23,8 +23,7 @@ def process_graph_data(params=None):
             for counter in range(0, 90):
                 process_items_for_graph_fn.delay(user_id, counter)
             update_user_processed_previous_history(user_id, True)
-            
-    else:
+    elif "signup" in params and "user_id" in params:
         user_id = params["user_id"]
         signup = params["signup"]
         if user_id is not None and signup is True:
