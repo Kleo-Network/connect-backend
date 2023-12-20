@@ -37,7 +37,6 @@ def get_domain_string(user_id, domain_string):
     ExpressionAttributeNames={"#dm": "domain"},
     ExpressionAttributeValues={':val_domain': domain_string}
     )
-    print(response['Items'])
     for item in response['Items']:
         item["pinned"] = check_pinned_website(user_id, item["domain"])
         item["icon"] = "https://www.google.com/s2/favicons?domain={}&sz=48".format(item["domain"])

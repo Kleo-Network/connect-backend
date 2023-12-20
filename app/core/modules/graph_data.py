@@ -37,8 +37,6 @@ def batch_insert_items(items):
                 for item in chunk
             ]
         }
-        print("chunk")
-        print(request_items)
 
         try:
             response = dynamodb.batch_write_item(RequestItems=request_items)
@@ -99,7 +97,7 @@ def process_items_pinned_data(user_id, pinned_domain, day_start=0):
             
     
     print("#3")
-    print(items)
+    
     output = defaultdict(lambda: defaultdict(lambda: {"data": defaultdict(int)}))
 
     for item in items:
@@ -297,8 +295,7 @@ def process_items_from_to(user_id, start_timestamp, end_timestamp):
 
         unprocessed_items.extend(response['Items'])
         last_evaluated_key = response.get('LastEvaluatedKey')
-        print(last_evaluated_key)
-        print(response['Items'])
+        
         if not last_evaluated_key:
             break
 
@@ -384,7 +381,7 @@ def process_items(user_id, day_start=0):
                             Key('visitTime').between(start_timestamp, end_timestamp)
         }
         print("scan params")
-        print(scan_params)
+        
         if last_evaluated_key is not None:
             scan_params['ExclusiveStartKey'] = last_evaluated_key
         try:
@@ -395,8 +392,7 @@ def process_items(user_id, day_start=0):
 
         unprocessed_items.extend(response['Items'])
         last_evaluated_key = response.get('LastEvaluatedKey')
-        print(last_evaluated_key)
-        print(response['Items'])
+        
         if not last_evaluated_key:
             break
 

@@ -46,7 +46,7 @@ def hide_history_items(**kwargs):
     visitTimes = data["visit_times"]
     hide = data["hide"]
     if user_id != kwargs.get('user_data')['payload']['publicAddress']:
-        return 501
+        return "does not match!",501
     response = hide_history_items_table(user_id, visitTimes, hide)
     return response
 
@@ -56,7 +56,7 @@ def add_to_favourite(**kwargs):
     user_id = request.args.get('user_id')
     visitTime = request.args.get('visitTime')
     if user_id != kwargs.get('user_data')['payload']['publicAddress']:
-        return 501
+        return "does not match!", 501
     response = add_to_favorites(user_id, visitTime)
     return response
 @core.route('/remove_from_favourites', methods=['POST'])
@@ -65,7 +65,7 @@ def remove_from_favourites(**kwargs):
     user_id = request.args.get('user_id')
     url = request.args.get('url')
     if user_id != kwargs.get('user_data')['payload']['publicAddress']:
-        return 501
+        return "does not match!", 501
     response = remove_from_favorites(user_id,url)
     return response
 
@@ -76,8 +76,10 @@ def search(**kwargs):
     user_id = request.args.get('user_id')
     page = request.args.get('page')
     size = request.args.get('size')
+    print(user_id)
+    print(kwargs.get('user_data'))
     if user_id != kwargs.get('user_data')['payload']['publicAddress']:
-        return 501
+        return "does not match!", 501
     response = scan_history_by_url_or_title(user_id, search, size,page)
     return response
 
@@ -87,7 +89,7 @@ def delete_history_items_api(**kwargs):
     data = request.get_json()
     user_id = data["user_id"]
     if user_id != kwargs.get('user_data')['payload']['publicAddress']:
-        return 501
+        return "does not match!", 501
     # you need to make this on the basis of celery task!
     if 'category' in data:
         delete_category(user_id, data['category'])
@@ -109,7 +111,6 @@ def upload(**kwargs):
     
     callback = upload_history_next_two_days.s(user_id)
     chord(tasks)(callback)
-        
     return 'History Upload and Categorization is queued!'
 
 @core.route('/process_items', methods=['POST'])

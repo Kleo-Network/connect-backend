@@ -194,7 +194,6 @@ def hide_history_items_table(user_id, visit_times, hide=True):
     table = dynamodb.Table('history')
     try:
         for visit in visit_times:
-            print("visit object:", {"v":visit, "u":user_id})
             response = table.query(
             KeyConditionExpression=Key('user_id').eq(user_id) & 
                             Key('visitTime').eq(Decimal(visit)))
