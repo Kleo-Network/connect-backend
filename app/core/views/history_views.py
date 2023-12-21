@@ -6,6 +6,7 @@ from ..celery.tasks import *
 from math import ceil
 from celery import chord
 from .auth_views import token_required
+from ..controllers.checks import *
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
@@ -119,9 +120,11 @@ def process_items_post_upload():
     user_id = data["user_id"]
     signup = data["signup"]
     counter = data["days"]
-    
-    params = {"user_id": user_id, "signup": signup, "counter": counter}
-    
-    process_graph_data.delay(params)
-    return "Processing Items!"
+    check_user_graphs = check_user_graphs_fn(user_id)
+    if check_user_graphs:
+        return "Items are Processed!"
+    else:
+        params = {"user_id": user_id, "signup": signup, "counter": counter}
+        process_graph_data.delay(params)
+        return "Processing Items!"
 
