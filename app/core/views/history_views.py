@@ -118,7 +118,9 @@ def process_items_post_upload():
     data = request.get_json()
     user_id = data["user_id"]
     signup = data["signup"]
-    params = {"user_id": user_id, "signup": signup}
+    counter = data["days"]
+    
+    params = {"user_id": user_id, "signup": signup, "counter": counter}
     
     process_graph_data.delay(params)
     return "Processing Items!"
