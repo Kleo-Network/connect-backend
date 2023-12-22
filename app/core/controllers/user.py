@@ -4,7 +4,7 @@ from decimal import Decimal
 import json
 import uuid 
 from ..models.aws_session import dynamodb
-
+import random 
 def check_invite_code(code):
     table = dynamodb.Table('invite_codes')
     response = table.get_item(Key={'code': code})
@@ -47,7 +47,7 @@ def check_user_and_return(address):
         user["process_graph_previous_history"] = False
         user["process_graph"] = False
         user["process_graph_previous_history_counter"] = 0
-        user["nonce"] = str(uuid.uuid4())
+        user["nonce"] = random.randint(1, 10000)
         response = table.put_item(Item=user)
         return user
     
@@ -56,7 +56,10 @@ def create_user_from_address(id):
     user = {}
     user["id"] = id
     user["gitcoin_passport"] = False
-    user["nonce"] = str(uuid.uuid4())
+    user["process_graph_previous_history"] = False
+    user["process_graph"] = False
+    user["process_graph_previous_history_counter"] = 0
+    user["nonce"] = random.randint(1, 10000)
     response = table.put_item(Item=user)
     return response
 
