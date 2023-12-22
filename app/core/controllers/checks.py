@@ -20,7 +20,7 @@ def check_user_graphs_fn(user_id):
         response = table.get_item(
             Key={
                 'user_id': user_id,
-                'date_epoch': Decimal(today_epoch_midnight)
+                'date': Decimal(today_epoch_midnight)
             }
         )
     except Exception as e:
