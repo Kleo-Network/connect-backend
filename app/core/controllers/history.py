@@ -17,22 +17,23 @@ def scan_history_by_url_or_title(user_id, search_string, items_per_page=50, page
     table = dynamodb.Table('history')
     # Prepare the parameters for the scan operation
     params = {
-        "FilterExpression": "user_id = :user_id AND (contains(#url, :val) OR contains(#title, :val))",
+        "KeyConditionExpression": Key('user_id').eq(user_id),
+        "FilterExpression": "contains(#url, :val) OR contains(#title, :val)",
         "ExpressionAttributeNames": {
             "#url": "url",
             "#title": "title"
         },
         "ExpressionAttributeValues": {
-            ':val': search_string,
-            ':user_id': user_id
-        }
+            ':val': search_string
+        },
+        "ScanIndexForward": False  # Set to False for descending order
     }
 
     items = []
     count = 0
     final_count = int(page) * int(items_per_page)
     while True:
-        response = table.scan(**params)
+        response = table.query(**params)
         items.extend(response.get('Items', []))
         if 'LastEvaluatedKey' in response:
             params['ExclusiveStartKey'] = response['LastEvaluatedKey']
