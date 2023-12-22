@@ -87,12 +87,11 @@ def categorize_history(self, data):
 
 @shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)
 def process_pinned_graph_data(user,domain):
-    for counter in range(1,180):
-        process_pinned_domain_items_for_graph.delay(user,domain,counter)
+    process_items_pinned_data(user,domain)
 
-@shared_task(base=AbortableTask)
-def process_pinned_domain_items_for_graph(user, domain,day_start):
-    process_items_pinned_data(user, domain,day_start)
+# @shared_task(base=AbortableTask)
+# def process_pinned_domain_items_for_graph(user, domain):
+#     process_items_pinned_data(user, domain)
 # @celery.task(name='core.tasks.get_icon_from_url')
 # def getIcon(item, user_id):
 #     extracted = tldextract.extract(item["url"])

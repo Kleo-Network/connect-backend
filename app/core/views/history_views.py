@@ -31,6 +31,8 @@ def get_browsing_history_graph(**kwargs):
         response = {"prcessing": True}
         return response        
     response = graph_query(filter, user_id, from_epoch, to_epoch)
+    if 'items' in response:
+        response['items'] = [item for item in response['items'] if item.get("Category") != "Pornography"]
     return response
 
 @core.route('/get_favourites_domain', methods=['GET'])
@@ -120,7 +122,7 @@ def process_items_post_upload():
     user_id = data["user_id"]
     signup = data["signup"]
     counter = data["days"]
-    check_user_graphs = check_user_graphs_fn(user_id)
+    check_user_graphs = check_user_graphs_fn(user_id, counter)
     if check_user_graphs:
         return "Items are Processed!"
     else:

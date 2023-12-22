@@ -4,23 +4,21 @@ from datetime import datetime, timezone
 from ..models.aws_session import dynamodb
 from decimal import Decimal
 
-def get_midnight_epoch():
-    # Get the current date with the time set to midnight
-    midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+def get_midnight_epoch(days_ago=0):
+    # Calculate the midnight epoch for 'days_ago' days before today
+    date = datetime.datetime.now() - datetime.timedelta(days=days_ago)
+    midnight = datetime.datetime(date.year, date.month, date.day)
+    return int(midnight.timestamp())
 
-    # Convert the midnight time to epoch
-    midnight_epoch = int(midnight.replace(tzinfo=timezone.utc).timestamp())
-    return midnight_epoch
 
-def check_user_graphs_fn(user_id):
-    today_epoch_midnight = get_midnight_epoch()
+def check_user_graphs_fn(user_id, counter):
     table = dynamodb.Table('processor')
-
+    check_date_epoch = get_midnight_epoch(counter)
     try:
         response = table.get_item(
             Key={
                 'user_id': user_id,
-                'date': Decimal(today_epoch_midnight)
+                'date': Decimal(check_date_epoch)
             }
         )
     except Exception as e:
