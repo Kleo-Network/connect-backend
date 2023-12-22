@@ -1,13 +1,13 @@
 import boto3
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from ..models.aws_session import dynamodb
 from decimal import Decimal
 
 def get_midnight_epoch(days_ago=0):
     # Calculate the midnight epoch for 'days_ago' days before today
-    date = datetime.datetime.now() - datetime.timedelta(days=days_ago)
-    midnight = datetime.datetime(date.year, date.month, date.day)
+    date = datetime.now() - timedelta(days=days_ago)
+    midnight = datetime(date.year, date.month, date.day)
     return int(midnight.timestamp())
 
 
