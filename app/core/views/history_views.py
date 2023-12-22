@@ -79,8 +79,7 @@ def search(**kwargs):
     user_id = request.args.get('user_id')
     page = request.args.get('page')
     size = request.args.get('size')
-    print(user_id)
-    print(kwargs.get('user_data'))
+
     if user_id != kwargs.get('user_data')['payload']['publicAddress']:
         return "does not match!", 501
     response = scan_history_by_url_or_title(user_id, search, size,page)
