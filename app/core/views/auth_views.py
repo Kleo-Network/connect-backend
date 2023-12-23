@@ -108,7 +108,7 @@ def create():
         verify_key = nacl.signing.VerifyKey(public_key_bytes)
         signature_bytes = bytes(signature)
         verify_key.verify(msg.encode(), signature_bytes)
-        update_user_nonce(user['address'], random.randint(1, 10000))        
+        update_user_nonce(user['id'], random.randint(1, 10000))        
         try:
             SECRET = os.environ.get('SECRET', 'default_secret')
             ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
