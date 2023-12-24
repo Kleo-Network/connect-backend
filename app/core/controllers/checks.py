@@ -13,7 +13,10 @@ def get_midnight_epoch(days_ago=0):
 
 def check_user_graphs_fn(user_id, counter):
     table = dynamodb.Table('processor')
-    check_date_epoch = get_midnight_epoch(counter)
+    if counter != 0:
+        check_date_epoch = get_midnight_epoch(counter-1)
+    else: 
+        check_date_epoch = get_midnight_epoch()
     try:
         response = table.get_item(
             Key={
@@ -21,6 +24,8 @@ def check_user_graphs_fn(user_id, counter):
                 'date': Decimal(check_date_epoch)
             }
         )
+        print(check_date_epoch)
+        print(user_id)
     except Exception as e:
         print(f"Error accessing DynamoDB: {e}")
         return False
