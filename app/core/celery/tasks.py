@@ -26,12 +26,11 @@ def process_graph_data(params=None):
     elif "signup" in params and "user_id" in params:
         user_id = params["user_id"]
         signup = params["signup"]
-        counter = params["counter"]
+        date = params["date"]
         if user_id is not None and signup is True:
-            process_items(user_id,0)
+            process_items(user_id)
             for index in range(1, counter):
-                process_items_for_graph_fn.delay(user_id, index)
-            update_user_processed_previous_history(user_id, True)
+                process_items_for_graph_fn.delay(user_id, date)
             
         
 
@@ -53,8 +52,8 @@ def upload_history_next_two_days(task_results,user_id):
     
 
 @shared_task(name='tasks.process_items_for_graph',base=AbortableTask)
-def process_items_for_graph_fn(user, counter):
-    process_items(user, counter)
+def process_items_for_graph_fn(user, date):
+    process_items(user, date)
 
 
 

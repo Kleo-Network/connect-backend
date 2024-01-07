@@ -117,15 +117,30 @@ def upload(**kwargs):
 
 @core.route('/process_items', methods=['POST'])
 def process_items_post_upload():
-    data = request.get_json()
-    user_id = data["user_id"]
-    signup = data["signup"]
-    counter = data["days"]
-    check_user_graphs = check_user_graphs_fn(user_id, counter)
-    if check_user_graphs:
-        return "Items are Processed!"
-    else:
-        params = {"user_id": user_id, "signup": signup, "counter": counter}
-        process_graph_data.delay(params)
-        return "Processing Items!"
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        signup = data.get("signup")
+        startTime = data.get("startTime")
+        endTime = data.get("endTime")
+
+        if not all([user_id, signup, startTime, endTime]):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        check_user_graphs = check_user_graphs_fn(user_id, startTime, endTime)
+
+        if all(check_user_graphs.values()):
+            return jsonify({"message": "Items are already processed"}), 200
+
+        for epoch, is_processed in check_user_graphs.items():
+            if not is_processed:
+                params = {"user_id": user_id, "signup": signup, "date": epoch}
+                process_graph_data.delay(params)
+
+        return jsonify({"message": "Processing initiated for unprocessed items"}), 202
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 

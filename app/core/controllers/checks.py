@@ -4,36 +4,33 @@ from datetime import datetime, timezone, timedelta
 from ..models.aws_session import dynamodb
 from decimal import Decimal
 
-def get_midnight_epoch(days_ago=0):
-    # Calculate the midnight epoch for 'days_ago' days before today
-    date = datetime.now() - timedelta(days=days_ago)
-    midnight = datetime(date.year, date.month, date.day)
-    return int(midnight.timestamp())
+def get_midnights_between_epochs(start_epoch, end_epoch):
+    # Convert the start and end epochs to datetime objects
+    start_date = datetime.datetime.fromtimestamp(start_epoch)
+    end_date = datetime.datetime.fromtimestamp(end_epoch)
+    # Normalize start_date to midnight
+    start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Iterate over each day and yield the midnight epoch
+    current_date = start_date
+    while current_date < end_date:
+        yield int(current_date.timestamp())
+        current_date += datetime.timedelta(days=1)
 
 
-def check_user_graphs_fn(user_id, counter):
+def check_user_graphs_fn(user_id, startTime, endTime):
     table = dynamodb.Table('processor')
-    if counter != 0:
-        check_date_epoch = get_midnight_epoch(counter-1)
-    else: 
-        check_date_epoch = get_midnight_epoch()
-    try:
+    epoch_iterator = get_midnights_between_epochs(startTime, endTime)
+    returnEpochs = {}
+    for epoch in epoch_iterator:
         response = table.get_item(
-            Key={
+                Key={
                 'user_id': user_id,
-                'date': Decimal(check_date_epoch)
-            }
-        )
-        print(check_date_epoch)
-        print(user_id)
-    except Exception as e:
-        print(f"Error accessing DynamoDB: {e}")
-        return False
+                'date': Decimal(epoch)
+            })
+        returnEpochs[epoch] = 'Item' in response
+    return returnEpochs    
 
     # Check if the item exists
-    if 'Item' in response:
-        return True
-    else: 
-        False
+    
 
 # Example usage

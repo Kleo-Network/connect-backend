@@ -7,7 +7,7 @@ import os
 from botocore.exceptions import ClientError
 from decimal import Decimal
 from collections import defaultdict
-
+import pytz
 from ..controllers.graph import *
 
 # Initialize a session using Amazon DynamoDB credentials.
@@ -276,25 +276,26 @@ def update_user_processed_previous_history(user_id, val):
     )
     return response
 
-def process_items_from_to(user_id, start_timestamp, end_timestamp):
-   
-    history_table = dynamodb.Table('history')
+
+def scan_history_table(user_id, start_timestamp, end_timestamp):
     unprocessed_items = []
     last_evaluated_key = None
+
     while True:
-        scan_params = {
-        'FilterExpression': Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(start_timestamp, end_timestamp)
+        query_params = {
+            'KeyConditionExpression': Key('user_id').eq(user_id) & 
+                                Key('visitTime').between(start_timestamp, end_timestamp)
         }
-        print("scan params")
-        print(scan_params)
-        if last_evaluated_key is not None:
-            scan_params['ExclusiveStartKey'] = last_evaluated_key
+
+        if last_evaluated_key:
+            query_params['ExclusiveStartKey'] = last_evaluated_key
+
         try:
-            response = history_table.scan(**scan_params)
-        except:
+            response = table.query(**query_params)
+        except Exception as e:
+            print(f"Error scanning history table: {e}")
             time.sleep(4)
-            response = history_table.scan(**scan_params)
+            continue
 
         unprocessed_items.extend(response['Items'])
         last_evaluated_key = response.get('LastEvaluatedKey')
@@ -302,167 +303,76 @@ def process_items_from_to(user_id, start_timestamp, end_timestamp):
         if not last_evaluated_key:
             break
 
-    user_data = {}
-    write_items = []
-    for item in unprocessed_items:
-        user_id = item['user_id']
-        visit_epoch = float(item['visitTime'])
-        visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')  # date from epoch
-        visit_date_epoch = datetime.timestamp(visit_date)
-        category = item['category']
-        domain = item['domain']
-        
-        if user_id not in user_data:
-            user_data[user_id] = {}
+    return unprocessed_items
 
-        if visit_date_epoch not in user_data[user_id]:
-            user_data[user_id][visit_date_epoch] = []
-
-        hour_bracket = get_hour_bracket(visit_epoch)
-
-    # Search for an existing entry that matches the hour bracket, category, and domain
-        existing_entry = None
-        for entry in user_data[user_id][visit_date_epoch]:
-            if entry['hour_bracket'] == hour_bracket and entry['Category'] == category and entry['domain'] == domain:
-                existing_entry = entry
-                break
-
-        if existing_entry:
-            existing_entry['visit_count'] += 1
-        else:
-            new_entry = {
-                "hour_bracket": hour_bracket,
-                "Category": category,
-                "domain": domain,
-                "visit_count": 1
-            }
-            user_data[user_id][visit_date_epoch].append(new_entry)
-    
-    for d_, dates in user_data.items():
-        for date, data in dates.items():
-            item = {
-            'user_id': user_id,
-            'date': Decimal(date),
-            'data': data,
-            }
-            write_items.append(item)
-    
-    for item in write_items:
-        response = graph_data_table.put_item(Item=item)
-    
-    response = processor.put_item(
-        Item={
-            'user_id': user_id,
-            'date': Decimal(date),
-            'process_graph': True
-        }
-    )
-    return write_items
-
-def process_items(user_id, day_start=0):
-   
-    history_table = dynamodb.Table('history')
-    if day_start != 0:
-        now = (datetime.now()).date() - timedelta(days=day_start)
-    else:
-        now = datetime.now()
-    
-    now = datetime.combine(now, datetime.min.time())
-    date=now.timestamp()
-    print(date)
-    previous_timestamp = now - timedelta(days=1)
-    # Timestamps in milliseconds
+def process_items(user_id, process_date):
+    previous_timestamp = process_date - timedelta(days=1)
     start_timestamp = int(previous_timestamp.timestamp() * 1000)
-    end_timestamp = int(now.timestamp() * 1000)
-    print(user_id)
-    print(start_timestamp)
-    print(end_timestamp)
-    unprocessed_items = []
-    last_evaluated_key = None
-    while True:
-        scan_params = {
-        'FilterExpression': Key('user_id').eq(user_id) & 
-                            Key('visitTime').between(start_timestamp, end_timestamp)
-        }
-        print("scan params")
-        
-        if last_evaluated_key is not None:
-            scan_params['ExclusiveStartKey'] = last_evaluated_key
-        try:
-            response = history_table.scan(**scan_params)
-        except:
-            time.sleep(4)
-            response = history_table.scan(**scan_params)
+    end_timestamp = int(process_date.timestamp() * 1000)
 
-        unprocessed_items.extend(response['Items'])
-        last_evaluated_key = response.get('LastEvaluatedKey')
-        
-        if not last_evaluated_key:
-            break
+    unprocessed_items = scan_history_table(user_id, start_timestamp, end_timestamp)
 
     user_data = {}
-    write_items = []
-    count  = 0
     for item in unprocessed_items:
-        user_id = item['user_id']
-        visit_epoch = float(item['visitTime'])
-        visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')  # date from epoch
-        category = item['category']
-        domain = item['domain']
-        
-        if user_id not in user_data:
-            user_data[user_id] = {}
+        process_item_data(item, user_data)
 
-        if visit_date not in user_data[user_id]:
-            user_data[user_id][visit_date] = []
+    write_items = prepare_write_items(user_data, user_id, process_date)
+    write_to_dynamodb(write_items, user_id, process_date)
 
-        hour_bracket = get_hour_bracket(visit_epoch)
+    return write_items
 
-    # Search for an existing entry that matches the hour bracket, category, and domain
-        existing_entry = None
-        for entry in user_data[user_id][visit_date]:
-            if entry['hour_bracket'] == hour_bracket and entry['Category'] == category and entry['domain'] == domain:
-                existing_entry = entry
-                break
+def process_item_data(item, user_data):
+    user_id = item['user_id']
+    visit_epoch = float(item['visitTime'])
+    visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')
+    category = item['category']
+    domain = item['domain']
+    hour_bracket = get_hour_bracket(visit_epoch)
 
-        if existing_entry:
-            existing_entry['visit_count'] += 1
-        else:
-            new_entry = {
-                "hour_bracket": hour_bracket,
-                "Category": category,
-                "domain": domain,
-                "visit_count": 1
-            }
-            user_data[user_id][visit_date].append(new_entry)
-    
-    for d_, dates in user_data.items():
-        for d, data in dates.items():
-            item = {
-            'user_id': user_id,
-            'date': Decimal(date),
-            'data': data ,
-            'last_update': Decimal(time.time())
-            }
-            write_items.append(item)
-    
-    for item in write_items:
-        response = graph_data_table.put_item(Item=item)
-    response = processor.put_item(
+    user_data.setdefault(user_id, {}).setdefault(visit_date, [])
+
+    existing_entry = next((entry for entry in user_data[user_id][visit_date] if entry['hour_bracket'] == hour_bracket and entry['Category'] == category and entry['domain'] == domain), None)
+
+    if existing_entry:
+        existing_entry['visit_count'] += 1
+    else:
+        user_data[user_id][visit_date].append({
+            "hour_bracket": hour_bracket,
+            "Category": category,
+            "domain": domain,
+            "visit_count": 1
+        })
+
+def prepare_write_items(user_data, user_id, process_date):
+    write_items = []
+    for dates in user_data.values():
+        for data in dates.values():
+            write_items.append({
+                'user_id': user_id,
+                'date': Decimal(process_date),
+                'data': data,
+                'last_update': Decimal(time.time())
+            })
+    return write_items
+
+def write_to_dynamodb(write_items, user_id, process_date):
+    with graph_data_table.batch_writer() as batch:
+        for item in write_items:
+            batch.put_item(Item=item)
+
+    processor.put_item(
         Item={
             'user_id': user_id,
-            'date': Decimal(date),
+            'date': Decimal(process_date),
             'process_graph': True
         }
-    )
-    return write_items
-    # for user_id, dates in user_data.items():
-    #     for date, data in dates.items():
-    #         print(f"User ID: {user_id}, Date: {date}, Data: {json.dumps(data)}")
-    
+    )    
         
-def get_hour_bracket(epoch_time):
-    hour = datetime.utcfromtimestamp(epoch_time / 1000.0).hour  # DynamoDB timestamp is in milliseconds
+def get_hour_bracket(epoch_time, timezone_str="Asia/Kolkata"):
+    utc_time = datetime.utcfromtimestamp(epoch_time / 1000.0)
+    timezone = pytz.timezone(timezone_str)
+    local_time = utc_time.astimezone(timezone)
+    hour = local_time.hour
     if 0 <= hour < 4:
         return "00-04"
     elif 4 <= hour < 8:
@@ -475,6 +385,3 @@ def get_hour_bracket(epoch_time):
         return "16-20"
     else:
         return "20-24"
-
-# Organizing the data
-print(datetime.now())
