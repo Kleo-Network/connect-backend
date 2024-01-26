@@ -14,8 +14,28 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)  # or int(obj) if the context requires integer values
         return super(DecimalEncoder, self).default(obj)
 
-def process_data_for_day(items):
+
+def get_user_privacy(user_id):  
+    table = dynamodb.Table('users')
+    try:
+        response = table.get_item(
+            Key={'id': user_id}
+        )
+    except Exception as e:
+        print(e)
+        return None
+
+    if 'Item' in response and 'privacy' in response['Item']:
+        return response['Item']['privacy']
+    else:
+        return None
+
+
+def process_data_for_day(items, privacy_settings, self=False):
     result = {}
+    excluded_domains = set(privacy_settings.get('domains', []))
+    excluded_categories = set(privacy_settings.get('categories', []))
+
     for entry in items:
         for item in entry['data']:
             hour_bracket = item['hour_bracket']
@@ -23,17 +43,26 @@ def process_data_for_day(items):
             domain = item['domain']
             visit_count = int(item['visit_count'])
 
+            # Skip this item if the domain or category is in the excluded lists
+            if self:
+                is_domain_hidden = self and domain in excluded_domains
+                is_category_hidden = self and category in excluded_categories
+            else:
+                continue
+
             if hour_bracket not in result:
                 result[hour_bracket] = {}
 
             if category not in result[hour_bracket]:
-                result[hour_bracket][category] = {'domains': [], 'totalCategoryVisits': 0}
+                result[hour_bracket][category] = {'domains': [], 'totalCategoryVisits': 0, 'hidden': is_category_hidden}
 
-            result[hour_bracket][category]['domains'].append({'domain': domain, 'visitCounterTimeRange': visit_count, 'icon': f"https://www.google.com/s2/favicons?domain={domain}&sz=48", 'name': domain})
+            result[hour_bracket][category]['domains'].append({'domain': domain, 'visitCounterTimeRange': visit_count, 'icon': f"https://www.google.com/s2/favicons?domain={domain}&sz=48", 'name': domain, 'hidden': is_domain_hidden})
             result[hour_bracket][category]['totalCategoryVisits'] += visit_count
-    return result
 
-def process_data_by_timeframe(graph_data, timeframe):
+    return result
+   
+
+def process_data_by_timeframe(graph_data, timeframe,privacy_settings,self=False):
     # Helper function to convert Unix timestamp to datetime
     def unix_to_datetime(unix_timestamp):
         if isinstance(unix_timestamp, Decimal):
@@ -53,6 +82,9 @@ def process_data_by_timeframe(graph_data, timeframe):
 
     # Initialize the data structure
     organized_data = defaultdict(lambda: defaultdict(lambda: {"domains": [], "totalCategoryVisits": 0}))
+    excluded_domains = set(privacy_settings.get('domains', []))
+    excluded_categories = set(privacy_settings.get('categories', []))
+    
 
     # Process each record
     for record in graph_data:
@@ -60,14 +92,22 @@ def process_data_by_timeframe(graph_data, timeframe):
 
         for visit in record["data"]:
             category = f"{visit['Category']}"
+            is_domain_hidden = self and visit["domain"] in excluded_domains
+            is_category_hidden = self and category in excluded_categories
+            
+            if not self and (visit["domain"] in excluded_domains or category in excluded_categories):
+                    continue
+
             domain_info = {
                 "domain": visit["domain"],
                 "icon": f"https://www.google.com/s2/favicons?domain={visit['domain']}&sz=48",
                 "name": visit["domain"],
-                "visitCounterTimeRange": visit["visit_count"]
+                "visitCounterTimeRange": visit["visit_count"],
+                "hidden": is_domain_hidden | False
             }
 
             organized_data[time_key][category]["domains"].append(domain_info)
+            organized_data[time_key][category]["hidden"] = is_category_hidden
             organized_data[time_key][category]["totalCategoryVisits"] += visit["visit_count"]
 
     # Convert defaultdict to regular dict for final output
@@ -259,8 +299,9 @@ def graph_query_pinned(group_by_parameter, user_id, from_epoch, to_epoch, domain
         items.extend(response['Items'])
     return items
 
-def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None):
+def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, self=False, domain = None):
     table = dynamodb.Table('graph_data')
+    privacy_settings = get_user_privacy(user_id)
     response = table.query(
                         KeyConditionExpression=Key('user_id').eq(user_id) & 
                         Key('date').between(Decimal(from_epoch), Decimal(to_epoch)))
@@ -273,8 +314,8 @@ def graph_query(group_by_parameter, user_id, from_epoch, to_epoch, domain = None
                         ExclusiveStartKey=response['LastEvaluatedKey'] )
         items.extend(response['Items'])
     if group_by_parameter == 'day':
-        result = process_data_for_day(items)
+        result = process_data_for_day(items,privacy_settings,self)
     else:
-        result = process_data_by_timeframe(items, group_by_parameter)
+        result = process_data_by_timeframe(items, group_by_parameter, privacy_settings,self)
     
     return result

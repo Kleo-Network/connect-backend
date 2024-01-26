@@ -45,11 +45,26 @@ def token_required(f):
 def get_user():
     data = request.json 
     address = data['address']
-    user = check_user_and_return(address)
+    signup = data.get('signup', False)
+    user = check_user_and_return(address,signup)
     if user is not None:
         return jsonify(user), 200
     else: 
         return jsonify({"404": "User not found"}),200
+
+@core.route('/get_user_privacy', methods=["POST"])
+@token_required
+def get_user_privacy(**kwargs):
+    data = request.json 
+    address = data['address']
+    signup = data.get('signup', False)
+    self = address == kwargs.get('user_data')['payload']['publicAddress']
+    user = check_user_and_return(address,signup,self)
+    if user is not None:
+        return jsonify(user), 200
+    else: 
+        return jsonify({"404": "User not found"}),200
+
     
 @core.route('/check_invite_code', methods=["GET"])
 def check_invite_code_api():
@@ -71,11 +86,12 @@ def create():
     signature = data['signature']
     public_address = data['publicAddress']
     chain = data['chain']
+    signup = data.get('signup', False)
     if not signature or not public_address or not chain:
         return jsonify(error='Request should have signature and publicAddress'), 400
 
     
-    user = check_user_and_return(public_address)
+    user = check_user_and_return(public_address, signup)
     
     if not user:
         return jsonify(error=f'User with publicAddress {public_address} is not found in database'), 401

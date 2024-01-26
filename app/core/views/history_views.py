@@ -23,6 +23,7 @@ def get_browsing_history_graph(**kwargs):
     from_epoch = request.args.get('from')
     to_epoch = request.args.get('to')
     filter = request.args.get('filter')
+    self = user_id == kwargs.get('user_data')['payload']['publicAddress']
     user = get_process_graph_previous_history(user_id)
     if filter == "day" and user["process_graph"] == "False":
         response = {"processing": True}
@@ -30,9 +31,8 @@ def get_browsing_history_graph(**kwargs):
     if filter == "month" and user["process_graph_previous_history"] == False:
         response = {"prcessing": True}
         return response        
-    response = graph_query(filter, user_id, from_epoch, to_epoch)
-    if 'items' in response:
-        response['items'] = [item for item in response['items'] if item.get("Category") != "Pornography"]
+    response = graph_query(filter, user_id, from_epoch, to_epoch, self)
+    
     return response
 
 @core.route('/get_favourites_domain', methods=['GET'])
@@ -128,16 +128,22 @@ def process_items_post_upload():
             return jsonify({"error": "Missing required parameters"}), 400
 
         check_user_graphs = check_user_graphs_fn(user_id, startTime, endTime)
-
-        if all(check_user_graphs.values()):
-            return jsonify({"message": "Items are already processed"}), 200
-
+        processValue = all(check_user_graphs.values())
+        
+        
+        if processValue:
+            return jsonify({"message": "processed"}), 200
+        elif check_history_counts(user_id, startTime, endTime): 
+            return jsonify({"message": "uploading"}), 200
+        
         for epoch, is_processed in check_user_graphs.items():
             if not is_processed:
                 params = {"user_id": user_id, "signup": signup, "date": epoch}
                 process_graph_data.delay(params)
 
-        return jsonify({"message": "Processing initiated for unprocessed items"}), 202
+        percentage = calculate_processed_percentage(startTime, endTime, user_id)
+
+        return jsonify({"message": percentage}), 202
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

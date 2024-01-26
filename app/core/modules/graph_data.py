@@ -95,11 +95,14 @@ def query_dynamodb(table, user_id, start_timestamp, end_timestamp, pinned_domain
         else:
             raise e
 
-def process_item(item, output):
-    date_date = datetime.fromtimestamp(float(item["visitTime"]) / 1000.0)
+def process_item(item, output, timezone_str='Asia/Kolkata'):
+    
+    tz = pytz.timezone(timezone_str)
+    date_date = datetime.fromtimestamp(float(item["visitTime"]) / 1000.0, tz)
+
     date_epoch = date_date.replace(hour=0, minute=0, second=0, microsecond=0)
     date_str = int(date_epoch.timestamp())
-    time_bracket = get_hour_bracket(float(item["visitTime"]))
+    time_bracket = get_hour_bracket(float(item["visitTime"]), timezone_str)
 
     user_id = item["user_id"]
     output[user_id][date_str]["data"][time_bracket] += 1
@@ -321,13 +324,13 @@ def process_items(user_id, process_date):
 
     return write_items
 
-def process_item_data(item, user_data):
+def process_item_data(item, user_data, timezone_str):
     user_id = item['user_id']
     visit_epoch = float(item['visitTime'])
-    visit_date = datetime.utcfromtimestamp(visit_epoch / 1000.0).strftime('%Y-%m-%d')
+    visit_date = datetime.utcfromtimestamp((visit_epoch / 1000.0), timezone_str).strftime('%Y-%m-%d')
     category = item['category']
     domain = item['domain']
-    hour_bracket = get_hour_bracket(visit_epoch)
+    hour_bracket = get_hour_bracket(visit_epoch, timezone_str)
 
     user_data.setdefault(user_id, {}).setdefault(visit_date, [])
 

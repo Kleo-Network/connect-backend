@@ -35,12 +35,26 @@ def update_user_nonce(id, nonce):
         )
     return response
 
-def check_user_and_return(address):
+def check_user_and_return(address, signup=False, self=False):
     table = dynamodb.Table('users')
     response = table.get_item(Key={'id': address})
+    def extract_attributes(item):
+        return {
+            'id': item.get('id'),
+            'gitcoin_passport': item.get('gitcoin_passport'),
+            'nonce': item.get('nonce'),
+            'process_graph': item.get('process_graph'),
+            'process_graph_previous_history': item.get('process_graph_previous_history'),
+            'process_graph_previous_history_counter': item.get('process_graph_previous_history_counter')
+        }
+
     if 'Item' in response:
-        return response['Item']
-    else:
+        if self:
+            return response['Item']
+        else:
+            user = extract_attributes(response['Item'])
+            return user
+    elif signup == True:
         user = {}
         user["id"] = address
         user["gitcoin_passport"] = False
