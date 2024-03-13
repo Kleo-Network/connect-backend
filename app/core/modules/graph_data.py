@@ -47,7 +47,7 @@ def batch_insert_items(items):
             if e.response['Error']['Code'] == 'ProvisionedThroughputExceededException':
                 print("Provisioned Throughput Exceeded, retrying...")
                 attempt += 1
-                time.sleep(2 ** attempt)  # Exponential backoff
+                time.sleep(2)  # Exponential backoff
             else:
                 print(f"Error uploading chunk: {e}")
                 return False
