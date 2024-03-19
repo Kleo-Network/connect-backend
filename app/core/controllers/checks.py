@@ -84,5 +84,6 @@ def check_user_graphs_fn(user_id, startTime, endTime):
 
     # Check if the item exists
     
-
+def check_user_authenticity(user_address_from_ui, user_address_from_header):
+    return user_address_from_ui == user_address_from_header
 # Example usage

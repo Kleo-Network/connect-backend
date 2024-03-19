@@ -4,6 +4,7 @@ import os
 from eth_account.messages import encode_defunct
 import random
 from ..controllers.user import *
+from ..models.user import *
 from werkzeug.local import LocalProxy
 from functools import wraps
 from web3 import Web3
@@ -134,4 +135,28 @@ def create():
                                   SECRET, algorithm=ALGORITHM)
             return jsonify(accessToken=access_token)
         except Exception as e:
+            return jsonify(error=str(e)), 500
+        
+@core.route('/v2/create_jwt_authentication', methods=["POST"])
+def create_jwt_for_slug():
+    data = request.json
+    slug = data['slug']
+    public_address = data['publicAddress']
+    
+    user = find_by_slug(slug)
+    
+    if not user:
+        return jsonify(error=f'User with publicAddress {public_address} is not found in database'), 401
+    
+    if user['address'] != public_address:
+        return jsonify(error='Signature verification failed'), 401
+    
+    try:
+        SECRET = os.environ.get('SECRET', 'default_secret')
+        ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
+
+        access_token = jwt.encode({'payload': {'slug': user["slug"], 'publicAddress': public_address}},
+                                SECRET, algorithm=ALGORITHM)
+        return jsonify(accessToken=access_token)
+    except Exception as e:
             return jsonify(error=str(e)), 500

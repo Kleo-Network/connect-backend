@@ -14,9 +14,9 @@ db = client.get_database(db_name)
 card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PublishedCard():
-    def __init__(self, user_address, timestamp, type, content="",
+    def __init__(self, slug, timestamp, type, content="",
                  tags=[], urls=[], metadata={}):
-        assert isinstance(user_address, str)
+        assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
         assert isinstance(content, str)
@@ -25,7 +25,7 @@ class PublishedCard():
         assert isinstance(metadata, dict)
         
         self.document = {
-            'user_address': user_address,
+            'slug': slug,
             'timestamp': timestamp,
             'type': type,
             'content': content,
@@ -40,9 +40,9 @@ class PublishedCard():
                 return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
             db.published_cards.insert_one(self.document)
 
-def get_published_card(user_address):
+def get_published_card(slug):
     pipeline = [
-        {"$match": {"user_address": user_address}}
+        {"$match": {"slug": slug}}
     ]
     cards = list(db.published_cards.aggregate(pipeline))
     result = []
@@ -58,12 +58,12 @@ def get_published_card(user_address):
         result.append(card_data)
     return result
 
-def delete_published_card(user_address, ids):
-    result = db.published_cards.delete_many({'_id': {'$in': ids}, 'user_address': user_address})
+def delete_published_card(slug, ids):
+    result = db.published_cards.delete_many({'_id': {'$in': ids}, 'slug': slug})
     if result.deleted_count > 0:
-        return jsonify({'message': f'{result.deleted_count} card(s) belonging to user at address {user_address} deleted successfully'}), 200
+        return jsonify({'message': f'{result.deleted_count} card(s) belonging to user {slug} deleted successfully'}), 200
     else:
-        return jsonify({'error': f'No cards found with the provided IDs for user at address {user_address}'}), 404
+        return jsonify({'error': f'No cards found with the provided IDs for user {slug}'}), 404
 
 def format_datetime(dt):
     return datetime.utcfromtimestamp(dt).strftime("%d %b %Y")
