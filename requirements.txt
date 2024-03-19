@@ -104,3 +104,5 @@ websockets==12.0
 Werkzeug==2.3.3
 yarl==1.9.2
 zipp==3.15.0
+mongoengine==0.28.2
+pymongo[srv]

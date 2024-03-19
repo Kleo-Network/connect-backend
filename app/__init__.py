@@ -32,21 +32,10 @@ def create_app():
     celery = make_celery(app)
     celery.set_default()
     
-    
-    from .core.views.history_views import core as core_history
-    from .core.views.pinned_views import core as core_pinned
+
     from .core.views.user_views import core as core_user
     from .core.views.auth_views import core as core_auth
-    app.register_blueprint(
-        core_history,
-        name="history_api",
-        url_prefix='/api/v1/core/history'
-    )
-    app.register_blueprint(
-        core_pinned,
-        name="pinned_api",
-        url_prefix='/api/v1/core/pinned'
-    )
+    from .core.views.card_views import core as core_card
     app.register_blueprint(
         core_user,
         name="user_api",
@@ -56,6 +45,11 @@ def create_app():
         core_auth,
         name="auth_api",
         url_prefix='/api/v1/core/auth'
+    )
+    app.register_blueprint(
+        core_card,
+        name="card_api",
+        url_prefix='/api/v1/core/cards'
     )
     return app, celery
 

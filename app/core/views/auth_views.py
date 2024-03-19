@@ -41,6 +41,7 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
+
 @core.route('/get_user', methods=["POST"])
 def get_user():
     data = request.json 
