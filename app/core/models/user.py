@@ -139,3 +139,8 @@ def update_settings_by_slug(slug, settings, stage, about):
     except Exception as e:
         print(e)
         return {}
+    
+def fetch_user_slug():
+    user = db.users.find({}, {'slug': 1})
+    user_slugs = [user['slug'] for user in user if 'slug' in user]
+    return user_slugs

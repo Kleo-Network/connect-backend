@@ -100,6 +100,18 @@ def get_user_and_card_detail(slug):
     }
     return jsonify(response), 200
 
+@core.route('/check_slug', methods=['GET'])
+def check_slug():
+    data = request.get_json()
+    slug = data.get("slug")
+    if not slug:
+        return jsonify({'error': 'Slug parameter is missing.'}), 400
+    slugs = fetch_user_slug()
+    if slug in slugs:
+        return jsonify({'result': False}), 200
+    else:
+        return jsonify({'result': True}), 200
+
 @core.route('/set_privacy', methods=["POST"])
 def set_user_privacy():
     data = request.json
