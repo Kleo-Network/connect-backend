@@ -62,6 +62,40 @@ def delete_published_cards(slug, **kwargs):
     result = delete_published_card(slug, ids)
     return result
 
+@core.route('/published/<string:slug>', methods=["PUT"])
+@token_required
+def populate_published_card(slug, **kwargs):
+    try:
+        data = request.get_json()
+        ids_of_card = data.get("ids")
+        minted = data.get("minted", False)
+        if not all([slug, ids_of_card]):
+            return jsonify({"error": "Missing required parameters"}), 400
+        
+        user = find_by_slug(slug)
+        if not user:
+            return jsonify({"error": "user is not found"}), 401
+        address = user['address']
+        address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+        if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+        
+        ids = [ObjectId(id) for id in ids_of_card]
+        tobe_published_card = get_pending_card(slug, ids)
+        
+        if not tobe_published_card:
+            return jsonify({"message": f"No pending card found for {slug}"})
+        
+        for card in tobe_published_card:
+            published_card = PublishedCard(slug, card['cardType'], card['content'], card['tags'], card['urls'], card['metadata'], minted)
+            published_card.save()
+        
+        return jsonify({"message": f"published card for {slug}"}), 200
+    
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "error while creating published card"}), 500
+
 @core.route('/static/<string:address>', methods=["GET"])
 def get_static_cards(address):
     if not all([address]):

@@ -14,8 +14,8 @@ db = client.get_database(db_name)
 card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PublishedCard():
-    def __init__(self, slug, timestamp, type, content="",
-                 tags=[], urls=[], metadata={}):
+    def __init__(self, slug, type, content="",
+                 tags=[], urls=[], metadata={}, minted=False,  timestamp = int(datetime.now().timestamp())):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
@@ -23,6 +23,7 @@ class PublishedCard():
         assert isinstance(tags, list)
         assert isinstance(urls, list)
         assert isinstance(metadata, dict)
+        assert isinstance(minted, bool)
         
         self.document = {
             'slug': slug,
@@ -31,14 +32,14 @@ class PublishedCard():
             'content': content,
             'tags': tags,
             'urls': urls,
-            'metadata': metadata
+            'metadata': metadata,
+            'minted': minted
         }
         
-        def save(self):
-            self.document['timestamp'] = self.document.get('timestamp') or int(datetime.now().timestamp())
-            if self.type not in card_types:
-                return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
-            db.published_cards.insert_one(self.document)
+    def save(self):
+        if self.document['type'] not in card_types:
+            return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
+        db.published_cards.insert_one(self.document)
 
 def get_published_card(slug):
     pipeline = [
@@ -53,7 +54,10 @@ def get_published_card(slug):
             "cardType": card['type'],
             "category": "",  # You can add category logic here
             "content": card['content'],
-            "metadata": card['metadata']
+            "metadata": card['metadata'],
+            "tags": card['tags'],
+            "urls": card['urls'],
+            "minted": card['minted']
         }
         result.append(card_data)
     return result

@@ -141,6 +141,6 @@ def update_settings_by_slug(slug, settings, stage, about):
         return {}
     
 def fetch_user_slug():
-    user = db.users.find({}, {'slug': 1})
-    user_slugs = [user['slug'] for user in user if 'slug' in user]
+    slug_from_db = db.users.find({}, {'slug': 1})
+    user_slugs = [user['slug'] for user in slug_from_db if 'slug' in user]
     return user_slugs

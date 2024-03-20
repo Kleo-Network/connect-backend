@@ -36,16 +36,18 @@ class PendingCard():
             'metadata': metadata
         }
         
-        def save(self):
-            self.document['timestamp'] = self.document.get('timestamp') or int(datetime.now().timestamp())
-            if self.type not in card_types:
-                return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
-            db.pending_cards.insert_one(self.document)
+    def save(self):
+        self.document['timestamp'] = self.document.get('timestamp') or int(datetime.now().timestamp())
+        if self.document['type'] not in card_types:
+            return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
+        db.pending_cards.insert_one(self.document)
 
-def get_pending_card(slug):
+def get_pending_card(slug, object_ids=None):
     pipeline = [
         {"$match": {"slug": slug}}
     ]
+    if object_ids:  # If object_ids are provided, add match on object_ids
+        pipeline[0]["$match"]["_id"] = {"$in": object_ids}
     cards = list(db.pending_cards.aggregate(pipeline))
     result = []
     for card in cards:
@@ -54,6 +56,8 @@ def get_pending_card(slug):
             "date": format_datetime(card['timestamp']),
             "cardType": card['type'],
             "category": "",  # You can add category logic here
+            "tags": card['tags'],
+            "urls": card['urls'],
             "content": card['content'],
             "metadata": card['metadata']
         }
