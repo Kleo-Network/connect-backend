@@ -48,7 +48,7 @@ class History():
         assert isinstance(title, str)
         assert isinstance(category, str)
         assert isinstance(subcategory, str)
-        assert isinstance(url, list)
+        assert isinstance(url, str)
         assert isinstance(domain, str)
         assert isinstance(summary, str)
         
@@ -65,9 +65,6 @@ class History():
         
     def save(self):
         old_history = find_by_slug_and_time(self.document['slug'], self.document['create_timestamp'])
-        if old_history:
-            print("no")
-            return
         print(self.document)
         db.history.insert_one(self.document)
         
