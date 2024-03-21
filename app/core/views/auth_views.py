@@ -143,19 +143,19 @@ def create_jwt_for_slug():
     slug = data['slug']
     public_address = data['publicAddress']
     
-    user = find_by_slug(slug)
+    address = find_by_address_slug(slug)
     
-    if not user:
+    if not address:
         return jsonify(error=f'User with publicAddress {public_address} is not found in database'), 401
     
-    if user['address'] != public_address:
+    if address != public_address:
         return jsonify(error='Signature verification failed'), 401
     
     try:
         SECRET = os.environ.get('SECRET', 'default_secret')
         ALGORITHM = os.environ.get('ALGORITHM', 'HS256')
 
-        access_token = jwt.encode({'payload': {'slug': user["slug"], 'publicAddress': public_address}},
+        access_token = jwt.encode({'payload': {'slug': slug, 'publicAddress': public_address}},
                                 SECRET, algorithm=ALGORITHM)
         return jsonify(accessToken=access_token)
     except Exception as e:

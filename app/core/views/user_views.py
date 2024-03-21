@@ -15,7 +15,9 @@ logger = LocalProxy(lambda: current_app.logger)
 def get_mongo_user(slug, **kwargs):
     if not all([slug]):
         return jsonify({"error": "Missing required parameters"}), 400
-    address = find_by_slug(slug)['address']
+    address = find_by_address_slug(slug)
+    if not address:
+        return jsonify({"error": "user is not found"}), 401
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):
         return jsonify({"error": "user is not authorised"}), 401
@@ -60,7 +62,9 @@ def update_user(slug, **kwargs):
     if not all([address, name, slug, about, pfp, content_tags, identity_tags, badges, profile_metadata]):
         return jsonify({"error": f"Missing required parameters"}), 400
     
-    address = find_by_slug(slug).address
+    address = find_by_address_slug(slug)
+    if not address:
+        return jsonify({"error": "user is not found"}), 401
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):
         return jsonify({"error": "user is not authorised"}), 401
@@ -76,9 +80,12 @@ def update_user_settings(slug, **kwargs):
     stage = data.get("stage")
     about = data.get("about")
     
-    address = find_by_slug(slug)['address']
     if not all([slug, settings, stage]):
         return jsonify({"error": f"Missing required parameters"}), 400
+    
+    address = find_by_address_slug(slug)
+    if not address:
+        return jsonify({"error": "user is not found"}), 401
         
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):

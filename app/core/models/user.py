@@ -72,12 +72,33 @@ def find_by_slug(slug):
             },
             {
                 "$project": {
-                    "_id": 0  # Exclude the _id field
+                    "_id": 0,  # Exclude the _id field
+                    "address": 0
                 }
             }
         ]
         user_of_db = db.users.aggregate(pipeline).next()
         return user_of_db
+
+    # TODO: Error Handling
+    # If an invalid ID is passed to `get_movie`, it should return None.
+    except (StopIteration) as _:
+        return None
+
+    except Exception as e:
+        return {}
+    
+def find_by_address_slug(slug):
+    try:
+        pipeline = [
+            {
+                "$match": {
+                    "slug": slug
+                }
+            }
+        ]
+        user_of_db = db.users.aggregate(pipeline).next()
+        return user_of_db['address']
 
     # TODO: Error Handling
     # If an invalid ID is passed to `get_movie`, it should return None.

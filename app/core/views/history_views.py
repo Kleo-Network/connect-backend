@@ -26,12 +26,12 @@ def upload(**kwargs):
     if not all([slug, history]):
         return jsonify({"error": f"Missing required parameters"}), 400
     
-    user = find_by_slug(slug)
-    if not user:
+    address = find_by_address_slug(slug)
+    if not address:
         return jsonify({"error": "user is not found"}), 401
         
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
-    if not check_user_authenticity(user['address'], address_from_token):
+    if not check_user_authenticity(address, address_from_token):
         return jsonify({"error": "user is not authorised"}), 401
     print_task.delay()
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
