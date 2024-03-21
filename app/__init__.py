@@ -20,14 +20,14 @@ def create_app():
     logging.config.dictConfig(app_config[APPLICATION_ENV].LOGGING)
     app = Flask(app_config[APPLICATION_ENV].APP_NAME)
     app.config.from_object(app_config[APPLICATION_ENV])
-    app.config["CELERY_CONFIG"] = {
-        "broker_url": f"redis://{redis_url}:{redis_port}",
-        "result_backend": f"redis://{redis_url}:{redis_port}"
-    } 
     # app.config["CELERY_CONFIG"] = {
-    #     "broker_url": f"redis://localhost:{redis_port}",
-    #     "result_backend": f"redis://localhost:{redis_port}"
-    # }    
+    #     "broker_url": f"redis://{redis_url}:{redis_port}",
+    #     "result_backend": f"redis://{redis_url}:{redis_port}"
+    # } 
+    app.config["CELERY_CONFIG"] = {
+        "broker_url": f"redis://localhost:{redis_port}",
+        "result_backend": f"redis://localhost:{redis_port}"
+    }    
     CORS(app, resources={r'/api/*': {'origins': '*'}})
     celery = make_celery(app)
     celery.set_default()
@@ -36,6 +36,7 @@ def create_app():
     from .core.views.user_views import core as core_user
     from .core.views.auth_views import core as core_auth
     from .core.views.card_views import core as core_card
+    from .core.views.history_views import core as core_history
     app.register_blueprint(
         core_user,
         name="user_api",
@@ -50,6 +51,11 @@ def create_app():
         core_card,
         name="card_api",
         url_prefix='/api/v1/core/cards'
+    )
+    app.register_blueprint(
+        core_history,
+        name="history_api",
+        url_prefix='/api/v1/core/history'
     )
     return app, celery
 

@@ -1,6 +1,8 @@
 from ..modules.history import single_url_request
 from ..modules.graph_data import *
 from ..controllers.history import *
+from ..models.history import *
+from ..models.user import *
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
@@ -9,6 +11,9 @@ from urllib.parse import urlparse
 import json
 from decimal import Decimal
 
+@shared_task(name='task.print', base=AbortableTask)
+def print_task():
+    print("please print it")
 
 @shared_task(name='tasks.process_graph_data', base=AbortableTask)
 def process_graph_data(params=None):
@@ -39,8 +44,8 @@ def update_new_history_graph_data():
     mark_as_unproccssed('process_graph')
 
 @shared_task(name='tasks.process_previous_history')
-def upload_history_next_two_days(task_results,user_id):
-    user = get_process_graph_previous_history(user_id)
+def upload_history_next_two_days(task_results,slug):
+    user = find_by_slug(slug)
     process_date_timestamp = task_results[0]
     print(process_date_timestamp)
     process_date = datetime.utcfromtimestamp(process_date_timestamp)
@@ -61,27 +66,20 @@ def process_items_for_graph_fn(user, date):
 @shared_task(bind=True, base=AbortableTask)
 def categorize_history(self, data): 
     chunk = data["chunk"]
-    user_id = data["user_id"]
+    slug = data["slug"]
+    
+    print(f"chunk:{chunk}\nslug: {slug}\n")
     for item in chunk:
+        print(item)
         domain = urlparse(item["url"]).netloc
         domain_data = domain_exists_or_insert(domain)
-        item["domain"] = domain
-        item["category"] = domain_data["category"]
-        item["category_description"] = domain_data["category_description"]
-        item["category_group"] = domain_data["category_group"]
-        item["user_id"] = user_id
-        item["favourite"] = False
-        item["hidden"] = False
-        item["visitTime"] = item["lastVisitTime"]
-        timestamp = item["lastVisitTime"] / 1000 
-        date_time = datetime.fromtimestamp(timestamp)
-        item = json.loads(json.dumps(item), parse_float=Decimal)
+        history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"])
+        print("view",history)
+        history.save()
         
-    
-    upload_browsing_history_chunk(chunk)
     if self.is_aborted():
         return 'Aborted'
-    last_processed_timestamp = datetime.timestamp(date_time)
+    last_processed_timestamp = datetime.now().timestamp()
     return last_processed_timestamp
 
 @shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)

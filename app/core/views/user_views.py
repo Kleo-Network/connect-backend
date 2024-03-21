@@ -78,7 +78,7 @@ def update_user_settings(slug, **kwargs):
     
     address = find_by_slug(slug)['address']
     if not all([slug, settings, stage]):
-            return jsonify({"error": f"Missing required parameters"}), 400
+        return jsonify({"error": f"Missing required parameters"}), 400
         
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):
