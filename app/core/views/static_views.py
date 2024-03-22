@@ -132,3 +132,101 @@ def create_github_cards(slug,**kwargs):
     except Exception as e:
         print(e)
         return jsonify({"error": "error while creating github card"}), 500
+    
+@core.route('/instagram/<string:slug>', methods=["POST"])
+@token_required
+def create_insta_cards(slug,**kwargs):
+    try:
+        # Get JSON data from request body
+        data = request.get_json()
+        token = data.get("token")
+        max_photos = 3 
+        
+        if not all([slug, token]):
+            return jsonify({"error": "Missing required parameters"}), 400
+        
+        address = find_by_address_slug(slug)
+        if not address:
+            return jsonify({"error": "user is not found"}), 401
+        address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+        if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+        
+        response = requests.get(
+            f"https://graph.instagram.com/me/media?fields=id,caption,media_url&access_token={token}"
+        )
+
+        if response.status_code == 200:
+            media_data = response.json().get('data', [])
+            
+            if media_data:
+                # Select a random photo from the user's media
+                random.shuffle(media_data)
+                random_photos = [media.get('media_url', '') for media in media_data[:max_photos]]
+                staticCard = StaticCards(slug, 'InstaCard', int(datetime.now().timestamp()), metadata={
+                    'urls' : random_photos
+                })
+                staticCard.save()
+                return jsonify({'message': f'insta card generated for {slug}'}), 200
+            else:
+                return jsonify({'message': f'No media found for the {slug}'})
+        else:
+            return jsonify({'error': f'Failed to fetch media data from Instagram for user {slug}'})
+    
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "error while creating instagram card"}), 500
+    
+@core.route('/x/<string:slug>', methods=["POST"])
+@token_required
+def create_x_cards(slug,**kwargs):
+    try:
+        # Get JSON data from request body
+        data = request.get_json()
+        token = data.get("token")
+        
+        if not all([slug, token]):
+            return jsonify({"error": "Missing required parameters"}), 400
+        
+        address = find_by_address_slug(slug)
+        if not address:
+            return jsonify({"error": "user is not found"}), 401
+        address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+        if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+        
+        user_response = requests.get(
+            'https://api.twitter.com/2/users/me',
+            headers={
+                'Authorization': f'Bearer {token}'
+            },
+            params={
+                'user.fields': 'description,pinned_tweet_id,verified,public_metrics',
+                'tweet.fields': 'text',
+                'expansions': 'pinned_tweet_id'
+            }
+        )
+        
+        if user_response.status_code == 200:
+            user_data = user_response.json()
+            bio = user_data.get('data', {}).get('description', '')
+            pinned_tweet = user_data.get('includes', {}).get('tweets', [{}])[0].get('text', '')
+            is_verified = user_data.get('data', {}).get('verified', False)
+            followers_count = user_data.get('data', {}).get('public_metrics', {}).get('followers_count', 0)
+
+            x_meta_data = {
+                'bio': bio,
+                'pinned_tweet': pinned_tweet,
+                'is_verified': is_verified,
+                'followers_count': followers_count
+            }
+            static_card = StaticCards(slug, 'XCard', int(datetime.now().timestamp()), metadata=x_meta_data)
+            static_card.save()
+            
+            return jsonify({'message': f'X card created for user {slug}'}) , 200
+        else:
+            return jsonify({'error': 'Failed to fetch user data from Twitter API'}), 500
+        
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "error while creating instagram card"}), 500
