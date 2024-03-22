@@ -66,8 +66,6 @@ def create_github_cards(slug,**kwargs):
         data = request.get_json()
         code = data.get("code")
         
-        print(code)
-        
         if not all([slug, code]):
             return jsonify({"error": "Missing required parameters"}), 400
         
