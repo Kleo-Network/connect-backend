@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, request, jsonify
+from flask import Blueprint, current_app, request, jsonify, url_for
 from ..controllers.user import *
 from werkzeug.local import LocalProxy
 from ..controllers.user import * 
@@ -7,6 +7,9 @@ from .auth_views import *
 from ..controllers.checks import * 
 from ..models.user import *
 from ..models.published_cards import get_published_card
+import os
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 logger = LocalProxy(lambda: current_app.logger)
 
@@ -28,23 +31,27 @@ def get_mongo_user(slug, **kwargs):
 @core.route('/create-user', methods=["POST"])
 def create_user():
     data = request.get_json()
-    address = data.get("address")
     signup = data.get("signup", False)
     stage = data.get("stage")
     slug = data.get("slug")
-    name = data.get("name")
-    pfp = data.get("pfp")
+    code = data.get('code')
 
-    if not all([address, stage, slug, name, pfp]):
+    # Get user info from the token
+    user_info_from_googgle = id_token.verify_oauth2_token(
+        code,
+        google_requests.Request(),
+        os.environ.get("GOOGLE_CLIENT_ID")
+    )
+
+    if not all([code, stage, slug, user_info_from_googgle]):
         return jsonify({"error": "Missing required parameters"}), 400
     
-    user = User(address, slug, stage, name, pfp)
+    user = User(user_info_from_googgle['email'], slug, stage, user_info_from_googgle['name'], user_info_from_googgle['picture'])
     response = user.save(signup)
     if not response:
-        return jsonify({"404": "User not found"}),404
+        return jsonify({"404": "User is not created"}),404
     else:
         return response, 200
-       
 
 @core.route('/update-user/<string:slug>', methods=["PUT"])
 @token_required

@@ -37,6 +37,7 @@ def create_app():
     from .core.views.auth_views import core as core_auth
     from .core.views.card_views import core as core_card
     from .core.views.history_views import core as core_history
+    from .core.views.static_views import core as core_static_card
     app.register_blueprint(
         core_user,
         name="user_api",
@@ -56,6 +57,11 @@ def create_app():
         core_history,
         name="history_api",
         url_prefix='/api/v1/core/history'
+    )
+    app.register_blueprint(
+        core_static_card,
+        name="static_card_api",
+        url_prefix='/api/v1/core/static-card'
     )
     return app, celery
 
