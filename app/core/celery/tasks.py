@@ -11,9 +11,6 @@ from urllib.parse import urlparse
 import json
 from decimal import Decimal
 
-@shared_task(name='task.print', base=AbortableTask)
-def print_task():
-    print("please print it")
 
 @shared_task(name='tasks.process_graph_data', base=AbortableTask)
 def process_graph_data(params=None):
@@ -73,7 +70,7 @@ def categorize_history(self, data):
         print(item)
         domain = urlparse(item["url"]).netloc
         domain_data = domain_exists_or_insert(domain)
-        history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"])
+        history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], item['visitTime'])
         print("view",history)
         history.save()
         

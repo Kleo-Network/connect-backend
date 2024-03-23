@@ -11,7 +11,7 @@ client = pymongo.MongoClient(mongo_uri)
 db = client.get_database(db_name)
 
 class History():
-    def __init__(self, slug, title, category, subcategory, url, domain, summary, create_timestamp = int(datetime.now().timestamp())):
+    def __init__(self, slug, title, category, subcategory, url, domain, summary, visitTime, create_timestamp = int(datetime.now().timestamp())):
         assert isinstance(slug, str)
         assert isinstance(create_timestamp, int)
         assert isinstance(title, str)
@@ -20,6 +20,7 @@ class History():
         assert isinstance(url, str)
         assert isinstance(domain, str)
         assert isinstance(summary, str)
+        assert isinstance(visitTime, int)
         
         self.document = {
             'slug': slug,
@@ -29,20 +30,23 @@ class History():
             'subcategory': subcategory,
             'url': url,
             'domain': domain,
-            'summary': summary
+            'summary': summary,
+            'visitTime': visitTime
         }
         
     def save(self):
-        print(self.document)
+        if find_by_slug_and_time(self.document['slug'], self.document['visitTime'], self.document['url']):
+            return
         db.history.insert_one(self.document)
         
-def find_by_slug_and_time(slug, create_timestamp):
+def find_by_slug_and_time(slug, visitTime, url):
     try:
         pipeline = [
             {
                 "$match": {
                     "slug": slug,
-                    "create_timestamp": create_timestamp
+                    "visitTime": visitTime,
+                    "url": url
                 }
             },
             {
@@ -67,14 +71,11 @@ def get_history_item(slug):
     result = []
     for history in hstories:
         history_data = {
-            "id": str(history['_id']),
+            "visitTime": history['visitTime'],
+            "category": history['category'],
             "title": history['title'],
-            "category": history['category'],  # You can add category logic here
-            "subcategory": history['subcategory'],
-            "domain": history['domain'],
-            "summary": history['summary'],
             "url": history['url'],
-            "minted": history['minted']
+            "domain": history['domain']
         }
         result.append(history_data)
     return result
