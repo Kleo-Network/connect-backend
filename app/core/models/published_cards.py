@@ -15,13 +15,13 @@ card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PublishedCard():
     def __init__(self, slug, type, content="",
-                 tags=[], urls=[], metadata={}, minted=False,  timestamp = int(datetime.now().timestamp())):
+                 tags=[], urls={}, metadata={}, minted=False,  timestamp = int(datetime.now().timestamp())):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
         assert isinstance(content, str)
         assert isinstance(tags, list)
-        assert isinstance(urls, list)
+        assert isinstance(urls, dict)
         assert isinstance(metadata, dict)
         assert isinstance(minted, bool)
         

@@ -7,6 +7,7 @@ from .auth_views import *
 from ..controllers.checks import * 
 from ..models.user import *
 from ..models.published_cards import get_published_card
+from ..celery.tasks import create_pending_card
 import os
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -48,6 +49,8 @@ def create_user():
     
     user = User(user_info_from_googgle['email'], slug, stage, user_info_from_googgle['name'], user_info_from_googgle['picture'])
     response = user.save(signup)
+    if signup:
+        create_pending_card.s(slug)
     if not response:
         return jsonify({"404": "User is not created"}),404
     else:

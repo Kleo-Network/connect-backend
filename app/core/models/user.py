@@ -165,3 +165,23 @@ def fetch_user_slug():
     slug_from_db = db.users.find({}, {'slug': 1})
     user_slugs = [user['slug'] for user in slug_from_db if 'slug' in user]
     return user_slugs
+
+def update_last_cards_marked(slug):
+    try:
+        db.users.update_one({'slug': slug}, {'$set': {'last_cards_marked': int(datetime.now().timestamp())}})
+
+    # TODO: Error Handling
+    # If an invalid ID is passed to `get_movie`, it should return None.
+    except (StopIteration) as _:
+        return None
+
+    except Exception as e:
+        print(e)
+        return {}
+    
+def update_last_attested(slug):
+    try:
+        db.users.update_one({'slug': slug}, {'$set': {'last_attested': int(datetime.now().timestamp())}})
+    except Exception as e:
+        print(e)
+        return {}

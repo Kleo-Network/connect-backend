@@ -1,4 +1,4 @@
-from ..modules.history import single_url_request
+from ..modules.history import create_pending_cards
 from ..modules.graph_data import *
 from ..controllers.history import *
 from ..models.history import *
@@ -82,7 +82,26 @@ def categorize_history(self, data):
 @shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)
 def process_pinned_graph_data(user,domain):
     process_items_pinned_data(user,domain)
+    
+    
+######################### pending card creation celery task ###############################
+        
+@shared_task(bind=True, base=AbortableTask)
+def create_pending_card(self, user_slug):
+    # Simulate card creation event
+    print(f"Card created for user with slug {user_slug} at {datetime.now()}")
 
+    user = find_by_slug(user_slug)
+    if user:    
+        last_published_at = user['last_cards_marked']
+        time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
+        if time_difference_days < 4:
+            create_pending_cards(user_slug)
+        
+    next_execution = datetime.now() + timedelta(days=1)
+    self.create_pending_card.s(user_slug).apply_async(eta=next_execution)
+        
+        
 # @shared_task(base=AbortableTask)
 # def process_pinned_domain_items_for_graph(user, domain):
 #     process_items_pinned_data(user, domain)

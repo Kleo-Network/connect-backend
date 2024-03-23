@@ -16,14 +16,14 @@ db = client.get_database(db_name)
 card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PendingCard():
-    def __init__(self, slug, timestamp, type, content="",
-                 tags=[], urls=[], metadata={}):
+    def __init__(self, slug, type, content="",
+                 tags=[], urls={}, metadata={}, timestamp=int(datetime.now().timestamp())):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
         assert isinstance(content, str)
         assert isinstance(tags, list)
-        assert isinstance(urls, list)
+        assert isinstance(urls, dict)
         assert isinstance(metadata, dict)
         
         self.document = {
@@ -37,7 +37,6 @@ class PendingCard():
         }
         
     def save(self):
-        self.document['timestamp'] = self.document.get('timestamp') or int(datetime.now().timestamp())
         if self.document['type'] not in card_types:
             return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
         db.pending_cards.insert_one(self.document)

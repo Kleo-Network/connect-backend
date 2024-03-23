@@ -33,7 +33,6 @@ def upload(**kwargs):
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):
         return jsonify({"error": "user is not authorised"}), 401
-    print_task.delay()
     chunks = [history[i:i + 25] for i in range(0, len(history), 25)]
     tasks = [categorize_history.s({"chunk": chunk, "slug": slug}) for chunk in chunks]
     

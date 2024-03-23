@@ -100,6 +100,7 @@ def populate_published_card(slug, **kwargs):
             published_card = PublishedCard(slug, tobe_published_card['cardType'], tobe_published_card['content'], tobe_published_card['tags'], tobe_published_card['urls'], tobe_published_card['metadata'])
             published_card.save()
         delete = delete_pending_card(slug,ObjectId(id))
+        update_last_cards_marked(slug)
         
         return jsonify({"message": f"published card for {slug}"}), 200
     
@@ -119,6 +120,7 @@ def mint_published_card(slug, **kwargs):
             return jsonify({"error": "user is not authorised"}), 401
         
         result = mint_cards(slug)
+        update_last_attested(slug)
         return jsonify({'message': result}), 200
         
         
@@ -178,7 +180,7 @@ def create_static_cards(slug,**kwargs):
     
 @core.route('/static/<string:slug>', methods=['PUT'])
 @token_required
-def update_static_cards(slug):
+def update_static_cards(slug, **kwargs):
     try:
         data = request.get_json()
         type = data.get("type")

@@ -1,3 +1,4 @@
+from bson import ObjectId
 import pymongo
 from datetime import datetime
 import os
@@ -67,10 +68,11 @@ def get_history_item(slug):
     pipeline = [
         {"$match": {"slug": slug}}
     ]
-    hstories = list(db.history.aggregate(pipeline))
+    histories = list(db.history.aggregate(pipeline))
     result = []
-    for history in hstories:
+    for history in histories:
         history_data = {
+            "id": str(history['_id']),
             "visitTime": history['visitTime'],
             "category": history['category'],
             "title": history['title'],
@@ -79,3 +81,10 @@ def get_history_item(slug):
         }
         result.append(history_data)
     return result
+
+def delete_history(slug, id):
+    result = db.history.delete_one({'_id': ObjectId(id), 'slug': slug})
+    if result.deleted_count == 1:
+        return True
+    else:
+        return False
