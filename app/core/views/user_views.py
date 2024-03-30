@@ -119,8 +119,7 @@ def get_user_and_card_detail(slug):
 
 @core.route('/check_slug', methods=['GET'])
 def check_slug():
-    data = request.get_json()
-    slug = data.get("slug")
+    slug = request.args.get('slug')
     if not slug:
         return jsonify({'error': 'Slug parameter is missing.'}), 400
     slugs = fetch_user_slug()

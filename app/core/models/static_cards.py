@@ -61,7 +61,8 @@ def update_static_card(slug, type, metadata, card_id = None):
         print(filter_query)
         update_operation = {
             "$set": {
-                "metadata": metadata
+                "metadata": metadata,
+                "last_connected": int(datetime.now().timestamp())
             }
         }
         user_of_db = db.static_cards.find_one_and_update(filter_query, update_operation, projection={"_id": {"$toString": "$_id"}}, return_document = pymongo.ReturnDocument.AFTER)

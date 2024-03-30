@@ -9,6 +9,7 @@ from ..models.pending_cards import *
 from ..models.published_cards import *
 from ..models.static_cards import *
 import requests
+import os
 
 logger = LocalProxy(lambda: current_app.logger)
 
@@ -183,9 +184,9 @@ def create_x_cards(slug,**kwargs):
     try:
         # Get JSON data from request body
         data = request.get_json()
-        token = data.get("token")
+        code = data.get("code")
         
-        if not all([slug, token]):
+        if not all([slug, code]):
             return jsonify({"error": "Missing required parameters"}), 400
         
         address = find_by_address_slug(slug)
@@ -194,6 +195,25 @@ def create_x_cards(slug,**kwargs):
         address_from_token = kwargs.get('user_data')['payload']['publicAddress']
         if not check_user_authenticity(address, address_from_token):
             return jsonify({"error": "user is not authorised"}), 401
+        
+        payload = {
+            'code': code,
+            'grant_type': 'authorization_code',
+            'client_id': os.environ.get('X_CLIENT_ID'),
+            'redirect_uri': os.environ.get('REDIRECT_URI'),
+            'code_verifier': 'challenge'
+        }
+
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            # No need to set Access-Control-Allow-Origin here, as it is a response header controlled by the server
+        }
+
+        response = requests.post('https://api.twitter.com/2/oauth2/token', data=payload, headers=headers)
+        
+        print(response.json())
+        token = response.json().get('access_token')
+        print('token',token)    
         
         user_response = requests.get(
             'https://api.twitter.com/2/users/me',
@@ -209,6 +229,7 @@ def create_x_cards(slug,**kwargs):
         
         if user_response.status_code == 200:
             user_data = user_response.json()
+            print(user_data)
             bio = user_data.get('data', {}).get('description', '')
             pinned_tweet = user_data.get('includes', {}).get('tweets', [{}])[0].get('text', '')
             is_verified = user_data.get('data', {}).get('verified', False)
