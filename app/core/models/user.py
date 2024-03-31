@@ -51,9 +51,12 @@ class User:
         }
 
     def save(self, signup):
-        existing_user = find_by_slug(self.document['slug'])
-        if existing_user:
-            return existing_user
+        existing_user_address = find_by_address(self.document['address'])
+        if existing_user_address:
+            return existing_user_address
+        existing_user_slug = find_by_slug(self.document['slug'])
+        if existing_user_slug:
+            return existing_user_slug
         if signup:
             self.document['stage'] = self.document.get('stage') or 1
             self.document['last_cards_marked'] = self.document.get('last_cards_marked') or int(datetime.now().timestamp())
@@ -99,6 +102,32 @@ def find_by_address_slug(slug):
         ]
         user_of_db = db.users.aggregate(pipeline).next()
         return user_of_db['address']
+
+    # TODO: Error Handling
+    # If an invalid ID is passed to `get_movie`, it should return None.
+    except (StopIteration) as _:
+        return None
+
+    except Exception as e:
+        return {}
+    
+def find_by_address(address):
+    try:
+        pipeline = [
+            {
+                "$match": {
+                    "address": address
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,  # Exclude the _id field
+                    "address": 0
+                }
+            }
+        ]
+        user_of_db = db.users.aggregate(pipeline).next()
+        return user_of_db
 
     # TODO: Error Handling
     # If an invalid ID is passed to `get_movie`, it should return None.

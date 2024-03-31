@@ -35,7 +35,11 @@ def single_url_request(domain):
 
 def create_pending_cards(slug):
     history_from_db = get_history_item(slug)
+    if not history_from_db:
+        return
     cluster_history_list = cluster_and_save(history_from_db)
+    if not cluster_history_list:
+        return
     response_from_llm = create_card_from_llm(slug, cluster_history_list)
     
 def cluster_and_save(data):

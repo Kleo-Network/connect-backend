@@ -1,4 +1,5 @@
 from flask import Blueprint, current_app, request, jsonify, url_for
+from app.core.modules.auth import get_jwt_token
 from ..controllers.user import *
 from werkzeug.local import LocalProxy
 from ..controllers.user import * 
@@ -34,7 +35,7 @@ def create_user():
     data = request.get_json()
     signup = data.get("signup", False)
     stage = data.get("stage")
-    slug = data.get("slug")
+    slug = data.get("slug", '')
     code = data.get('code')
 
     # Get user info from the token
@@ -44,11 +45,15 @@ def create_user():
         os.environ.get("GOOGLE_CLIENT_ID")
     )
 
-    if not all([code, stage, slug, user_info_from_googgle]):
+    if not all([code, stage is not None, user_info_from_googgle]):
         return jsonify({"error": "Missing required parameters"}), 400
     
     user = User(user_info_from_googgle['email'], slug, stage, user_info_from_googgle['name'], user_info_from_googgle['picture'])
     response = user.save(signup)
+    if slug == '':
+        slug = response['slug']
+    response['email'] = user_info_from_googgle['email']
+    response['token'] = get_jwt_token(slug,user_info_from_googgle['email'])
     if signup:
         create_pending_card.s(slug)
     if not response:

@@ -52,7 +52,7 @@ def get_pending_card(slug, object_id=None):
     for card in cards:
         card_data = {
             "id": str(card['_id']),
-            "date": format_datetime(card['timestamp']),
+            "date": card['timestamp'],
             "cardType": card['type'],
             "category": "",  # You can add category logic here
             "tags": card['tags'],
@@ -70,5 +70,3 @@ def delete_pending_card(slug, id):
     else:
         return jsonify({'message': f'Card not found or already deleted for {slug}'}), 404
 
-def format_datetime(dt):
-    return datetime.utcfromtimestamp(dt).strftime("%d %b %Y")
