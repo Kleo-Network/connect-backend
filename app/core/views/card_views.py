@@ -97,7 +97,7 @@ def populate_published_card(slug, **kwargs):
         tobe_published_card = tobe_published_cards[0]
         
         if is_publish_card:
-            published_card = PublishedCard(slug, tobe_published_card['cardType'], tobe_published_card['content'], tobe_published_card['tags'], tobe_published_card['urls'], tobe_published_card['metadata'])
+            published_card = PublishedCard(slug, tobe_published_card['cardType'], tobe_published_card['content'], tobe_published_card['tags'], tobe_published_card['urls'], tobe_published_card['metadata'], tobe_published_card['date'])
             published_card.save()
         delete = delete_pending_card(slug,ObjectId(id))
         update_last_cards_marked(slug)
@@ -164,9 +164,10 @@ def create_static_cards(slug,**kwargs):
         address_from_token = kwargs.get('user_data')['payload']['publicAddress']
         if not check_user_authenticity(address, address_from_token):
             return jsonify({"error": "user is not authorised"}), 401
-        
+        print(cards_data)
         type = cards_data.get('type')
         metadata = cards_data.get('metadata', {})
+        print(metadata)
         
         # Create StaticCards instance and save to database
         static_card = StaticCards(slug, type, int(datetime.now().timestamp()), metadata)

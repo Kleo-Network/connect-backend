@@ -17,16 +17,9 @@ from google.auth.transport import requests as google_requests
 logger = LocalProxy(lambda: current_app.logger)
 
 @core.route('/get-user/<string:slug>', methods=["GET"])
-@token_required
 def get_mongo_user(slug, **kwargs):
     if not all([slug]):
         return jsonify({"error": "Missing required parameters"}), 400
-    address = find_by_address_slug(slug)
-    if not address:
-        return jsonify({"error": "user is not found"}), 401
-    address_from_token = kwargs.get('user_data')['payload']['publicAddress']
-    if not check_user_authenticity(address, address_from_token):
-        return jsonify({"error": "user is not authorised"}), 401
     response = find_by_slug(slug)
     return jsonify(response), 200
 
