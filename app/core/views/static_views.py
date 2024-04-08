@@ -224,7 +224,6 @@ def create_x_cards(slug,**kwargs):
 
         response = requests.post('https://api.twitter.com/2/oauth2/token', data=payload, headers=headers)
         
-        print(response.json())
         token = response.json().get('access_token')
         print('token',token)    
         
@@ -240,16 +239,17 @@ def create_x_cards(slug,**kwargs):
             }
         )
         
-        print('test',user_response.json())
         if user_response.status_code == 200:
             user_data = user_response.json()
             print('data',user_data)
+            username = user_data.get('data', {}).get('username', '')
             bio = user_data.get('data', {}).get('description', '')
             pinned_tweet = user_data.get('includes', {}).get('tweets', [{}])[0].get('text', '')
             is_verified = user_data.get('data', {}).get('verified', False)
             followers_count = user_data.get('data', {}).get('public_metrics', {}).get('followers_count', 0)
 
             x_meta_data = {
+                'username': username,
                 'bio': bio,
                 'pinned_tweet': pinned_tweet,
                 'is_verified': is_verified,
