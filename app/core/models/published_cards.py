@@ -15,7 +15,7 @@ card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PublishedCard():
     def __init__(self, slug, type, content="",
-                 tags=[], urls={}, metadata={}, minted=False,  timestamp = int(datetime.now().timestamp())):
+                 tags=[], urls={}, metadata={},  timestamp = int(datetime.now().timestamp()), minted=False):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
@@ -43,7 +43,8 @@ class PublishedCard():
 
 def get_published_card(slug, object_id=None):
     pipeline = [
-        {"$match": {"slug": slug}}
+        {"$match": {"slug": slug}},
+        {"$sort": {"timestamp": -1}}
     ]
     if object_id:  # If object_ids are provided, add match on object_ids
         pipeline[0]["$match"]["_id"] = object_id

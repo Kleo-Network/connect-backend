@@ -43,7 +43,8 @@ class PendingCard():
 
 def get_pending_card(slug, object_id=None):
     pipeline = [
-        {"$match": {"slug": slug}}
+        {"$match": {"slug": slug}},
+        {"$sort": {"timestamp": -1}}
     ]
     if object_id:  # If object_ids are provided, add match on object_ids
         pipeline[0]["$match"]["_id"] = object_id

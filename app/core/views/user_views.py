@@ -1,4 +1,5 @@
 from flask import Blueprint, current_app, request, jsonify, url_for
+from app.core.models.static_cards import get_static_card
 from app.core.modules.auth import get_jwt_token
 from ..controllers.user import *
 from werkzeug.local import LocalProxy
@@ -16,16 +17,9 @@ from google.auth.transport import requests as google_requests
 logger = LocalProxy(lambda: current_app.logger)
 
 @core.route('/get-user/<string:slug>', methods=["GET"])
-@token_required
 def get_mongo_user(slug, **kwargs):
     if not all([slug]):
         return jsonify({"error": "Missing required parameters"}), 400
-    address = find_by_address_slug(slug)
-    if not address:
-        return jsonify({"error": "user is not found"}), 401
-    address_from_token = kwargs.get('user_data')['payload']['publicAddress']
-    if not check_user_authenticity(address, address_from_token):
-        return jsonify({"error": "user is not authorised"}), 401
     response = find_by_slug(slug)
     return jsonify(response), 200
 
@@ -117,9 +111,11 @@ def get_user_and_card_detail(slug):
     
     user = find_by_slug(slug)
     cards = get_published_card(slug)
+    static_cards = get_static_card(slug)
     response = {
         "user": user,
-        "published_cards": cards
+        "published_cards": cards,
+        "static_cards": static_cards
     }
     return jsonify(response), 200
 

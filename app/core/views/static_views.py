@@ -8,6 +8,7 @@ from ..controllers.checks import *
 from ..models.pending_cards import *
 from ..models.published_cards import *
 from ..models.static_cards import *
+from datetime import datetime, timedelta
 import requests
 import os
 
@@ -90,10 +91,17 @@ def create_github_cards(slug,**kwargs):
             return jsonify({"error": "error while fetching access token of github"}), 500
             # Construct GraphQL query
             
+        headers = {'Authorization': f'token {access_token}'}
+        response = requests.get('https://api.github.com/user', headers=headers)
+        gitUserData = response.json()
+            
+        today = datetime.now()
+        last_month = today - timedelta(days=90)
+            
         query = """
 			query {
 				viewer {
-					contributionsCollection {
+					contributionsCollection(from: "%s", to: "%s") {
 						contributionCalendar {
 							weeks {
 								contributionDays {
@@ -105,7 +113,7 @@ def create_github_cards(slug,**kwargs):
 					}
 				}
 			}
-		"""
+		""" % (last_month.isoformat(), today.isoformat())
 
         # Make request to GitHub GraphQL API
         graphql_response = requests.post(
@@ -125,7 +133,12 @@ def create_github_cards(slug,**kwargs):
             return jsonify({"error": f"Error while fetching contribution from github for {slug}"}), 400
         
         # Create StaticCards instance and save to database
-        static_card = StaticCards(slug, 'GitCard', int(datetime.now().timestamp()), metadata = {"contribution":contribution})
+        static_card = StaticCards(slug, 'GitCard', int(datetime.now().timestamp()), metadata = {
+            "contribution":contribution,
+            "userName":gitUserData['login'],
+            "url": gitUserData['html_url'],
+            "followers": gitUserData['followers'],
+            "following":gitUserData['following']})
         static_card.save()
         
         return jsonify({"message": f"Created static github card for user {slug}"}), 200
@@ -211,7 +224,6 @@ def create_x_cards(slug,**kwargs):
 
         response = requests.post('https://api.twitter.com/2/oauth2/token', data=payload, headers=headers)
         
-        print(response.json())
         token = response.json().get('access_token')
         print('token',token)    
         
@@ -229,13 +241,15 @@ def create_x_cards(slug,**kwargs):
         
         if user_response.status_code == 200:
             user_data = user_response.json()
-            print(user_data)
+            print('data',user_data)
+            username = user_data.get('data', {}).get('username', '')
             bio = user_data.get('data', {}).get('description', '')
             pinned_tweet = user_data.get('includes', {}).get('tweets', [{}])[0].get('text', '')
             is_verified = user_data.get('data', {}).get('verified', False)
             followers_count = user_data.get('data', {}).get('public_metrics', {}).get('followers_count', 0)
 
             x_meta_data = {
+                'username': username,
                 'bio': bio,
                 'pinned_tweet': pinned_tweet,
                 'is_verified': is_verified,
