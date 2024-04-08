@@ -55,7 +55,8 @@ def create_user():
     response['email'] = user_info_from_googgle['email']
     response['token'] = get_jwt_token(slug,user_info_from_googgle['email'])
     if signup:
-        create_pending_card.s(slug)
+        print("check if started?")
+        create_pending_card.delay(slug)
     if not response:
         return jsonify({"404": "User is not created"}),404
     else:
@@ -93,7 +94,7 @@ def update_user_settings(slug, **kwargs):
     data = request.get_json()
     settings = data.get("settings")
     stage = data.get("stage")
-    about = data.get("about")
+   
     
     if not all([slug, settings, stage]):
         return jsonify({"error": f"Missing required parameters"}), 400
@@ -106,7 +107,7 @@ def update_user_settings(slug, **kwargs):
     if not check_user_authenticity(address, address_from_token):
         return jsonify({"error": "user is not authorised"}), 401  
     
-    response = update_settings_by_slug(slug, settings, stage, about)
+    response = update_settings_by_slug(slug, settings, stage, '')
     return jsonify(response), 200
 
 @core.route('/<string:slug>/published-cards/info', methods=["GET"])

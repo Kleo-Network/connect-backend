@@ -28,7 +28,7 @@ def get_category(raw_resp):
 
 def single_url_request(domain):
     url = "https://www.fortiguard.com/webfilter"
-    print(domain)
+    
     payload = {'url': domain}
     response = requests.request("POST", url, headers={}, data=payload, files=[])
     return get_category(response)
@@ -94,7 +94,6 @@ def message_from_LLM_API(
         }
 
         response = requests.post(base_url, headers=headers, json=data)
-        print(response.json())
         return response.json()
     elif service == "ansycale":
         client = openai.OpenAI(base_url=base_url, api_key=api_key)
@@ -121,7 +120,11 @@ def create_card_from_llm(slug,data):
     """
     input_models = ["azure", "anyscale"]
     print(len(list(data.keys())))
-    selected_domains = random.sample(list(data.keys()), len(list(data.keys())))
+    if len(list(data.keys())) < 30:
+        selected_domains = random.sample(list(data.keys()), len(list(data.keys())))
+    else:
+        selected_domains = random.sample(list(data.keys()), 30)
+
     cards_main=[]
     for domain in selected_domains:
         print('domain', domain)
@@ -151,6 +154,7 @@ def create_card_from_llm(slug,data):
             
             response_text_json = convert_to_json(bot_response["choices"][0]["text"])
             print(response_text_json)
+            print(bot_response)
             pendingCard = PendingCard(slug, "DataCard", response_text_json[0]["description"],
                                       response_text_json[0]["entities"], {"title": item["title"], "url": item["url"]},
                                       response_text_json[0])

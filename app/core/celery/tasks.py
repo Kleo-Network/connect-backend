@@ -10,54 +10,7 @@ import time
 from urllib.parse import urlparse
 import json
 from decimal import Decimal
-
-
-@shared_task(name='tasks.process_graph_data', base=AbortableTask)
-def process_graph_data(params=None):
-    if params is None:
-        user_details = get_user_unprocessed_graph()
-        user_id = user_details["id"]
-        user = get_process_graph_previous_history(user_id)
-        if user["process_graph"] == False and user["process_graph_previous_history"] == True:
-            process_items(user_id)
-            update_user_processed(user_id, True)
-        if user["process_graph_previous_history"] == False:
-            for counter in range(0, 90):
-                process_items_for_graph_fn.delay(user_id, counter)
-            update_user_processed_previous_history(user_id, True)
-    elif "signup" in params and "user_id" in params:
-        user_id = params["user_id"]
-        signup = params["signup"]
-        date = params["date"]
-        if user_id is not None and signup is True:
-            process_items(user_id)
-            for index in range(1, counter):
-                process_items_for_graph_fn.delay(user_id, date)
-            
-        
-
-@shared_task(name='tasks.update_new_history')
-def update_new_history_graph_data():
-    mark_as_unproccssed('process_graph')
-
-@shared_task(name='tasks.process_previous_history')
-def upload_history_next_two_days(task_results,slug):
-    user = find_by_slug(slug)
-    process_date_timestamp = task_results[0]
-    print(process_date_timestamp)
-    process_date = datetime.utcfromtimestamp(process_date_timestamp)
-    current_date = datetime.utcnow()
-    difference = (current_date - process_date).days
-    print(difference)
-    if difference > 2:
-        print("more than 2 days difference.")
-    
-
-@shared_task(name='tasks.process_items_for_graph',base=AbortableTask)
-def process_items_for_graph_fn(user, date):
-    process_items(user, date)
-
-
+from datetime import datetime, timedelta, timezone
 
 # create a task to take json and send it for training. 
 @shared_task(bind=True, base=AbortableTask)
@@ -67,30 +20,20 @@ def categorize_history(self, data):
     
     print(f"chunk:{chunk}\nslug: {slug}\n")
     for item in chunk:
-        print(item)
         domain = urlparse(item["url"]).netloc
         domain_data = domain_exists_or_insert(domain)
-        history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], item['visitTime'])
-        print("view",history)
+        history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], int(item['lastVisitTime']))       
         history.save()
         
     if self.is_aborted():
         return 'Aborted'
     last_processed_timestamp = datetime.now().timestamp()
     return last_processed_timestamp
-
-@shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)
-def process_pinned_graph_data(user,domain):
-    process_items_pinned_data(user,domain)
-    
     
 ######################### pending card creation celery task ###############################
         
 @shared_task(bind=True, base=AbortableTask)
 def create_pending_card(self, user_slug):
-    # Simulate card creation event
-    print(f"Card created for user with slug {user_slug} at {datetime.now()}")
-
     user = find_by_slug(user_slug)
     if user:    
         last_published_at = user['last_cards_marked']
@@ -98,8 +41,10 @@ def create_pending_card(self, user_slug):
         if time_difference_days < 4:
             create_pending_cards(user_slug)
         
-    next_execution = datetime.now() + timedelta(days=1)
-    self.create_pending_card.s(user_slug).apply_async(eta=next_execution)
+        next_execution = datetime.now(timezone.utc) + timedelta(minutes=30)
+        create_pending_card.apply_async([user_slug], eta=next_execution)
+        
+    
         
         
 # @shared_task(base=AbortableTask)
