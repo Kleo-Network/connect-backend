@@ -206,17 +206,12 @@ def update_static_cards(slug, **kwargs):
         return jsonify({"error": str(e)}), 500
     
 @core.route('/update-cards', methods=["POST"])
-@token_required
-def update_cards(**kwargs):
+def update_cards():
     data = request.get_json()
     slug = data.get('slug')
-    
-    address = find_by_address_slug(slug)
-    if not address:
-        return jsonify({"error": "user is not found"}), 401
-    address_from_token = kwargs.get('user_data')['payload']['publicAddress']
-    if not check_user_authenticity(address, address_from_token):
-            return jsonify({"error": "user is not authorised"}), 401
-    
-    create_pending_card.delay(slug)
-    return "response",200
+    password = data.get('password')
+    if(password == os.environ.get("PASSWORD")):
+        create_pending_card.delay(slug)
+        return jsonify({"message": "card created for the user"}), 200
+    else:
+        return jsonify({"error": "Please provide correct password"}), 500
