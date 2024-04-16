@@ -311,7 +311,7 @@ def generate_results(slug, items, initial_prompt, input_service):
             }
             pendingCard = PendingCard(slug, "DataCard", card_data["description"],
                                       card_data["entities"], items_list,
-                                      card_data, get_tags_from_category(items[0]["category"]))
+                                      card_data, get_tags_from_category(tags, items[0]["category"]))
             pendingCard.save()
             for item in items_list:
                 if delete_history(slug, item["id"]): #We protect user privacy by deleting history once we create pending cards
