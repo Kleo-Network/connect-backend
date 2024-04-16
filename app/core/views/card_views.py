@@ -98,9 +98,9 @@ def populate_published_card(slug, **kwargs):
         tobe_published_card = tobe_published_cards[0]
         
         if is_publish_card:
-            published_card = PublishedCard(slug, tobe_published_card['cardType'], tobe_published_card['content'], tobe_published_card['tags'], tobe_published_card['urls'], tobe_published_card['metadata'], tobe_published_card['date'])
+            published_card = PublishedCard(slug, tobe_published_card['cardType'], tobe_published_card['content'], tobe_published_card['tags'], tobe_published_card['urls'], tobe_published_card['metadata'], tobe_published_card['category'], tobe_published_card['date'])
             published_card.save()
-        delete = delete_pending_card(slug,ObjectId(id))
+        delete = delete_pending_card(slug,ObjectId(id)) #We protect user privacy by deleting pending cards once we create published cards
         update_last_cards_marked(slug)
         
         return jsonify({"message": f"published card for {slug}"}), 200

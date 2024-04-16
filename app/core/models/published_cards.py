@@ -15,7 +15,7 @@ card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PublishedCard():
     def __init__(self, slug, type, content="",
-                 tags=[], urls={}, metadata={},  timestamp = int(datetime.now().timestamp()), minted=False):
+                 tags=[], urls={}, metadata={}, category="Miscellaneous",  timestamp = int(datetime.now().timestamp()), minted=False):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
@@ -24,6 +24,7 @@ class PublishedCard():
         assert isinstance(urls, dict)
         assert isinstance(metadata, dict)
         assert isinstance(minted, bool)
+        assert isinstance(category, str)
         
         self.document = {
             'slug': slug,
@@ -33,7 +34,8 @@ class PublishedCard():
             'tags': tags,
             'urls': urls,
             'metadata': metadata,
-            'minted': minted
+            'minted': minted,
+            'category': category
         }
         
     def save(self):
@@ -55,7 +57,7 @@ def get_published_card(slug, object_id=None):
             "id": str(card['_id']),
             "date": format_datetime(card['timestamp']),
             "cardType": card['type'],
-            "category": "",  # You can add category logic here
+            "category": card['category'],  # You can add category logic here
             "content": card['content'],
             "metadata": card['metadata'],
             "tags": card['tags'],

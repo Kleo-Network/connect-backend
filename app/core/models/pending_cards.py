@@ -17,7 +17,7 @@ card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PendingCard():
     def __init__(self, slug, type, content="",
-                 tags=[], urls={}, metadata={}, timestamp=int(datetime.now().timestamp())):
+                 tags=[], urls={}, metadata={}, category="Miscellaneous", timestamp=int(datetime.now().timestamp())):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
@@ -25,6 +25,7 @@ class PendingCard():
         assert isinstance(tags, list)
         assert isinstance(urls, dict)
         assert isinstance(metadata, dict)
+        assert isinstance(category, str)
         
         self.document = {
             'slug': slug,
@@ -33,7 +34,8 @@ class PendingCard():
             'content': content,
             'tags': tags,
             'urls': urls,
-            'metadata': metadata
+            'metadata': metadata,
+            'category': category
         }
         
     def save(self):
@@ -55,7 +57,7 @@ def get_pending_card(slug, object_id=None):
             "id": str(card['_id']),
             "date": card['timestamp'],
             "cardType": card['type'],
-            "category": "",  # You can add category logic here
+            "category": card['category'],  
             "tags": card['tags'],
             "urls": card['urls'],
             "content": card['content'],
