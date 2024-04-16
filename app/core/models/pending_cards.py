@@ -17,13 +17,13 @@ card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PendingCard():
     def __init__(self, slug, type, content="",
-                 tags=[], urls={}, metadata={}, category="Miscellaneous", timestamp=int(datetime.now().timestamp())):
+                 tags=[], urls=[], metadata={}, category="Miscellaneous", timestamp=int(datetime.now().timestamp())):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
         assert isinstance(content, str)
         assert isinstance(tags, list)
-        assert isinstance(urls, dict)
+        assert isinstance(urls, list)
         assert isinstance(metadata, dict)
         assert isinstance(category, str)
         
