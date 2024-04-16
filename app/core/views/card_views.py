@@ -1,4 +1,5 @@
 from flask import Blueprint, current_app, request, jsonify
+from app.core.celery.tasks import create_pending_card
 from ..controllers.user import *
 from werkzeug.local import LocalProxy
 from ..controllers.user import * 
@@ -203,3 +204,19 @@ def update_static_cards(slug, **kwargs):
     except Exception as e:
         print(e)
         return jsonify({"error": str(e)}), 500
+    
+@core.route('/update-cards', methods=["POST"])
+@token_required
+def update_cards(**kwargs):
+    data = request.get_json()
+    slug = data.get('slug')
+    
+    address = find_by_address_slug(slug)
+    if not address:
+        return jsonify({"error": "user is not found"}), 401
+    address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+    if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+    
+    create_pending_card.delay(slug)
+    return "response",200
