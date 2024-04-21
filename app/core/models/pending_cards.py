@@ -23,7 +23,7 @@ class PendingCard():
         assert isinstance(type, str)
         assert isinstance(content, str)
         assert isinstance(tags, list)
-        assert isinstance(urls, dict)
+        assert isinstance(urls, list)
         assert isinstance(metadata, dict)
         assert isinstance(category, str)
         

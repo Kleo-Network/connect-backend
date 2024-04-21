@@ -21,9 +21,10 @@ def categorize_history(self, data):
     print(f"chunk:{chunk}\nslug: {slug}\n")
     for item in chunk:
         domain = urlparse(item["url"]).netloc
-        domain_data = domain_exists_or_insert(domain)
-        history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], int(item['lastVisitTime']))       
-        history.save()
+        if domain is not None:
+            domain_data = domain_exists_or_insert(domain)
+            history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], int(item['lastVisitTime']))       
+            history.save()
         
     if self.is_aborted():
         return 'Aborted'
@@ -38,8 +39,8 @@ def create_pending_card(self, user_slug):
     if user:    
         last_published_at = user['last_cards_marked']
         time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
-        if time_difference_days < 4:
-            create_pending_cards(user_slug)
+        #if time_difference_days < 4:
+        create_pending_cards(user_slug)
         
         next_execution = datetime.now(timezone.utc) + timedelta(minutes=30)
         create_pending_card.apply_async([user_slug], eta=next_execution)

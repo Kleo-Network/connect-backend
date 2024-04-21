@@ -153,6 +153,7 @@ def create_pending_cards(slug):
     if not cluster_history_list:
         return
     response_from_llm = create_card_from_llm(slug, cluster_history_list)
+    print(response_from_llm)
     
 def cluster_and_save(data):
     # Prepare the result structure
@@ -184,33 +185,61 @@ def convert_to_json(text):
         text = text.strip()
         result = []
         patterns = [
-            r'"activity"\s*:\s*"((?:[^"\\]|\\.)*)"',
+            r'"activity"\s*:\s*(\[(?:[^]\\]|\\.)*\])',
             r'"description"\s*:\s*"((?:[^"\\]|\\.)*)"',
-            r'"entities"\s*:\s*(\[(?:[^]\\]|\\.)*\])'
+            r'"entities"\s*:\s*(\[(?:[^]\\]|\\.)*\])',
+            r'"titles"\s*:\s*(\[(?:[^]\\]|\\.)*\])'
         ]
         matches = re.findall(r'{(.*?)}', text, re.DOTALL)
+        unique_cards = set()
         for match in matches:
-            card_json = {"activity": "", "description": "", "entities": []}
+            card_json = {"activity": [], "description": "", "entities": [], "titles": []}
             for i, pattern in enumerate(patterns):
                 value = re.search(pattern, match, re.DOTALL)
                 if value:
-                    if i == 0 and value.group(1).strip():
-                        card_json["activity"] = value.group(1).replace('\\n', '\n')
+                    if i == 0:
+                        activities_str = value.group(1).replace('\\n', '\n')
+                        try:
+                            activities = json.loads(activities_str)
+                            if activities:
+                                card_json["activity"] = activities
+                        except:
+                            card_json["activity"] = activities_str
                     elif i == 1 and value.group(1).strip():
                         card_json["description"] = value.group(1).replace('\\n', '\n')
                     elif i == 2:
                         entities_str = value.group(1).replace('\\n', '\n')
-                        entities = json.loads(entities_str)
-                        if entities:
-                            card_json["entities"] = entities
-            if card_json["activity"] or card_json["description"] or card_json["entities"]:
-                result.append(card_json)
+                        try:
+                            entities = json.loads(entities_str)
+                            if entities:
+                                card_json["entities"] = entities
+                        except:
+                            card_json['entities'] = entities_str
+                    elif i == 3:
+                        titles_str = value.group(1).strip()
+                        titles_str = value.group(1).replace('\\n', '\n')
+                        titles_str = titles_str.replace('\\"', '"')  # Handle escaped quotes
+                        titles_str = titles_str.replace('\\\\', '\\')  # Handle escaped backslashes
+                        try:
+                            print(f"Parsing titles_str: {titles_str}")  # Log the titles_str
+                            titles = json.loads(titles_str)
+                            if titles:
+                                card_json["titles"] = titles
+                        except:
+                            card_json['titles'] = titles_str
+
+            if card_json["activity"] or card_json["description"] or card_json["entities"] or card_json["titles"]:
+                card_json_str = json.dumps(card_json, sort_keys=True)
+                if card_json_str not in unique_cards:
+                    unique_cards.add(card_json_str)
+                    result.append(card_json)
         return result
-    except:
-        return [{"activity": "Error", "description": "Error", "entities": ["Error"]}]
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {str(e)}")
+        return [{"activity": ["Error"], "description": "Error", "entities": ["Error"], "titles": ["Error"]}]
     
 def message_from_LLM_API(
-    initial_prompt, model_name, prompt, temperature, base_url, api_key, service
+    initial_prompt, model_name, prompt, temperature, base_url, api_key, service, max_tokens=200
 ):
     if service == "azure":
         headers = { "Content-Type": "application/json", "api-key": f"{api_key}" }
@@ -236,6 +265,7 @@ def message_from_LLM_API(
         ],
         temperature=temperature,
     )
+        print(chat_completion)
         return chat_completion.choices[0].message.content
     
 def get_category_cards(data, num_cards):
@@ -274,44 +304,50 @@ def get_titles_and_items_by_category(data, category):
 
     return titles, items
 
-def generate_results(slug, items, initial_prompt, input_service):
+def generate_results(slug, items, initial_prompt, input_service, max_tokens=100):
     cards_main = []
-    items_list = []
     prompt = ''
     for item in items:
         prompt += json.dumps({"title": item["title"], "domain": item["domain"]}) + "\n"
-        items_list.append({"title": item["title"], "url": item["url"], "id": item["id"]})
 
     num_tokens = len(prompt) // 4
     if num_tokens > 4000:
-        Exception 
+        return 
 
     bot_response = message_from_LLM_API(
             initial_prompt=initial_prompt,
-            model_name="gpt-4",
+            model_name="mistralai/Mixtral-8x7B-Instruct-v0.1",
             prompt=prompt,
             temperature=0.8,
             base_url=os.environ.get('OPEN_AI_BASE_URL'),
             api_key=os.environ.get('OPEN_AI_API_KEY'),
-            service=input_service
+            service=input_service,
+            max_tokens=max_tokens
         )
+    print(bot_response)
     if "choices" in bot_response and len(bot_response["choices"]) > 0 and "message" in bot_response["choices"][0] and "content" in bot_response["choices"][0]["message"]:
         response_text_json = convert_to_json(bot_response["choices"][0]["message"]["content"])
     else: 
         response_text_json = []
     
+    
     if len(response_text_json) > 0:
         for card_data in response_text_json:
+            items_list = []
+            for item in items:
+                if "titles" in card_data and any(word.lower() in item["title"].lower() for word in card_data["titles"]):
+                    items_list.append({"title": item["title"], "url": item["url"], "id": item["id"]})
+            
             card = {
-                "cardType": "DataCard",
-                "content": card_data["description"],
-                "metadata": card_data,
-                "tags": card_data["entities"],
-                "urls": items_list
-            }
+                    "cardType": "DataCard",
+                    "content": card_data["description"],
+                    "metadata": card_data,
+                    "tags": card_data["entities"],
+                    "urls": items_list
+                }
             pendingCard = PendingCard(slug, "DataCard", card_data["description"],
                                       card_data["entities"], items_list,
-                                      card_data, get_tags_from_category(items[0]["category"]))
+                                      card_data, get_tags_from_category(tags, items[0]["category"]))
             pendingCard.save()
             for item in items_list:
                 if delete_history(slug, item["id"]): #We protect user privacy by deleting history once we create pending cards
@@ -323,15 +359,30 @@ def generate_results(slug, items, initial_prompt, input_service):
 
     
 def create_card_from_llm(slug,data):
-    initial_prompt = """
-    Conversion of the above browsing history items into specific JSON. 
-    The JSON strictly conforms to this schema. 
-    {
-        "activity" : multiple possible verbs in past tense, 
-        "entities": array of one word extracted entities,
-        "description" : one or two sentences briefly describing possible motive and reason for activities, all verbs should be in past tense
-    }
-    """
+
+    initial_prompt_single_card = """
+        Pick one specific context from the history having at maximum 4 titles, ignore other items.   
+        The JSON strictly conforms to this schema. 
+        {
+            "activity" : [verbs], 
+            "entities": [nouns]
+            "description": "describe one-line motive, reason or interest of @{slug}"
+            "titles": [related titles to context]
+        }
+        Use past tense for verbs
+    """.format(slug)
+    
+    initial_prompt_multiple_card = """
+        The JSON object strictly conforms to this schema. 
+        {
+            "activity" : [verbs], 
+            "entities": [nouns]
+            "description": "describe one-line motive, reason or interest of @{slug}"
+            "titles": [related titles in this cluster]
+        }
+        Use past tense for verbs
+    """.format(slug)
+
     number_of_cards_category = get_category_cards(data, 15)
     print(number_of_cards_category)
     final_results = []
@@ -339,11 +390,11 @@ def create_card_from_llm(slug,data):
         if num_cards > 0:
             if num_cards == 1:
                 titles, items = get_titles_and_items_by_category(data, category=category)
-                res = generate_results(slug, items, initial_prompt, 'azure')
+                res = generate_results(slug, items, initial_prompt_single_card, 'azure', 200)
                 final_results.append(res)
             if num_cards >= 2:
+                initial_prompt_multiple_card += "Create {} clusters based on specific context from given titles, for EACH cluster create a JSON object".format(str(num_cards))
                 titles, items = get_titles_and_items_by_category(data, category=category)
-                initial_prompt += "Create {} clusters based on context, for each cluster create a card in this format,".format(num_cards)
-                res = generate_results(slug, items, initial_prompt, 'azure')
+                res = generate_results(slug, items, initial_prompt_multiple_card, 'azure', 200*num_cards)
                 final_results.append(res)
     return final_results
