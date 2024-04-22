@@ -15,7 +15,7 @@ card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PublishedCard():
     def __init__(self, slug, type, content="",
-                 tags=[], urls=[], metadata={}, minted=False,  timestamp = int(datetime.now().timestamp())):
+                 tags=[], urls=[], metadata={}, category="Miscellaneous",  timestamp = int(datetime.now().timestamp()), minted=False):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
@@ -24,6 +24,7 @@ class PublishedCard():
         assert isinstance(urls, list)
         assert isinstance(metadata, dict)
         assert isinstance(minted, bool)
+        assert isinstance(category, str)
         
         self.document = {
             'slug': slug,
@@ -33,7 +34,8 @@ class PublishedCard():
             'tags': tags,
             'urls': urls,
             'metadata': metadata,
-            'minted': minted
+            'minted': minted,
+            'category': category
         }
         
     def save(self):
@@ -41,10 +43,13 @@ class PublishedCard():
             return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
         db.published_cards.insert_one(self.document)
 
-def get_published_card(slug):
+def get_published_card(slug, object_id=None):
     pipeline = [
-        {"$match": {"slug": slug}}
+        {"$match": {"slug": slug}},
+        {"$sort": {"timestamp": -1}}
     ]
+    if object_id:  # If object_ids are provided, add match on object_ids
+        pipeline[0]["$match"]["_id"] = object_id
     cards = list(db.published_cards.aggregate(pipeline))
     result = []
     for card in cards:
@@ -52,7 +57,7 @@ def get_published_card(slug):
             "id": str(card['_id']),
             "date": format_datetime(card['timestamp']),
             "cardType": card['type'],
-            "category": "",  # You can add category logic here
+            "category": card['category'],  # You can add category logic here
             "content": card['content'],
             "metadata": card['metadata'],
             "tags": card['tags'],
@@ -62,12 +67,26 @@ def get_published_card(slug):
         result.append(card_data)
     return result
 
-def delete_published_card(slug, ids):
-    result = db.published_cards.delete_many({'_id': {'$in': ids}, 'slug': slug})
-    if result.deleted_count > 0:
-        return jsonify({'message': f'{result.deleted_count} card(s) belonging to user {slug} deleted successfully'}), 200
+def delete_published_card(slug, id):
+    if not get_published_card(slug, id)[0]['minted']:
+        result = db.published_cards.delete_one({'_id': id, 'slug': slug})
+        if result.deleted_count == 1:
+            return jsonify({'message': f'Card deleted successfully for {slug}'}), 200
+        else:
+            return jsonify({'message': f'Card not found or already deleted for {slug}'}), 404
     else:
-        return jsonify({'error': f'No cards found with the provided IDs for user {slug}'}), 404
+        return jsonify({'error': f'card already minted by {slug}'}), 404
+    
+def mint_cards(slug):
+    cards = db.published_cards.find({'slug': slug, 'minted': False})
+
+    if cards:
+        for card in cards:
+            # Update the minted field to true
+            db.published_cards.update_one({'_id': card['_id']}, {'$set': {'minted': True}})
+        return (f"Minted field updated to true for all cards of user '{slug}'")
+    else:
+        return (f"No unpublished cards found for user '{slug}'")
 
 def format_datetime(dt):
     return datetime.utcfromtimestamp(dt).strftime("%d %b %Y")

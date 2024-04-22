@@ -16,8 +16,8 @@ db = client.get_database(db_name)
 card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
 
 class PendingCard():
-    def __init__(self, slug, timestamp, type, content="",
-                 tags=[], urls=[], metadata={}):
+    def __init__(self, slug, type, content="",
+                 tags=[], urls=[], metadata={}, category="Miscellaneous", timestamp=int(datetime.now().timestamp())):
         assert isinstance(slug, str)
         assert isinstance(timestamp, int)
         assert isinstance(type, str)
@@ -25,6 +25,7 @@ class PendingCard():
         assert isinstance(tags, list)
         assert isinstance(urls, list)
         assert isinstance(metadata, dict)
+        assert isinstance(category, str)
         
         self.document = {
             'slug': slug,
@@ -33,29 +34,30 @@ class PendingCard():
             'content': content,
             'tags': tags,
             'urls': urls,
-            'metadata': metadata
+            'metadata': metadata,
+            'category': category
         }
         
     def save(self):
-        self.document['timestamp'] = self.document.get('timestamp') or int(datetime.now().timestamp())
         if self.document['type'] not in card_types:
             return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
         db.pending_cards.insert_one(self.document)
 
-def get_pending_card(slug, object_ids=None):
+def get_pending_card(slug, object_id=None):
     pipeline = [
-        {"$match": {"slug": slug}}
+        {"$match": {"slug": slug}},
+        {"$sort": {"timestamp": -1}}
     ]
-    if object_ids:  # If object_ids are provided, add match on object_ids
-        pipeline[0]["$match"]["_id"] = {"$in": object_ids}
+    if object_id:  # If object_ids are provided, add match on object_ids
+        pipeline[0]["$match"]["_id"] = object_id
     cards = list(db.pending_cards.aggregate(pipeline))
     result = []
     for card in cards:
         card_data = {
             "id": str(card['_id']),
-            "date": format_datetime(card['timestamp']),
+            "date": card['timestamp'],
             "cardType": card['type'],
-            "category": "",  # You can add category logic here
+            "category": card['category'],  
             "tags": card['tags'],
             "urls": card['urls'],
             "content": card['content'],
@@ -64,12 +66,10 @@ def get_pending_card(slug, object_ids=None):
         result.append(card_data)
     return result
 
-def delete_pending_card(slug, ids):
-    result = db.pending_cards.delete_many({'_id': {'$in': ids}, 'slug': slug})
-    if result.deleted_count > 0:
-        return jsonify({'message': f'{result.deleted_count} card(s) belonging to user {slug} deleted successfully'}), 200
+def delete_pending_card(slug, id):
+    result = db.pending_cards.delete_one({'_id': id, 'slug': slug})
+    if result.deleted_count == 1:
+        return jsonify({'message': f'Card deleted successfully for {slug}'}), 200
     else:
-        return jsonify({'error': f'No cards found with the provided IDs for user {slug}'}), 404
+        return jsonify({'message': f'Card not found or already deleted for {slug}'}), 404
 
-def format_datetime(dt):
-    return datetime.utcfromtimestamp(dt).strftime("%d %b %Y")

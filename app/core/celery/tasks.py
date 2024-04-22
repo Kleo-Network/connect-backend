@@ -1,65 +1,16 @@
-from ..modules.history import single_url_request
-from ..modules.graph_data import *
+from ..modules.history import create_pending_cards
 from ..controllers.history import *
 from ..models.history import *
 from ..models.user import *
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
-import time
+from time import sleep
 from urllib.parse import urlparse
 import json
 from decimal import Decimal
-
-@shared_task(name='task.print', base=AbortableTask)
-def print_task():
-    print("please print it")
-
-@shared_task(name='tasks.process_graph_data', base=AbortableTask)
-def process_graph_data(params=None):
-    if params is None:
-        user_details = get_user_unprocessed_graph()
-        user_id = user_details["id"]
-        user = get_process_graph_previous_history(user_id)
-        if user["process_graph"] == False and user["process_graph_previous_history"] == True:
-            process_items(user_id)
-            update_user_processed(user_id, True)
-        if user["process_graph_previous_history"] == False:
-            for counter in range(0, 90):
-                process_items_for_graph_fn.delay(user_id, counter)
-            update_user_processed_previous_history(user_id, True)
-    elif "signup" in params and "user_id" in params:
-        user_id = params["user_id"]
-        signup = params["signup"]
-        date = params["date"]
-        if user_id is not None and signup is True:
-            process_items(user_id)
-            for index in range(1, counter):
-                process_items_for_graph_fn.delay(user_id, date)
-            
-        
-
-@shared_task(name='tasks.update_new_history')
-def update_new_history_graph_data():
-    mark_as_unproccssed('process_graph')
-
-@shared_task(name='tasks.process_previous_history')
-def upload_history_next_two_days(task_results,slug):
-    user = find_by_slug(slug)
-    process_date_timestamp = task_results[0]
-    print(process_date_timestamp)
-    process_date = datetime.utcfromtimestamp(process_date_timestamp)
-    current_date = datetime.utcnow()
-    difference = (current_date - process_date).days
-    print(difference)
-    if difference > 2:
-        print("more than 2 days difference.")
-    
-
-@shared_task(name='tasks.process_items_for_graph',base=AbortableTask)
-def process_items_for_graph_fn(user, date):
-    process_items(user, date)
-
+from datetime import datetime, timedelta, timezone
+from pymongo.errors import ServerSelectionTimeoutError
 
 
 # create a task to take json and send it for training. 
@@ -70,22 +21,76 @@ def categorize_history(self, data):
     
     print(f"chunk:{chunk}\nslug: {slug}\n")
     for item in chunk:
-        print(item)
         domain = urlparse(item["url"]).netloc
-        domain_data = domain_exists_or_insert(domain)
-        history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"])
-        print("view",history)
-        history.save()
+        if domain is not None:
+            domain_data = domain_exists_or_insert(domain)
+            history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], int(item['lastVisitTime']))       
+            history.save()
         
     if self.is_aborted():
         return 'Aborted'
     last_processed_timestamp = datetime.now().timestamp()
     return last_processed_timestamp
+    
+######################### pending card creation celery task ###############################
+        
+@shared_task(bind=True, base=AbortableTask)
+def create_pending_card(self, slug):
+    user = find_by_slug(slug)
+    if user:
+        last_published_at = user['last_cards_marked']
+        time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
 
-@shared_task(name='tasks.process_pinned_graph_data', base=AbortableTask)
-def process_pinned_graph_data(user,domain):
-    process_items_pinned_data(user,domain)
+        if time_difference_days <= 4:
+            max_delay = 30
+            delay = 5
+            while delay <= max_delay:
+                try:
+                    if get_history_count(slug) > 15:
+                        create_pending_cards(slug)
+                        next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
+                        create_pending_card.apply_async([slug], eta=next_execution)
+                        return
+                    else:
+                        sleep(delay)
+                        delay += 5
+                except ServerSelectionTimeoutError:
+                    print("MongoDB connection timeout error occurred.")
+                    break
 
+            # If delay is 30 seconds and no history items are found
+            if delay > max_delay:
+                next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
+                create_pending_card.apply_async([slug], eta=next_execution)
+                return
+            else:
+                self.abort()
+        else:
+            print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")
+    else:
+        print(f"User with slug {slug} not found.")
+        
+@shared_task(bind=True, base=AbortableTask)
+def force_create_pending_cards(self, slug):
+    user = find_by_slug(slug)
+    if user:
+        max_delay = 30
+        delay = 5
+        while delay <= max_delay:
+            try:
+                if get_history_count(slug) > 15:
+                    create_pending_cards(slug)
+                    return
+                else:
+                    sleep(delay)
+                    delay += 5
+            except ServerSelectionTimeoutError:
+                print("MongoDB connection timeout error occurred.")
+                break
+    else:
+        print(f"User with slug {slug} not found.")   
+        
+        
 # @shared_task(base=AbortableTask)
 # def process_pinned_domain_items_for_graph(user, domain):
 #     process_items_pinned_data(user, domain)

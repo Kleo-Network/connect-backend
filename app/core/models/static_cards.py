@@ -2,6 +2,7 @@ from datetime import datetime
 from flask import jsonify
 import pymongo
 import os
+from bson.objectid import ObjectId
 
 # MongoDB connection URI
 mongo_uri = os.environ.get("DB_URL")
@@ -32,8 +33,9 @@ class StaticCards():
             return {"error": f"Invalid card type. Allowed types: {', '.join(card_types)}"}
         existing_card = find_static_cards_by_slug(self.document['slug'], self.document['type'])
         if existing_card:
-            return
-        db.static_cards.insert_one(self.document)
+            update_static_card(self.document['slug'], self.document['type'], self.document['metadata'], existing_card['_id'])
+        else:
+            db.static_cards.insert_one(self.document)
 
 def get_static_card(slug):
     pipeline = [
@@ -51,15 +53,19 @@ def get_static_card(slug):
         result.append(card_data)
     return result
 
-def update_static_card(slug, type, metadata):
+def update_static_card(slug, type, metadata, card_id = None):
     try:
         filter_query = {"slug": slug, "type": type}
+        if card_id:
+            filter_query["_id"]= ObjectId(card_id)
+        print(filter_query)
         update_operation = {
             "$set": {
-                "metadata": metadata
+                "metadata": metadata,
+                "last_connected": int(datetime.now().timestamp())
             }
         }
-        user_of_db = db.static_cards.find_one_and_update(filter_query, update_operation, projection={"_id": 0}, return_document = pymongo.ReturnDocument.AFTER)
+        user_of_db = db.static_cards.find_one_and_update(filter_query, update_operation, projection={"_id": {"$toString": "$_id"}}, return_document = pymongo.ReturnDocument.AFTER)
         return user_of_db
 
     # TODO: Error Handling
@@ -89,7 +95,7 @@ def find_static_cards_by_slug(slug, type):
             },
             {
                 "$project": {
-                    "_id": 0  # Exclude the _id field
+                "_id": {"$toString": "$_id"}
                 }
             }
         ]

@@ -1,10 +1,9 @@
 from flask import Blueprint, current_app, request, jsonify
-from ..controllers.user import *
+from app.core.celery.tasks import force_create_pending_cards
+from ..controllers.history import *
 from werkzeug.local import LocalProxy
-from ..controllers.user import * 
 core = Blueprint('core', __name__)
 from .auth_views import *
-from ..controllers.checks import * 
 from ..models.pending_cards import *
 from ..models.published_cards import *
 from ..models.static_cards import *
@@ -13,9 +12,15 @@ from bson.objectid import ObjectId
 logger = LocalProxy(lambda: current_app.logger)
 
 @core.route('/pending/<string:slug>', methods=["GET"])
-def get_pending_cards(slug):
+@token_required
+def get_pending_cards(slug,**kwargs):
     if not all([slug]):
         return jsonify({"error": "Missing required parameters"}), 400
+    
+    address = find_by_address_slug(slug)
+    address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+    if not check_user_authenticity(address, address_from_token):
+        return jsonify({"error": "user is not authorised"}), 401
             
     response = get_pending_card(slug)
     return jsonify(response), 200
@@ -24,23 +29,28 @@ def get_pending_cards(slug):
 @token_required
 def delete_pending_cards(slug,**kwargs):
     data = request.get_json()
-    ids_of_card = data.get("ids")
-    if not all([slug, ids_of_card]):
+    id = data.get("id")
+    if not all([slug, id]):
         return jsonify({"error": "Missing required parameters"}), 400
     
-    address = find_by_slug(slug)['address']
+    address = find_by_address_slug(slug)
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):
         return jsonify({"error": "user is not authorised"}), 401
     
-    ids = [ObjectId(id) for id in ids_of_card]
-    result = delete_pending_card(slug, ids)
+    result = delete_pending_card(slug, ObjectId(id))
     return result
 
 @core.route('/published/<string:slug>', methods=["GET"])
-def get_published_cards(slug):
+@token_required
+def get_published_cards(slug,**kwargs):
     if not all([slug]):
         return jsonify({"error": "Missing required parameters"}), 400
+    
+    address = find_by_address_slug(slug)
+    address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+    if not check_user_authenticity(address, address_from_token):
+        return jsonify({"error": "user is not authorised"}), 401
     
     response = get_published_card(slug)
     return jsonify(response), 200
@@ -49,81 +59,118 @@ def get_published_cards(slug):
 @token_required
 def delete_published_cards(slug, **kwargs):
     data = request.get_json()
-    ids_of_card = data.get("ids")
-    if not all([slug, ids_of_card]):
+    id = data.get("id")
+    if not all([slug, id]):
         return jsonify({"error": "Missing required parameters"}), 400
     
-    address = find_by_slug(slug)['address']
+    address = find_by_address_slug(slug)
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):
         return jsonify({"error": "user is not authorised"}), 401
     
-    ids = [ObjectId(id) for id in ids_of_card]
-    result = delete_published_card(slug, ids)
+    result = delete_published_card(slug, ObjectId(id))
     return result
 
-@core.route('/published/<string:slug>', methods=["PUT"])
+@core.route('/published/<string:slug>', methods=["POST"])
 @token_required
 def populate_published_card(slug, **kwargs):
     try:
         data = request.get_json()
-        ids_of_card = data.get("ids")
-        minted = data.get("minted", False)
-        if not all([slug, ids_of_card]):
+        id = data.get("id")
+        is_publish_card = data.get("isPublishCard", False)
+        if not all([slug, id]):
             return jsonify({"error": "Missing required parameters"}), 400
         
-        user = find_by_slug(slug)
-        if not user:
+        address = find_by_address_slug(slug)
+        if not address:
             return jsonify({"error": "user is not found"}), 401
-        address = user['address']
         address_from_token = kwargs.get('user_data')['payload']['publicAddress']
         if not check_user_authenticity(address, address_from_token):
             return jsonify({"error": "user is not authorised"}), 401
         
-        ids = [ObjectId(id) for id in ids_of_card]
-        tobe_published_card = get_pending_card(slug, ids)
+        tobe_published_cards = get_pending_card(slug, ObjectId(id))
         
-        if not tobe_published_card:
+        if not tobe_published_cards:
             return jsonify({"message": f"No pending card found for {slug}"})
         
-        for card in tobe_published_card:
-            published_card = PublishedCard(slug, card['cardType'], card['content'], card['tags'], card['urls'], card['metadata'], minted)
+        tobe_published_card = tobe_published_cards[0]
+        
+        if is_publish_card:
+            published_card = PublishedCard(slug, tobe_published_card['cardType'], tobe_published_card['content'], tobe_published_card['tags'], tobe_published_card['urls'], tobe_published_card['metadata'], tobe_published_card['category'], tobe_published_card['date'])
             published_card.save()
+        delete = delete_pending_card(slug,ObjectId(id)) #We protect user privacy by deleting pending cards once we create published cards
+        update_last_cards_marked(slug)
         
         return jsonify({"message": f"published card for {slug}"}), 200
     
     except Exception as e:
         print(e)
         return jsonify({"error": "error while creating published card"}), 500
+    
+@core.route('/mint/published/<string:slug>', methods=["PUT"])
+@token_required
+def mint_published_card(slug, **kwargs):
+    try:
+        address = find_by_address_slug(slug)
+        if not address:
+            return jsonify({"error": "user is not found"}), 401
+        address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+        if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+        
+        result = mint_cards(slug)
+        update_last_attested(slug)
+        return jsonify({'message': result}), 200
+        
+        
+    except Exception as e:
+        print(e)
+        return jsonify({"error": f"error while marking published card as minted for {slug}"}), 500
 
-@core.route('/static/<string:address>', methods=["GET"])
-def get_static_cards(address):
-    if not all([address]):
+@core.route('/static/<string:slug>', methods=["GET"])
+@token_required
+def get_static_cards(slug,**kwargs):
+    if not all([slug]):
         return jsonify({"error": "Missing required parameters"}), 400
     
-    response = get_static_card(address)
+    address = find_by_address_slug(slug)
+    if not address:
+        return jsonify({"error": "user is not found"}), 401
+    address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+    if not check_user_authenticity(address, address_from_token):
+        return jsonify({"error": "user is not authorised"}), 401
+    
+    response = get_static_card(slug)
     return jsonify(response), 200
 
 @core.route('/static/<string:slug>', methods=['POST'])
-def create_static_cards(slug):
+@token_required
+def create_static_cards(slug,**kwargs):
     try:
         # Get JSON data from request body
         data = request.get_json()
-        cards_data = data.get("cards")
+        cards_data = data.get("card")
         
         if not all([slug, cards_data]):
             return jsonify({"error": "Missing required parameters"}), 400
         
-        if not isinstance(cards_data, list):
-            return jsonify({"error": "Invalid JSON data. Expected a list of objects."}), 400
+        if not isinstance(cards_data, dict):
+            return jsonify({"error": "Invalid JSON data."}), 400
         
-        for card in cards_data:
-            type = card.get('type')
-            metadata = card.get('metadata', {})
-            
-            # Create StaticCards instance and save to database
-            static_card = StaticCards(slug, type, int(datetime.now().timestamp()), metadata)
-            static_card.save()
+        address = find_by_address_slug(slug)
+        if not address:
+            return jsonify({"error": "user is not found"}), 401
+        address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+        if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+        print(cards_data)
+        type = cards_data.get('type')
+        metadata = cards_data.get('metadata', {})
+        print(metadata)
+        
+        # Create StaticCards instance and save to database
+        static_card = StaticCards(slug, type, int(datetime.now().timestamp()), metadata)
+        static_card.save()
         
         return jsonify({"message": "All documents saved successfully"}), 201
     
@@ -132,7 +179,8 @@ def create_static_cards(slug):
         return jsonify({"error": "error while creating static card"}), 500
     
 @core.route('/static/<string:slug>', methods=['PUT'])
-def update_static_cards(slug):
+@token_required
+def update_static_cards(slug, **kwargs):
     try:
         data = request.get_json()
         type = data.get("type")
@@ -141,9 +189,27 @@ def update_static_cards(slug):
         if not all([slug, type, metadata]):
             return jsonify({"error": "Missing required parameters"}), 400
         
+        address = find_by_address_slug(slug)
+        if not address:
+            return jsonify({"error": "user is not found"}), 401
+        address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+        if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+        
         response = update_static_card(slug, type, metadata)
         return jsonify(response), 200
         
     except Exception as e:
         print(e)
         return jsonify({"error": str(e)}), 500
+    
+@core.route('/update-cards', methods=["POST"])
+def update_cards():
+    data = request.get_json()
+    slug = data.get('slug')
+    password = data.get('password')
+    if(password == os.environ.get("PASSWORD")):
+        force_create_pending_cards.delay(slug)
+        return jsonify({"message": "card created for the user"}), 200
+    else:
+        return jsonify({"error": "Please provide correct password"}), 500
