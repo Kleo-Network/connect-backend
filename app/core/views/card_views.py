@@ -1,11 +1,9 @@
 from flask import Blueprint, current_app, request, jsonify
-from app.core.celery.tasks import create_pending_card
-from ..controllers.user import *
+from app.core.celery.tasks import force_create_pending_cards
+from ..controllers.history import *
 from werkzeug.local import LocalProxy
-from ..controllers.user import * 
 core = Blueprint('core', __name__)
 from .auth_views import *
-from ..controllers.checks import * 
 from ..models.pending_cards import *
 from ..models.published_cards import *
 from ..models.static_cards import *
@@ -211,7 +209,7 @@ def update_cards():
     slug = data.get('slug')
     password = data.get('password')
     if(password == os.environ.get("PASSWORD")):
-        create_pending_card.delay(slug)
+        force_create_pending_cards.delay(slug)
         return jsonify({"message": "card created for the user"}), 200
     else:
         return jsonify({"error": "Please provide correct password"}), 500

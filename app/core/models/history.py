@@ -88,3 +88,7 @@ def delete_history(slug, id):
         return True
     else:
         return False
+
+def get_history_count(slug):
+    count = db.history.count_documents({'slug': slug})
+    return count

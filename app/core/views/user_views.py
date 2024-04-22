@@ -1,19 +1,16 @@
 from flask import Blueprint, current_app, request, jsonify, url_for
 from app.core.models.static_cards import get_static_card
 from app.core.modules.auth import get_jwt_token
-from ..controllers.user import *
 from werkzeug.local import LocalProxy
-from ..controllers.user import * 
 core = Blueprint('core', __name__)
 from .auth_views import *
-from ..controllers.checks import * 
 from ..models.user import *
 from ..models.published_cards import get_published_card
 from ..celery.tasks import create_pending_card
 import os
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-
+from app.core.controllers.history import * 
 logger = LocalProxy(lambda: current_app.logger)
 
 @core.route('/get-user/<string:slug>', methods=["GET"])
@@ -49,7 +46,6 @@ def create_user():
     response['email'] = user_info_from_googgle['email']
     response['token'] = get_jwt_token(slug,user_info_from_googgle['email'])
     if signup:
-        print("check if started?")
         create_pending_card.delay(slug)
     if not response:
         return jsonify({"404": "User is not created"}),404
@@ -116,7 +112,7 @@ def get_user_and_card_detail(slug):
         "user": user,
         "published_cards": cards,
         "static_cards": static_cards
-    }
+    }   
     return jsonify(response), 200
 
 @core.route('/check_slug', methods=['GET'])
@@ -130,20 +126,6 @@ def check_slug():
     else:
         return jsonify({'result': True}), 200
 
-@core.route('/set_privacy', methods=["POST"])
-def set_user_privacy():
-    data = request.json
-    user_id = data.get("user_id")
-    privacy_settings = data.get("privacy")
 
-    if not user_id or not privacy_settings:
-        return jsonify({'error': 'Missing user_id or privacy settings'}), 400
-
-    try:
-        update_user_privacy(user_id, privacy_settings)
-        return jsonify({'message': 'Privacy settings updated successfully'}), 200
-    except Exception as e:
-        print(f"Error updating privacy settings: {e}")
-        return jsonify({'error': 'Failed to update privacy settings'}), 500
 
        

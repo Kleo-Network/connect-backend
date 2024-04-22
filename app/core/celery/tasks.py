@@ -1,16 +1,17 @@
 from ..modules.history import create_pending_cards
-from ..modules.graph_data import *
 from ..controllers.history import *
 from ..models.history import *
 from ..models.user import *
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
-import time
+from time import sleep
 from urllib.parse import urlparse
 import json
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
+from pymongo.errors import ServerSelectionTimeoutError
+
 
 # create a task to take json and send it for training. 
 @shared_task(bind=True, base=AbortableTask)
@@ -34,18 +35,60 @@ def categorize_history(self, data):
 ######################### pending card creation celery task ###############################
         
 @shared_task(bind=True, base=AbortableTask)
-def create_pending_card(self, user_slug):
-    user = find_by_slug(user_slug)
-    if user:    
+def create_pending_card(self, slug):
+    user = find_by_slug(slug)
+    if user:
         last_published_at = user['last_cards_marked']
         time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
-        #if time_difference_days < 4:
-        create_pending_cards(user_slug)
+
+        if time_difference_days <= 4:
+            max_delay = 30
+            delay = 5
+            while delay <= max_delay:
+                try:
+                    if get_history_count(slug) > 15:
+                        create_pending_cards(slug)
+                        next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
+                        create_pending_card.apply_async([slug], eta=next_execution)
+                        return
+                    else:
+                        sleep(delay)
+                        delay += 5
+                except ServerSelectionTimeoutError:
+                    print("MongoDB connection timeout error occurred.")
+                    break
+
+            # If delay is 30 seconds and no history items are found
+            if delay > max_delay:
+                next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
+                create_pending_card.apply_async([slug], eta=next_execution)
+                return
+            else:
+                self.abort()
+        else:
+            print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")
+    else:
+        print(f"User with slug {slug} not found.")
         
-        next_execution = datetime.now(timezone.utc) + timedelta(minutes=30)
-        create_pending_card.apply_async([user_slug], eta=next_execution)
-        
-    
+@shared_task(bind=True, base=AbortableTask)
+def force_create_pending_cards(self, slug):
+    user = find_by_slug(slug)
+    if user:
+        max_delay = 30
+        delay = 5
+        while delay <= max_delay:
+            try:
+                if get_history_count(slug) > 15:
+                    create_pending_cards(slug)
+                    return
+                else:
+                    sleep(delay)
+                    delay += 5
+            except ServerSelectionTimeoutError:
+                print("MongoDB connection timeout error occurred.")
+                break
+    else:
+        print(f"User with slug {slug} not found.")   
         
         
 # @shared_task(base=AbortableTask)

@@ -12,6 +12,7 @@ import openai
 import random
 import os
 
+
 categories_to_exclude = [
     "Abortion", "Alcohol", "Marijuana", "Nudity and Risque", "Other Adult Materials",
     "Pornography", "Tobacco", "Weapons (Sales)", "Child Sexual Abuse", "Discrimination",
@@ -126,24 +127,43 @@ def clean_item(item):
 
 def get_category(raw_resp):
     try:
-        soup = bs(raw_resp.text)
+        soup = bs(raw_resp.text, 'html.parser')
         result = soup.find("div", {"id": "webfilter-result"})
-        paragraph = result.select_one("div > p").getText()
+        if result is None:
+            raise ValueError("Could not find the 'webfilter-result' div in the response.")
+        paragraph = result.select_one("div > p")
+        if paragraph is None:
+            raise ValueError("Could not find the paragraph element within the 'webfilter-result' div.")
         main_result = result.find("h4", {"class": "info_title"})
-        category_description = paragraph.split("Group:")[0].strip()
-        category_group = paragraph.split("Group:")[1].strip()
+        if main_result is None:
+            raise ValueError("Could not find the 'info_title' element within the 'webfilter-result' div.")
+        category_description = paragraph.getText().split("Group:")[0].strip()
+        category_group = paragraph.getText().split("Group:")[1].strip()
         category = main_result.getText().split("Category:")[1].strip()
         return category_group, category_description, category
-    except:
+    except (AttributeError, IndexError) as e:
+        print(f"Error occurred while parsing the response: {str(e)}")
+        return "Other", "Unknown", "Other"
+    except ValueError as e:
+        print(str(e))
+        return "Other", "Unknown", "Other"
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
         return "Other", "Unknown", "Other"
 
 
 def single_url_request(domain):
-    url = "https://www.fortiguard.com/webfilter"
-    
-    payload = {'url': domain}
-    response = requests.request("POST", url, headers={}, data=payload, files=[])
-    return get_category(response)
+    try:
+        url = "https://www.fortiguard.com/webfilter"
+        payload = {'url': domain}
+        response = requests.request("POST", url, headers={}, data=payload, files=[])
+        return get_category(response)
+    except requests.exceptions.RequestException as e:
+        print(f"Error occurred while making request to {url}: {str(e)}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+        return None
 
 def create_pending_cards(slug):
     history_from_db = get_history_item(slug)
@@ -363,25 +383,25 @@ def create_card_from_llm(slug,data):
     initial_prompt_single_card = """
         Pick one specific context from the history having at maximum 4 titles, ignore other items.   
         The JSON strictly conforms to this schema. 
-        {
+        {{
             "activity" : [verbs], 
             "entities": [nouns]
             "description": "describe one-line motive, reason or interest of @{slug}"
             "titles": [related titles to context]
-        }
+        }}
         Use past tense for verbs
-    """.format(slug)
+    """.format(slug=slug)
     
     initial_prompt_multiple_card = """
         The JSON object strictly conforms to this schema. 
-        {
+        {{
             "activity" : [verbs], 
             "entities": [nouns]
             "description": "describe one-line motive, reason or interest of @{slug}"
             "titles": [related titles in this cluster]
-        }
+        }}
         Use past tense for verbs
-    """.format(slug)
+    """.format(slug=slug)
 
     number_of_cards_category = get_category_cards(data, 15)
     print(number_of_cards_category)

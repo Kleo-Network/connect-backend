@@ -1,12 +1,12 @@
 from flask import Blueprint, current_app, request
 from ..controllers.history import *
 from werkzeug.local import LocalProxy
-from ..controllers.graph import *
 from ..celery.tasks import *
 from math import ceil
 from celery import chord
 from .auth_views import token_required
-from ..controllers.checks import *
+from flask import jsonify
+
 core = Blueprint('core', __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
