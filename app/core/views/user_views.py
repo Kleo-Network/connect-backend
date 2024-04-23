@@ -58,8 +58,12 @@ def create_user():
     else:
         # Case 3: User does not exist and signup is false
         user = find_by_slug(slug)
-        if not user:
+        if user is None:
             return jsonify({"message": "Please sign up"}), 200
+        else:
+            response = user.to_dict()
+            response['token'] = get_jwt_token(user.slug, user.email)
+            return response, 200
         
 
 
