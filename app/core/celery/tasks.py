@@ -38,6 +38,10 @@ def categorize_history(self, data):
 def create_pending_card(self, slug):
     user = find_by_slug(slug)
     if user:
+        first_time_user = user["first_time_user"]
+        if first_time_user:
+            sleep(30)
+            set_signup_upload_by_slug(slug)
         last_published_at = user['last_cards_marked']
         time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
 

@@ -30,27 +30,38 @@ def create_user():
     code = data.get('code')
 
     # Get user info from the token
-    user_info_from_googgle = id_token.verify_oauth2_token(
-        code,
-        google_requests.Request(),
-        os.environ.get("GOOGLE_CLIENT_ID")
+    user_info_from_google = id_token.verify_oauth2_token(
+        code, google_requests.Request(), os.environ.get("GOOGLE_CLIENT_ID")
     )
 
-    if not all([code, stage is not None, user_info_from_googgle]):
+    if not all([code, stage is not None, user_info_from_google]):
         return jsonify({"error": "Missing required parameters"}), 400
+
     
-    user = User(user_info_from_googgle['email'], slug, stage, user_info_from_googgle['name'], user_info_from_googgle['picture'])
-    response = user.save(signup)
-    if slug == '':
-        slug = response['slug']
-    response['email'] = user_info_from_googgle['email']
-    response['token'] = get_jwt_token(slug,user_info_from_googgle['email'])
+
     if signup:
-        create_pending_card.delay(slug)
-    if not response:
-        return jsonify({"404": "User is not created"}),404
+        user = find_by_slug(slug)
+        if user:
+        # Case 1: User exists during signup 
+            response = user.to_dict()
+            response['token'] = get_jwt_token(user.slug, user.email)
+            return response, 200
+        elif not user:
+            user = User(user_info_from_google['email'], slug, stage, user_info_from_google['name'], user_info_from_google['picture'])
+            response = user.save(signup)
+            if slug == '':
+                slug = response['slug']
+            response['email'] = user_info_from_google['email']
+            response['token'] = get_jwt_token(slug, user_info_from_google['email'])
+            create_pending_card.delay(slug)
+            return response, 200
     else:
-        return response, 200
+        # Case 3: User does not exist and signup is false
+        user = find_by_slug(slug)
+        if not user:
+            return jsonify({"message": "Please sign up"}), 200
+        
+
 
 @core.route('/update-user/<string:slug>', methods=["PUT"])
 @token_required
