@@ -40,12 +40,10 @@ def create_user():
     
 
     if signup:
-        user = find_by_slug(slug)
+        user = find_by_address(user_info_from_google['email'])
         if user:
-        # Case 1: User exists during signup 
-            response = user.to_dict()
-            response['token'] = get_jwt_token(user.slug, user.email)
-            return response, 200
+            user['token'] = get_jwt_token(user['slug'], user_info_from_google['email'])
+            return user, 200
         elif not user:
             user = User(user_info_from_google['email'], slug, stage, user_info_from_google['name'], user_info_from_google['picture'])
             response = user.save(signup)
@@ -57,13 +55,13 @@ def create_user():
             return response, 200
     else:
         # Case 3: User does not exist and signup is false
-        user = find_by_slug(slug)
+        user = find_by_address(user_info_from_google['email'])
+        print(user)
         if user is None:
             return jsonify({"message": "Please sign up"}), 200
         else:
-            response = user.to_dict()
-            response['token'] = get_jwt_token(user.slug, user.email)
-            return response, 200
+            user['token'] = get_jwt_token(user['slug'], user_info_from_google['email'])
+            return user, 200
         
 
 
