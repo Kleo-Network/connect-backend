@@ -16,7 +16,7 @@ user_collection = db['users']
 class User:
     def __init__(self, address, slug, stage, name="", pfp="", verified=False, last_cards_marked=0,
                  about="", content_tags=[], last_attested=0,
-                 identity_tags=[], badges=[], profile_metadata={}, settings={}):
+                 identity_tags=[], badges=[], profile_metadata={}, settings={},first_time_user=True):
         
         assert isinstance(address, str)
         assert isinstance(slug, str)
@@ -32,6 +32,7 @@ class User:
         assert isinstance(badges, list)
         assert isinstance(profile_metadata, dict)
         assert isinstance(settings, dict)
+        assert isinstance(first_time_user, bool)
         
         self.document = {
             'address': address,
@@ -47,7 +48,8 @@ class User:
             'identity_tags': identity_tags,
             'badges': badges,
             'profile_metadata': profile_metadata,
-            'settings': settings # to store data of the static cards
+            'settings': settings,
+            'first_time_user': first_time_user
         }
 
     def save(self, signup):
@@ -64,7 +66,25 @@ class User:
             user_collection.insert_one(self.document)
             return find_by_slug(self.document['slug'])
         return {}
-        
+
+def set_signup_upload_by_slug(slug):
+    try:
+        filter_query = {"slug": slug}
+        update_operation = {
+            "$set": {
+                "first_time_user": False
+            }
+        }
+        user_of_db = db.users.find_one_and_update(filter_query, update_operation, projection={"_id": 0}, return_document=pymongo.ReturnDocument.AFTER)
+        return user_of_db
+
+    except (StopIteration) as _:
+        return None
+
+    except Exception as e:
+        print(e)
+        return {}
+            
 def find_by_slug(slug):
     try:
         pipeline = [

@@ -47,7 +47,6 @@ def create_user():
             response['token'] = get_jwt_token(user.slug, user.email)
             return response, 200
         elif not user:
-        # Case 2: User does not exists during signup 
             user = User(user_info_from_google['email'], slug, stage, user_info_from_google['name'], user_info_from_google['picture'])
             response = user.save(signup)
             if slug == '':
