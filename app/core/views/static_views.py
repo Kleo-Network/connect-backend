@@ -94,7 +94,7 @@ def create_github_cards(slug,**kwargs):
         gitUserData = response.json()
             
         today = datetime.now()
-        last_month = today - timedelta(days=90)
+        last_month = get_last_third_month_start_date()
             
         query = """
 			query {
