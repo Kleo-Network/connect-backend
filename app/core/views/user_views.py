@@ -6,7 +6,7 @@ core = Blueprint('core', __name__)
 from .auth_views import *
 from ..models.user import *
 from ..models.published_cards import get_published_card
-from ..celery.tasks import create_pending_card
+from ...celery.tasks import create_pending_card
 import os
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests

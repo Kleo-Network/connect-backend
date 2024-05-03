@@ -1,7 +1,7 @@
-from ..modules.history import create_pending_cards
-from ..controllers.history import *
-from ..models.history import *
-from ..models.user import *
+from ..core.modules.history import create_pending_cards
+from ..core.controllers.history import *
+from ..core.models.history import *
+from ..core.models.user import *
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
@@ -11,7 +11,7 @@ import json
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from pymongo.errors import ServerSelectionTimeoutError
-
+import random
 
 # create a task to take json and send it for training. 
 @shared_task(bind=True, base=AbortableTask)
@@ -33,8 +33,15 @@ def categorize_history(self, data):
     return last_processed_timestamp
     
 ######################### pending card creation celery task ###############################
-        
+ 
 @shared_task(bind=True, base=AbortableTask)
+def checking_next_task_schedule(self,name="next_task"):
+    print("This is to be executed every 10 seconds")
+    next_execution = datetime.now(timezone.utc) + timedelta(seconds=10)
+    a = checking_next_task_schedule.apply_async(eta=next_execution)
+    return a 
+       
+@shared_task(bind=True, base=AbortableTask,ack_late=True, default_retry_delay=20, max_retries=2, queue="create-cards")
 def create_pending_card(self, slug):
     user = find_by_slug(slug)
     if user:
@@ -45,30 +52,25 @@ def create_pending_card(self, slug):
         last_published_at = user['last_cards_marked']
         time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
 
-        if time_difference_days <= 4:
-            max_delay = 30
-            delay = 5
-            while delay <= max_delay:
-                try:
-                    if get_history_count(slug) > 15:
-                        create_pending_cards(slug)
-                        next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
-                        create_pending_card.apply_async([slug], eta=next_execution)
-                        return
-                    else:
-                        sleep(delay)
-                        delay += 5
-                except ServerSelectionTimeoutError:
-                    print("MongoDB connection timeout error occurred.")
-                    break
+        if time_difference_days <= 4:    
+            try:
+                if get_history_count(slug) > 15:
+                    create_pending_cards(slug)
+                    next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
+                    create_pending_card.apply_async([slug], eta=next_execution)
+                    return
+                else:
+                    sleep(delay)
+                    delay += 5
+            except ServerSelectionTimeoutError:
+                print("MongoDB connection timeout error occurred.")
+                    
 
             # If delay is 30 seconds and no history items are found
-            if delay > max_delay:
-                next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
-                create_pending_card.apply_async([slug], eta=next_execution)
-                return
-            else:
-                self.abort()
+            
+            next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
+            create_pending_card.apply_async([slug], eta=next_execution)
+            return
         else:
             print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")
     else:

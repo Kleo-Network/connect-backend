@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, request
 from ..controllers.history import *
 from werkzeug.local import LocalProxy
-from ..celery.tasks import *
+from ...celery.tasks import *
 from math import ceil
 from celery import chord
 from .auth_views import token_required
