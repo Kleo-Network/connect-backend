@@ -51,7 +51,6 @@ def create_user():
                 slug = response['slug']
             response['email'] = user_info_from_google['email']
             response['token'] = get_jwt_token(slug, user_info_from_google['email'])
-            create_pending_card.delay(slug)
             return response, 200
     else:
         # Case 3: User does not exist and signup is false

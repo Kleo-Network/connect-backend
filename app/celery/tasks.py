@@ -13,8 +13,8 @@ from datetime import datetime, timedelta, timezone
 from pymongo.errors import ServerSelectionTimeoutError
 import random
 
-# create a task to take json and send it for training. 
-@shared_task(bind=True, base=AbortableTask)
+# upload history & categorize it properly
+@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="upload-history")
 def categorize_history(self, data): 
     chunk = data["chunk"]
     slug = data["slug"]
@@ -32,16 +32,8 @@ def categorize_history(self, data):
     last_processed_timestamp = datetime.now().timestamp()
     return last_processed_timestamp
     
-######################### pending card creation celery task ###############################
- 
-@shared_task(bind=True, base=AbortableTask)
-def checking_next_task_schedule(self,name="next_task"):
-    print("This is to be executed every 10 seconds")
-    next_execution = datetime.now(timezone.utc) + timedelta(seconds=10)
-    a = checking_next_task_schedule.apply_async(eta=next_execution)
-    return a 
-       
-@shared_task(bind=True, base=AbortableTask,ack_late=True, default_retry_delay=20, max_retries=2, queue="create-cards")
+# create pending tasks celery task       
+@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards")
 def create_pending_card(self, slug):
     user = find_by_slug(slug)
     if user:
@@ -76,7 +68,7 @@ def create_pending_card(self, slug):
     else:
         print(f"User with slug {slug} not found.")
         
-@shared_task(bind=True, base=AbortableTask)
+@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards-2")
 def force_create_pending_cards(self, slug):
     user = find_by_slug(slug)
     if user:
@@ -95,7 +87,14 @@ def force_create_pending_cards(self, slug):
                 break
     else:
         print(f"User with slug {slug} not found.")   
-        
+
+
+# @shared_task(bind=True, base=AbortableTask)
+# def checking_next_task_schedule(self,name="next_task"):
+#     print("This is to be executed every 10 seconds")
+#     next_execution = datetime.now(timezone.utc) + timedelta(seconds=10)
+#     a = checking_next_task_schedule.apply_async(eta=next_execution)
+#     return a         
         
 # @shared_task(base=AbortableTask)
 # def process_pinned_domain_items_for_graph(user, domain):

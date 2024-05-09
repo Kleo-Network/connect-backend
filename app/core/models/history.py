@@ -83,7 +83,7 @@ def get_history_item(slug):
     return result
 
 def delete_history(slug, id):
-    result = db.history.delete_one({'_id': ObjectId(id), 'slug': slug})
+    result = db.history.delete_one({'slug': slug})
     if result.deleted_count == 1:
         return True
     else:

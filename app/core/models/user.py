@@ -121,7 +121,7 @@ def find_by_address_slug(slug):
             }
         ]
         user_of_db = db.users.aggregate(pipeline).next()
-        return user_of_db['address']
+        return user_of_db['address'], user_of_db["first_time_user"]
 
     # TODO: Error Handling
     # If an invalid ID is passed to `get_movie`, it should return None.

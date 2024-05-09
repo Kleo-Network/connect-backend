@@ -8,16 +8,16 @@ class BaseSettings:
     broker_url = f"sqs://"
     result_backend  = None
     broker_transport = "sqs"
-    task_default_queue = "kleo-queue-1"
+    task_default_queue = "create-pending-cards"
     task_queues = (
-        Queue("kleo-queue-1"),
-        Queue("kleo-queue-2"),
-        Queue("create-cards"),
+        Queue("create-pending-cards"),
+        Queue("upload-history"),
+        Queue("create-pending-cards-2"),
     )
     broker_transport_options = {
         'region': 'ap-south-1'
     }
-    worker_concurrency = 4
+    worker_concurrency = 8
     include: list = ['app.celery.tasks']
 
 def get_settings():
