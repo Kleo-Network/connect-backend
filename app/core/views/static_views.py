@@ -17,6 +17,7 @@ CALENDLY_USER_URL = 'https://api.calendly.com/users/me'
 #Github urls
 GIHUB_AUTH_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
+INSTAGRAM_AUTH_TOKEN_URL = 'https://api.instagram.com/oauth/access_token'
 
 @core.route('/calendly/<string:slug>', methods=["POST"])
 @token_required
@@ -151,10 +152,11 @@ def create_insta_cards(slug,**kwargs):
     try:
         # Get JSON data from request body
         data = request.get_json()
-        token = data.get("token")
+        code = data.get("code")
+        
         max_photos = 3 
         
-        if not all([slug, token]):
+        if not all([slug, code]):
             return jsonify({"error": "Missing required parameters"}), 400
         
         address = find_by_address_slug(slug)
@@ -163,6 +165,23 @@ def create_insta_cards(slug,**kwargs):
         address_from_token = kwargs.get('user_data')['payload']['publicAddress']
         if not check_user_authenticity(address, address_from_token):
             return jsonify({"error": "user is not authorised"}), 401
+        
+        
+        insta_auth_params = {
+			'client_id': os.environ.get("INSTAGRAM_CLIENT_ID"),
+			'client_secret': os.environ.get("INSTAGRAM_CLIENT_SECRET"),
+            'grant_type': "authorization_code",
+            'redirect_uri': os.environ.get('REDIRECT_URI'),
+			'code': code
+		}
+        token_response = requests.post(INSTAGRAM_AUTH_TOKEN_URL, data=insta_auth_params, headers={'Accept': 'application/json'})
+        print(token_response.json())
+        
+        token = token_response.json().get('access_token')
+
+        if not token:
+            return jsonify({"error": "error while fetching access token of instagram"}), 500
+            # Construct GraphQL query
         
         response = requests.get(
             f"https://graph.instagram.com/me/media?fields=id,caption,media_url&access_token={token}"
