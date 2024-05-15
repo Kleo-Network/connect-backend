@@ -184,7 +184,7 @@ def create_insta_cards(slug,**kwargs):
             # Construct GraphQL query
         
         response = requests.get(
-            f"https://graph.instagram.com/me/media?fields=id,caption,media_url&access_token={token}"
+            f"https://graph.instagram.com/me/media?fields=id,caption,media_url,username&access_token={token}"
         )
 
         if response.status_code == 200:
@@ -193,9 +193,16 @@ def create_insta_cards(slug,**kwargs):
             if media_data:
                 # Select a random photo from the user's media
                 random.shuffle(media_data)
-                random_photos = [media.get('media_url', '') for media in media_data[:max_photos]]
+                random_photos = []
+                for media in media_data[:max_photos]:
+                    obj = {
+                        'url': media['media_url'],
+                        'caption': media['caption']
+                    }
+                    random_photos.append(obj)
                 staticCard = StaticCards(slug, 'InstaCard', int(datetime.now().timestamp()), metadata={
-                    'urls' : random_photos
+                    'urls' : random_photos,
+                    'username' : media_data[0]['username']
                 })
                 staticCard.save()
                 return jsonify({'message': f'insta card generated for {slug}'}), 200
