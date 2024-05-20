@@ -271,13 +271,15 @@ def create_x_cards(slug,**kwargs):
             pinned_tweet = user_data.get('includes', {}).get('tweets', [{}])[0].get('text', '')
             is_verified = user_data.get('data', {}).get('verified', False)
             followers_count = user_data.get('data', {}).get('public_metrics', {}).get('followers_count', 0)
+            following_count = user_data.get('data', {}).get('public_metrics', {}).get('following_count', 0)            
 
             x_meta_data = {
                 'username': username,
                 'bio': bio,
                 'pinned_tweet': pinned_tweet,
                 'is_verified': is_verified,
-                'followers_count': followers_count
+                'followers_count': followers_count,
+                'following_count': following_count
             }
             static_card = StaticCards(slug, 'XCard', int(datetime.now().timestamp()), metadata=x_meta_data)
             static_card.save()
