@@ -34,12 +34,11 @@ def categorize_history(self, data):
     
 # create pending tasks celery task       
 @shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards")
-def create_pending_card(self, slug):
+def create_pending_card(self, result, slug):
     user = find_by_slug(slug)
     if user:
         first_time_user = user["first_time_user"]
         if first_time_user:
-            sleep(30)
             set_signup_upload_by_slug(slug)
         last_published_at = user['last_cards_marked']
         time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
@@ -61,7 +60,7 @@ def create_pending_card(self, slug):
             # If delay is 30 seconds and no history items are found
             
             next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
-            create_pending_card.apply_async([slug], eta=next_execution)
+            create_pending_card.apply_async([result, slug], eta=next_execution)
             return
         else:
             print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")

@@ -135,39 +135,66 @@ def clean_item(item):
     cleaned_item = {key: item[key] for key in keys_to_keep if key in item}
     return cleaned_item if cleaned_item["category"] not in categories_to_exclude else None
 
-def get_category(raw_resp):
-    try:
-        soup = bs(raw_resp.text, 'html.parser')
-        result = soup.find("div", {"id": "webfilter-result"})
-        if result is None:
-            raise ValueError("Could not find the 'webfilter-result' div in the response.")
-        paragraph = result.select_one("div > p")
-        if paragraph is None:
-            raise ValueError("Could not find the paragraph element within the 'webfilter-result' div.")
-        main_result = result.find("h4", {"class": "info_title"})
-        if main_result is None:
-            raise ValueError("Could not find the 'info_title' element within the 'webfilter-result' div.")
-        category_description = paragraph.getText().split("Group:")[0].strip()
-        category_group = paragraph.getText().split("Group:")[1].strip()
-        category = main_result.getText().split("Category:")[1].strip()
-        return category_group, category_description, category
-    except (AttributeError, IndexError) as e:
-        print(f"Error occurred while parsing the response: {str(e)}")
-        return "Other", "Unknown", "Other"
-    except ValueError as e:
-        print(str(e))
-        return "Other", "Unknown", "Other"
-    except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")
-        return "Other", "Unknown", "Other"
+# def get_category(raw_resp):
+#     try:
+#         soup = bs(raw_resp.text, 'html.parser')
+#         result = soup.find("div", {"id": "webfilter-result"})
+#         if result is None:
+#             raise ValueError("Could not find the 'webfilter-result' div in the response.")
+#         paragraph = result.select_one("div > p")
+#         if paragraph is None:
+#             raise ValueError("Could not find the paragraph element within the 'webfilter-result' div.")
+#         main_result = result.find("h4", {"class": "info_title"})
+#         if main_result is None:
+#             raise ValueError("Could not find the 'info_title' element within the 'webfilter-result' div.")
+#         category_description = paragraph.getText().split("Group:")[0].strip()
+#         category_group = paragraph.getText().split("Group:")[1].strip()
+#         category = main_result.getText().split("Category:")[1].strip()
+#         return category_group, category_description, category
+#     except (AttributeError, IndexError) as e:
+#         print(f"Error occurred while parsing the response: {str(e)}")
+#         return "Other", "Unknown", "Other"
+#     except ValueError as e:
+#         print(str(e))
+#         return "Other", "Unknown", "Other"
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {str(e)}")
+#         return "Other", "Unknown", "Other"
 
+
+# def single_url_request(domain):
+#     try:
+#         url = "https://www.fortiguard.com/webfilter"
+#         payload = {'url': domain}
+#         response = requests.request("POST", url, headers={}, data=payload, files=[])
+#         print(response.text)
+#         return get_category(response)
+#     except requests.exceptions.RequestException as e:
+#         print(f"Error occurred while making request to {url}: {str(e)}")
+#         return None
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {str(e)}")
+#         return None
 
 def single_url_request(domain):
     try:
-        url = "https://www.fortiguard.com/webfilter"
-        payload = {'url': domain}
-        response = requests.request("POST", url, headers={}, data=payload, files=[])
-        return get_category(response)
+        url = f"https://website-categorization-api-now-with-ai.p.rapidapi.com/website-categorization/{domain}"
+        headers = {
+            "X-RapidAPI-Key": "Os4X7YlgE2mshuPlMvD8ROAkCNApp1Uhbqpjsnno2qXlvgJ0gW",
+            "X-RapidAPI-Host": "website-categorization-api-now-with-ai.p.rapidapi.com"
+        }
+        response = requests.get(url, headers=headers)
+        response_json = response.json()
+        
+        if "categories" in response_json:
+            categories = response_json["categories"]
+            if len(categories) > 0:
+                highest_confidence_category = max(categories, key=lambda x: x["confidence"])
+                return highest_confidence_category["name"], "", highest_confidence_category["name"]
+            else:
+                return "Other", "Unknown", "Other"
+        else:
+            return "Other", "Unknown", "Other"
     except requests.exceptions.RequestException as e:
         print(f"Error occurred while making request to {url}: {str(e)}")
         return None
@@ -220,7 +247,8 @@ def message_from_LLM_API(
                 {"role": "system", "content": initial_prompt},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 200,
+            "response_format": { "type": "json_object" },
+            "max_tokens": max_tokens,
             "temperature": temperature,
             "top_p": 0.8
         }
@@ -306,7 +334,7 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
         for card_data in response_text_json:
             items_list = []
             for item in items:
-                if "titles" in card_data and any(word.lower() in item["title"].lower() for word in card_data["titles"]):
+                if "titles" in card_data and item["title"].lower() in [title.lower() for title in card_data["titles"]]:
                     items_list.append({"title": item["title"], "url": item["url"], "id": item["id"]})
             
             card = {
@@ -335,10 +363,10 @@ def create_card_from_llm(slug,data):
         Pick one specific context from the history having at maximum 4 titles, ignore other items.   
         The JSON strictly conforms to this schema. 
         {{
-            "activity" : [verbs], 
-            "tags": [interests]
+            "activity" : [verb], 
+            "tags": [2-3 categories]
             "description": "describe one-line motive, reason or interest for @{slug}"
-            "titles": [related titles to context]
+            "titles": [related titles to this context]
         }}
         Use past tense for verbs
     """.format(slug=slug)
@@ -346,10 +374,10 @@ def create_card_from_llm(slug,data):
     initial_prompt_multiple_card = """
         The JSON object strictly conforms to this schema. 
         {{
-            "activity" : [verbs], 
-            "tags": [interests]
+            "activity" : [verb], 
+            "tags": [2-3 categories]
             "description": "describe one-line motive, reason or interest for @{slug}"
-            "titles": [related titles in this cluster]
+            "titles": [related titles in this cluster context]
         }}
         Use past tense for verbs
     """.format(slug=slug)

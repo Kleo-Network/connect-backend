@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, request, jsonify
-from app.celery.tasks import force_create_pending_cards, checking_next_task_schedule
+from app.celery.tasks import force_create_pending_cards
 from ..controllers.history import *
 from werkzeug.local import LocalProxy
 core = Blueprint('core', __name__)
@@ -214,7 +214,7 @@ def update_cards():
     else:
         return jsonify({"error": "Please provide correct password"}), 500
 
-@core.route('/check-timed-tasks', methods=["GET"])
-def check_timed_tasks():
-    checking_next_task_schedule.delay()
-    return jsonify({"message": "hello world"}), 200
+# @core.route('/check-timed-tasks', methods=["GET"])
+# def check_timed_tasks():
+#     checking_next_task_schedule.delay()
+#     return jsonify({"message": "hello world"}), 200

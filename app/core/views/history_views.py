@@ -26,7 +26,7 @@ def upload(**kwargs):
     if not all([slug, history]):
         return jsonify({"error": f"Missing required parameters"}), 400
     
-    address, signup = find_by_address_slug(slug)
+    address, signup = find_by_address_slug_first_time(slug)
     if not address:
         return jsonify({"error": "user is not found"}), 401
         
