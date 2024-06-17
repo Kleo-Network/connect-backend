@@ -92,3 +92,10 @@ def delete_history(slug, id):
 def get_history_count(slug):
     count = db.history.count_documents({'slug': slug})
     return count
+
+def delete_all_history(slug):
+    try:
+        db.history.delete_many( { 'slug': slug } )
+    except Exception as e:
+        print(e)
+        return 0
