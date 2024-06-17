@@ -138,6 +138,17 @@ def check_slug():
         return jsonify({'result': False}), 200
     else:
         return jsonify({'result': True}), 200
+    
+@core.route('/update-mint-count/<string:slug>', methods=['PUT'])
+def update_mint_count(slug):
+    try:
+        if not slug:
+            return jsonify({'error': 'Slug parameter is missing.'}), 400
+        update_minting_count(slug)
+        return jsonify({"message": f"mint count updated for user {slug}"}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "error while updating mint count"}), 500
 
 
 

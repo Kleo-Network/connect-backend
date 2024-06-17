@@ -234,3 +234,31 @@ def update_last_attested(slug):
     except Exception as e:
         print(e)
         return {}
+    
+def update_minting_count(slug):
+    try:
+        pipeline = [
+            {
+                "$match": {
+                    "slug": slug
+                }
+            }
+        ]
+        
+        # Execute the pipeline and get the user
+        cursor = db.users.aggregate(pipeline)
+        user = next(cursor, None)
+        
+        if user:
+            user_profile_metadata = user.get('profile_metadata', {})
+            mint_count = user_profile_metadata.get('mint_count', 0)
+            
+            if user_profile_metadata and mint_count:
+                mint_count_updated = int(mint_count) + 1
+                user_profile_metadata['mint_count'] = mint_count_updated
+            else:
+                user_profile_metadata['mint_count'] = 1
+            db.users.update_one({'slug': slug}, {'$set': {'profile_metadata': user_profile_metadata}})
+    except Exception as e:
+        print(e)
+        return {}
