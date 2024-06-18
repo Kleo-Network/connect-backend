@@ -252,12 +252,53 @@ def update_minting_count(slug):
         if user:
             user_profile_metadata = user.get('profile_metadata', {})
             mint_count = user_profile_metadata.get('mint_count', 0)
+            kleo_token = user_profile_metadata.get('kleo_token', 0)
+            tobe_release_tokens = user_profile_metadata.get('tobe_release_tokens', 0)
             
             if user_profile_metadata and mint_count:
                 mint_count_updated = int(mint_count) + 1
                 user_profile_metadata['mint_count'] = mint_count_updated
             else:
                 user_profile_metadata['mint_count'] = 1
+
+            if user_profile_metadata and tobe_release_tokens:
+                if kleo_token:
+                    user_profile_metadata['kleo_token'] = kleo_token + tobe_release_tokens
+                else:
+                    user_profile_metadata['kleo_token'] = tobe_release_tokens
+                user_profile_metadata['tobe_release_tokens'] = 0
+            else:
+                if not kleo_token:
+                    user_profile_metadata['kleo_token'] = 1
+
+            db.users.update_one({'slug': slug}, {'$set': {'profile_metadata': user_profile_metadata}})
+    except Exception as e:
+        print(e)
+        return {}
+    
+def update_tobe_release_kleo_token(slug):
+    try:
+        pipeline = [
+            {
+                "$match": {
+                    "slug": slug
+                }
+            }
+        ]
+        
+        # Execute the pipeline and get the user
+        cursor = db.users.aggregate(pipeline)
+        user = next(cursor, None)
+        
+        if user:
+            user_profile_metadata = user.get('profile_metadata', {})
+            tobe_release_tokens = user_profile_metadata.get('tobe_release_tokens', 0)
+            
+            if user_profile_metadata and tobe_release_tokens:
+                updated_tobe_release_tokens = int(tobe_release_tokens) + 1
+                user_profile_metadata['tobe_release_tokens'] = updated_tobe_release_tokens
+            else:
+                user_profile_metadata['tobe_release_tokens'] = 1
             db.users.update_one({'slug': slug}, {'$set': {'profile_metadata': user_profile_metadata}})
     except Exception as e:
         print(e)
