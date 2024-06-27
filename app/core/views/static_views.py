@@ -9,6 +9,8 @@ from ..models.static_cards import *
 from datetime import datetime, timedelta
 import requests
 import os
+import boto3
+import uuid
 
 logger = LocalProxy(lambda: current_app.logger)
 
@@ -18,6 +20,18 @@ CALENDLY_USER_URL = 'https://api.calendly.com/users/me'
 GIHUB_AUTH_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
 INSTAGRAM_AUTH_TOKEN_URL = 'https://api.instagram.com/oauth/access_token'
+
+AWS_ACCESS_KEY = os.environ.get('API_KEY')
+AWS_SECRET_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+S3_REGION = os.environ.get('AWS_DEFAULT_REGION')
+S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME')
+
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    region_name=S3_REGION
+)
 
 @core.route('/calendly/<string:slug>', methods=["POST"])
 @token_required
@@ -195,11 +209,38 @@ def create_insta_cards(slug,**kwargs):
                 random.shuffle(media_data)
                 random_photos = []
                 for media in media_data[:max_photos]:
-                    obj = {
-                        'url': media['media_url'],
-                        'caption': media['caption']
-                    }
-                    random_photos.append(obj)
+
+                    try:
+                        # Fetch the image data from the URL
+                        image_response = requests.get(media['media_url'])
+                        image_response.raise_for_status()
+                        image_data = image_response.content
+                        print(image_data)
+
+                        # Generate a random key for the image
+                        image_key = f"{uuid.uuid4()}.jpg"
+
+                        # Upload the image to S3
+                        s3.put_object(
+                            Bucket=S3_BUCKET_NAME,
+                            Key=image_key,
+                            Body=image_data,
+                            ContentType='image/jpeg'
+                        )
+
+                        # Generate the public URL
+                        image_url = f"https://{S3_BUCKET_NAME}.s3.{S3_REGION}.amazonaws.com/{image_key}"
+
+                        obj = {
+                            'url': image_url,
+                            'caption': media['caption']
+                        }
+                        random_photos.append(obj)
+                    
+                    except Exception as e:
+                        print(e)
+                        continue
+
                 staticCard = StaticCards(slug, 'InstaCard', int(datetime.now().timestamp()), metadata={
                     'urls' : random_photos,
                     'username' : media_data[0]['username']
@@ -291,3 +332,4 @@ def create_x_cards(slug,**kwargs):
     except Exception as e:
         print(e)
         return jsonify({"error": "error while creating instagram card"}), 500
+    
