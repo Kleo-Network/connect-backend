@@ -417,4 +417,6 @@ def create_card_from_llm(slug,data):
                 titles, items = get_titles_and_items_by_category(data, category=category)
                 res = generate_results(slug, items, initial_prompt_multiple_card, 'azure', 200*num_cards)
                 final_results.append(res)
+    if len(final_results) > 0:
+        delete_all_history(slug)
     return final_results
