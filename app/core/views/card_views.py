@@ -100,6 +100,7 @@ def populate_published_card(slug, **kwargs):
             published_card.save()
         delete = delete_pending_card(slug,ObjectId(id)) #We protect user privacy by deleting pending cards once we create published cards
         update_last_cards_marked(slug)
+        update_tobe_release_kleo_token(slug)
         
         return jsonify({"message": f"published card for {slug}"}), 200
     

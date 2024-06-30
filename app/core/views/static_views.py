@@ -9,6 +9,8 @@ from ..models.static_cards import *
 from datetime import datetime, timedelta
 import requests
 import os
+import boto3
+import uuid
 
 logger = LocalProxy(lambda: current_app.logger)
 
@@ -17,6 +19,19 @@ CALENDLY_USER_URL = 'https://api.calendly.com/users/me'
 #Github urls
 GIHUB_AUTH_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
+INSTAGRAM_AUTH_TOKEN_URL = 'https://api.instagram.com/oauth/access_token'
+
+AWS_ACCESS_KEY = os.environ.get('API_KEY')
+AWS_SECRET_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+S3_REGION = os.environ.get('AWS_DEFAULT_REGION')
+S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME')
+
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    region_name=S3_REGION
+)
 
 @core.route('/calendly/<string:slug>', methods=["POST"])
 @token_required
@@ -94,7 +109,7 @@ def create_github_cards(slug,**kwargs):
         gitUserData = response.json()
             
         today = datetime.now()
-        last_month = today - timedelta(days=90)
+        last_month = get_last_third_month_start_date()
             
         query = """
 			query {
@@ -151,10 +166,11 @@ def create_insta_cards(slug,**kwargs):
     try:
         # Get JSON data from request body
         data = request.get_json()
-        token = data.get("token")
+        code = data.get("code")
+        
         max_photos = 3 
         
-        if not all([slug, token]):
+        if not all([slug, code]):
             return jsonify({"error": "Missing required parameters"}), 400
         
         address = find_by_address_slug(slug)
@@ -164,8 +180,25 @@ def create_insta_cards(slug,**kwargs):
         if not check_user_authenticity(address, address_from_token):
             return jsonify({"error": "user is not authorised"}), 401
         
+        
+        insta_auth_params = {
+			'client_id': os.environ.get("INSTAGRAM_CLIENT_ID"),
+			'client_secret': os.environ.get("INSTAGRAM_CLIENT_SECRET"),
+            'grant_type': "authorization_code",
+            'redirect_uri': os.environ.get('REDIRECT_URI'),
+			'code': code
+		}
+        token_response = requests.post(INSTAGRAM_AUTH_TOKEN_URL, data=insta_auth_params, headers={'Accept': 'application/json'})
+        print(token_response.json())
+        
+        token = token_response.json().get('access_token')
+
+        if not token:
+            return jsonify({"error": "error while fetching access token of instagram"}), 500
+            # Construct GraphQL query
+        
         response = requests.get(
-            f"https://graph.instagram.com/me/media?fields=id,caption,media_url&access_token={token}"
+            f"https://graph.instagram.com/me/media?fields=id,caption,media_url,username&access_token={token}"
         )
 
         if response.status_code == 200:
@@ -174,9 +207,43 @@ def create_insta_cards(slug,**kwargs):
             if media_data:
                 # Select a random photo from the user's media
                 random.shuffle(media_data)
-                random_photos = [media.get('media_url', '') for media in media_data[:max_photos]]
+                random_photos = []
+                for media in media_data[:max_photos]:
+
+                    try:
+                        # Fetch the image data from the URL
+                        image_response = requests.get(media['media_url'])
+                        image_response.raise_for_status()
+                        image_data = image_response.content
+                        print(image_data)
+
+                        # Generate a random key for the image
+                        image_key = f"{uuid.uuid4()}.jpg"
+
+                        # Upload the image to S3
+                        s3.put_object(
+                            Bucket=S3_BUCKET_NAME,
+                            Key=image_key,
+                            Body=image_data,
+                            ContentType='image/jpeg'
+                        )
+
+                        # Generate the public URL
+                        image_url = f"https://{S3_BUCKET_NAME}.s3.{S3_REGION}.amazonaws.com/{image_key}"
+
+                        obj = {
+                            'url': image_url,
+                            'caption': media['caption']
+                        }
+                        random_photos.append(obj)
+                    
+                    except Exception as e:
+                        print(e)
+                        continue
+
                 staticCard = StaticCards(slug, 'InstaCard', int(datetime.now().timestamp()), metadata={
-                    'urls' : random_photos
+                    'urls' : random_photos,
+                    'username' : media_data[0]['username']
                 })
                 staticCard.save()
                 return jsonify({'message': f'insta card generated for {slug}'}), 200
@@ -245,13 +312,15 @@ def create_x_cards(slug,**kwargs):
             pinned_tweet = user_data.get('includes', {}).get('tweets', [{}])[0].get('text', '')
             is_verified = user_data.get('data', {}).get('verified', False)
             followers_count = user_data.get('data', {}).get('public_metrics', {}).get('followers_count', 0)
+            following_count = user_data.get('data', {}).get('public_metrics', {}).get('following_count', 0)            
 
             x_meta_data = {
                 'username': username,
                 'bio': bio,
                 'pinned_tweet': pinned_tweet,
                 'is_verified': is_verified,
-                'followers_count': followers_count
+                'followers_count': followers_count,
+                'following_count': following_count
             }
             static_card = StaticCards(slug, 'XCard', int(datetime.now().timestamp()), metadata=x_meta_data)
             static_card.save()
@@ -263,3 +332,4 @@ def create_x_cards(slug,**kwargs):
     except Exception as e:
         print(e)
         return jsonify({"error": "error while creating instagram card"}), 500
+    
