@@ -71,15 +71,16 @@ def get_history_item(slug):
     histories = list(db.history.aggregate(pipeline))
     result = []
     for history in histories:
-        history_data = {
-            "id": str(history['_id']),
-            "visitTime": history['visitTime'],
-            "category": history['category'],
-            "title": history['title'],
-            "url": history['url'],
-            "domain": history['domain']
-        }
-        result.append(history_data)
+        if "visitTime" in history:
+            history_data = {
+                "id": str(history['_id']),
+                "visitTime": history['visitTime'],
+                "category": history['category'],
+                "title": history['title'],
+                "url": history['url'],
+                "domain": history['domain']
+            }
+            result.append(history_data)
     return result
 
 def delete_history(slug, id):
