@@ -12,6 +12,16 @@ import openai
 import random
 import os
 
+from pydantic_core import from_json
+
+from pydantic import BaseModel
+
+
+class CardObject(BaseModel):
+    activity: str
+    description: str
+    tags: list
+    titles: list
 
 categories_to_exclude = [
     "Abortion", "Alcohol", "Marijuana", "Nudity and Risque", "Other Adult Materials",
@@ -125,39 +135,66 @@ def clean_item(item):
     cleaned_item = {key: item[key] for key in keys_to_keep if key in item}
     return cleaned_item if cleaned_item["category"] not in categories_to_exclude else None
 
-def get_category(raw_resp):
-    try:
-        soup = bs(raw_resp.text, 'html.parser')
-        result = soup.find("div", {"id": "webfilter-result"})
-        if result is None:
-            raise ValueError("Could not find the 'webfilter-result' div in the response.")
-        paragraph = result.select_one("div > p")
-        if paragraph is None:
-            raise ValueError("Could not find the paragraph element within the 'webfilter-result' div.")
-        main_result = result.find("h4", {"class": "info_title"})
-        if main_result is None:
-            raise ValueError("Could not find the 'info_title' element within the 'webfilter-result' div.")
-        category_description = paragraph.getText().split("Group:")[0].strip()
-        category_group = paragraph.getText().split("Group:")[1].strip()
-        category = main_result.getText().split("Category:")[1].strip()
-        return category_group, category_description, category
-    except (AttributeError, IndexError) as e:
-        print(f"Error occurred while parsing the response: {str(e)}")
-        return "Other", "Unknown", "Other"
-    except ValueError as e:
-        print(str(e))
-        return "Other", "Unknown", "Other"
-    except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")
-        return "Other", "Unknown", "Other"
+# def get_category(raw_resp):
+#     try:
+#         soup = bs(raw_resp.text, 'html.parser')
+#         result = soup.find("div", {"id": "webfilter-result"})
+#         if result is None:
+#             raise ValueError("Could not find the 'webfilter-result' div in the response.")
+#         paragraph = result.select_one("div > p")
+#         if paragraph is None:
+#             raise ValueError("Could not find the paragraph element within the 'webfilter-result' div.")
+#         main_result = result.find("h4", {"class": "info_title"})
+#         if main_result is None:
+#             raise ValueError("Could not find the 'info_title' element within the 'webfilter-result' div.")
+#         category_description = paragraph.getText().split("Group:")[0].strip()
+#         category_group = paragraph.getText().split("Group:")[1].strip()
+#         category = main_result.getText().split("Category:")[1].strip()
+#         return category_group, category_description, category
+#     except (AttributeError, IndexError) as e:
+#         print(f"Error occurred while parsing the response: {str(e)}")
+#         return "Other", "Unknown", "Other"
+#     except ValueError as e:
+#         print(str(e))
+#         return "Other", "Unknown", "Other"
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {str(e)}")
+#         return "Other", "Unknown", "Other"
 
+
+# def single_url_request(domain):
+#     try:
+#         url = "https://www.fortiguard.com/webfilter"
+#         payload = {'url': domain}
+#         response = requests.request("POST", url, headers={}, data=payload, files=[])
+#         print(response.text)
+#         return get_category(response)
+#     except requests.exceptions.RequestException as e:
+#         print(f"Error occurred while making request to {url}: {str(e)}")
+#         return None
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {str(e)}")
+#         return None
 
 def single_url_request(domain):
     try:
-        url = "https://www.fortiguard.com/webfilter"
-        payload = {'url': domain}
-        response = requests.request("POST", url, headers={}, data=payload, files=[])
-        return get_category(response)
+        url = f"https://website-categorization-api-now-with-ai.p.rapidapi.com/website-categorization/{domain}"
+        headers = {
+            "X-RapidAPI-Key": "Os4X7YlgE2mshuPlMvD8ROAkCNApp1Uhbqpjsnno2qXlvgJ0gW",
+            "X-RapidAPI-Host": "website-categorization-api-now-with-ai.p.rapidapi.com"
+        }
+        response = requests.get(url, headers=headers)
+        response_json = response.json()
+        
+        if "categories" in response_json:
+            categories = response_json["categories"]
+            if len(categories) > 0:
+                highest_confidence_category = max(categories, key=lambda x: x["confidence"])
+                return highest_confidence_category["name"], "", highest_confidence_category["name"]
+            else:
+                return "Other", "Unknown", "Other"
+        else:
+            return "Other", "Unknown", "Other"
     except requests.exceptions.RequestException as e:
         print(f"Error occurred while making request to {url}: {str(e)}")
         return None
@@ -199,64 +236,6 @@ def cluster_and_save(data):
     final_data["frequency"] = categories_json
     
     return final_data
-
-def convert_to_json(text):
-    try:
-        text = text.strip()
-        result = []
-        patterns = [
-            r'"activity"\s*:\s*(\[(?:[^]\\]|\\.)*\])',
-            r'"description"\s*:\s*"((?:[^"\\]|\\.)*)"',
-            r'"entities"\s*:\s*(\[(?:[^]\\]|\\.)*\])',
-            r'"titles"\s*:\s*(\[(?:[^]\\]|\\.)*\])'
-        ]
-        matches = re.findall(r'{(.*?)}', text, re.DOTALL)
-        unique_cards = set()
-        for match in matches:
-            card_json = {"activity": [], "description": "", "entities": [], "titles": []}
-            for i, pattern in enumerate(patterns):
-                value = re.search(pattern, match, re.DOTALL)
-                if value:
-                    if i == 0:
-                        activities_str = value.group(1).replace('\\n', '\n')
-                        try:
-                            activities = json.loads(activities_str)
-                            if activities:
-                                card_json["activity"] = activities
-                        except:
-                            card_json["activity"] = activities_str
-                    elif i == 1 and value.group(1).strip():
-                        card_json["description"] = value.group(1).replace('\\n', '\n')
-                    elif i == 2:
-                        entities_str = value.group(1).replace('\\n', '\n')
-                        try:
-                            entities = json.loads(entities_str)
-                            if entities:
-                                card_json["entities"] = entities
-                        except:
-                            card_json['entities'] = entities_str
-                    elif i == 3:
-                        titles_str = value.group(1).strip()
-                        titles_str = value.group(1).replace('\\n', '\n')
-                        titles_str = titles_str.replace('\\"', '"')  # Handle escaped quotes
-                        titles_str = titles_str.replace('\\\\', '\\')  # Handle escaped backslashes
-                        try:
-                            print(f"Parsing titles_str: {titles_str}")  # Log the titles_str
-                            titles = json.loads(titles_str)
-                            if titles:
-                                card_json["titles"] = titles
-                        except:
-                            card_json['titles'] = titles_str
-
-            if card_json["activity"] or card_json["description"] or card_json["entities"] or card_json["titles"]:
-                card_json_str = json.dumps(card_json, sort_keys=True)
-                if card_json_str not in unique_cards:
-                    unique_cards.add(card_json_str)
-                    result.append(card_json)
-        return result
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {str(e)}")
-        return [{"activity": ["Error"], "description": "Error", "entities": ["Error"], "titles": ["Error"]}]
     
 def message_from_LLM_API(
     initial_prompt, model_name, prompt, temperature, base_url, api_key, service, max_tokens=200
@@ -268,7 +247,8 @@ def message_from_LLM_API(
                 {"role": "system", "content": initial_prompt},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 200,
+            "response_format": { "type": "json_object" },
+            "max_tokens": max_tokens,
             "temperature": temperature,
             "top_p": 0.8
         }
@@ -344,9 +324,8 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
             service=input_service,
             max_tokens=max_tokens
         )
-    print(bot_response)
     if "choices" in bot_response and len(bot_response["choices"]) > 0 and "message" in bot_response["choices"][0] and "content" in bot_response["choices"][0]["message"]:
-        response_text_json = convert_to_json(bot_response["choices"][0]["message"]["content"])
+        response_text_json = CardObject.model_validate(from_json(bot_response["choices"][0]["message"]["content"], allow_partial=True))
     else: 
         response_text_json = []
     
@@ -355,7 +334,7 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
         for card_data in response_text_json:
             items_list = []
             for item in items:
-                if "titles" in card_data and any(word.lower() in item["title"].lower() for word in card_data["titles"]):
+                if "titles" in card_data and item["title"].lower() in [title.lower() for title in card_data["titles"]]:
                     items_list.append({"title": item["title"], "url": item["url"], "id": item["id"]})
             
             card = {
@@ -384,10 +363,10 @@ def create_card_from_llm(slug,data):
         Pick one specific context from the history having at maximum 4 titles, ignore other items.   
         The JSON strictly conforms to this schema. 
         {{
-            "activity" : [verbs], 
-            "entities": [nouns]
-            "description": "describe one-line motive, reason or interest of @{slug}"
-            "titles": [related titles to context]
+            "activity" : [verb], 
+            "tags": [2-3 categories]
+            "description": "describe one-line motive, reason or interest for @{slug}"
+            "titles": [related titles to this context]
         }}
         Use past tense for verbs
     """.format(slug=slug)
@@ -395,16 +374,15 @@ def create_card_from_llm(slug,data):
     initial_prompt_multiple_card = """
         The JSON object strictly conforms to this schema. 
         {{
-            "activity" : [verbs], 
-            "entities": [nouns]
-            "description": "describe one-line motive, reason or interest of @{slug}"
-            "titles": [related titles in this cluster]
+            "activity" : [verb], 
+            "tags": [2-3 categories]
+            "description": "describe one-line motive, reason or interest for @{slug}"
+            "titles": [related titles in this cluster context]
         }}
         Use past tense for verbs
     """.format(slug=slug)
 
     number_of_cards_category = get_category_cards(data, 15)
-    print(number_of_cards_category)
     final_results = []
     for category, num_cards in number_of_cards_category.items():
         if num_cards > 0:

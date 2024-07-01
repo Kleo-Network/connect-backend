@@ -21,9 +21,6 @@ dynamodb = session.resource('dynamodb')
 
 def domain_exists_or_insert(domain):
     table = dynamodb.Table("domains")
-    print(AWS_ACCESS_KEY_ID)
-    print(AWS_SECRET_ACCESS_KEY)
-    print(AWS_SECRET_ACCESS_KEY)
     response = table.query(
         KeyConditionExpression=boto3.dynamodb.conditions.Key('domain').eq(domain)
     )

@@ -110,7 +110,23 @@ def find_by_slug(slug):
 
     except Exception as e:
         return {}
-    
+
+def find_by_address_slug_first_time(slug):
+    try:
+        pipeline = [
+            {
+                "$match": {
+                    "slug": slug
+                }
+            }
+        ]
+        user_of_db = db.users.aggregate(pipeline).next()
+        return user_of_db['address'], user_of_db['first_time_user']
+
+    # TODO: Error Handling
+    # If an invalid ID is passed to `get_movie`, it should return None.
+    except (StopIteration) as _:
+        return None
 def find_by_address_slug(slug):
     try:
         pipeline = [

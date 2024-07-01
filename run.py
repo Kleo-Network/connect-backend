@@ -2,8 +2,11 @@
 
 from app import create_app
 import os
-app, celery = create_app()
-app.app_context().push()
+from app.celery.utils import create_celery
+
+app = create_app()
+app.celery_app = create_celery()
+celery = app.celery_app
 
 environment = os.environ.get("APPLICATION_ENV", "LOCAL")
 

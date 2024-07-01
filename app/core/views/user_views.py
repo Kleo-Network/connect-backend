@@ -6,7 +6,7 @@ core = Blueprint('core', __name__)
 from .auth_views import *
 from ..models.user import *
 from ..models.published_cards import get_published_card
-from ..celery.tasks import create_pending_card
+from ...celery.tasks import create_pending_card
 import os
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -51,7 +51,6 @@ def create_user():
                 slug = response['slug']
             response['email'] = user_info_from_google['email']
             response['token'] = get_jwt_token(slug, user_info_from_google['email'])
-            create_pending_card.delay(slug)
             return response, 200
     else:
         # Case 3: User does not exist and signup is false
