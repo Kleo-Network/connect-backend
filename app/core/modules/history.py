@@ -271,15 +271,10 @@ def message_from_LLM_API(
         return chat_completion.choices[0].message.content
     
 def get_category_cards(data, num_cards):
-
     frequency_data = data["frequency"]
-
     total_frequency = sum(frequency_data.values())
-
     category_ratios = {category: (freq / total_frequency) * num_cards for category, freq in frequency_data.items()}
-
     category_cards = {}
-
     for category, ratio in category_ratios.items():
         if category in ["Social Networking", "Streaming Media and Download"]:
             category_cards[category] = max(0, math.floor(ratio))  # Ensure a minimum count of 0
@@ -326,6 +321,7 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
             service=input_service,
             max_tokens=max_tokens
         )
+    print(bot_response)
     if "choices" in bot_response and len(bot_response["choices"]) > 0 and "message" in bot_response["choices"][0] and "content" in bot_response["choices"][0]["message"]:
         response_text_json = from_json(bot_response["choices"][0]["message"]["content"], allow_partial=True)
         if isinstance(response_text_json, dict):

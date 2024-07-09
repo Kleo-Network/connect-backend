@@ -2,7 +2,7 @@ from ..core.modules.history import create_pending_cards
 from ..core.controllers.history import *
 from ..core.models.history import *
 from ..core.models.user import *
-
+from ..core.models.celery_tasks import CeleryTask
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
 from time import sleep
@@ -12,7 +12,6 @@ from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from pymongo.errors import ServerSelectionTimeoutError
 import random
-
 # upload history & categorize it properly
 @shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="upload-history")
 def categorize_history(self, data): 
@@ -36,36 +35,24 @@ def categorize_history(self, data):
 @shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards")
 def create_pending_card(self, result, slug):
     user = find_by_slug(slug)
-    if user:
-        first_time_user = user["first_time_user"]
-        if first_time_user:
-            set_signup_upload_by_slug(slug)
-        last_published_at = user['last_cards_marked']
-        time_difference_days = (datetime.now().timestamp() - last_published_at) / (60 * 60 * 24)
-
-        if time_difference_days <= 4:    
-            try:
-                if get_history_count(slug) > 15:
-                    create_pending_cards(slug)
-                    next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
-                    create_pending_card.apply_async([slug], eta=next_execution)
-                    return
-                else:
-                    sleep(delay)
-                    delay += 5
-            except ServerSelectionTimeoutError:
-                print("MongoDB connection timeout error occurred.")
-                    
-
-            # If delay is 30 seconds and no history items are found
-            
-            next_execution = datetime.now(timezone.utc) + timedelta(hours=23, minutes=50)
-            create_pending_card.apply_async([result, slug], eta=next_execution)
-            return
-        else:
-            print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")
-    else:
+    if not user:
         print(f"User with slug {slug} not found.")
+        return
+
+    if user["first_time_user"]:
+        set_signup_upload_by_slug(slug)
+
+    last_published_at = user['last_cards_marked']
+    time_difference_days = (datetime.now().timestamp() - last_published_at) / (86400)  # 86400 seconds in a day
+
+    if time_difference_days > 4:
+        print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")
+        return
+
+    try:
+        process_user_history(result, slug)
+    except ServerSelectionTimeoutError:
+        print("MongoDB connection timeout error occurred.")
         
 @shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards-2")
 def force_create_pending_cards(self, slug):
@@ -87,7 +74,20 @@ def force_create_pending_cards(self, slug):
     else:
         print(f"User with slug {slug} not found.")   
 
+def process_user_history(result, slug):
+    celery = CeleryTask.save(slug: slug, task_id, type_: "regular", status: "created")
+    if get_history_count(slug) > 0:
+        create_pending_cards(slug)
+        schedule_next_execution(result, slug, hours=0, minutes=10)
+    else:
+        handle_no_history(result, slug)
 
+def handle_no_history(result, slug):
+    schedule_next_execution(result, slug, hours=23, minutes=50)
+
+def schedule_next_execution(result, slug, hours, minutes):
+    next_execution = datetime.now(timezone.utc) + timedelta(hours=hours, minutes=minutes)
+    create_pending_card.apply_async(kwargs={'result': result, 'slug': slug}, eta=next_execution)
 # @shared_task(bind=True, base=AbortableTask)
 # def checking_next_task_schedule(self,name="next_task"):
 #     print("This is to be executed every 10 seconds")
