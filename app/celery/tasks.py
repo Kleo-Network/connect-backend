@@ -2,7 +2,8 @@ from ..core.modules.history import create_pending_cards
 from ..core.controllers.history import *
 from ..core.models.history import *
 from ..core.models.user import *
-from ..core.models.celery_tasks import CeleryTask
+from ..core.models.celery_task import *
+
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
 from time import sleep
@@ -50,44 +51,28 @@ def create_pending_card(self, result, slug):
         return
 
     try:
-        process_user_history(result, slug)
+        process_user_history(result, slug, user.get('first_time_user', False))
     except ServerSelectionTimeoutError:
         print("MongoDB connection timeout error occurred.")
-        
-@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards-2")
-def force_create_pending_cards(self, slug):
-    user = find_by_slug(slug)
-    if user:
-        max_delay = 30
-        delay = 5
-        while delay <= max_delay:
-            try:
-                if get_history_count(slug) > 15:
-                    create_pending_cards(slug)
-                    return
-                else:
-                    sleep(delay)
-                    delay += 5
-            except ServerSelectionTimeoutError:
-                print("MongoDB connection timeout error occurred.")
-                break
-    else:
-        print(f"User with slug {slug} not found.")   
+      
 
-def process_user_history(result, slug):
-    celery = CeleryTask.save(slug: slug, task_id, type_: "regular", status: "created")
+def process_user_history(result, slug, first_time_user):
+    #celery = CeleryTask.save(slug: slug, task_id, type_: "regular", status: "created")
     if get_history_count(slug) > 0:
         create_pending_cards(slug)
-        schedule_next_execution(result, slug, hours=0, minutes=10)
+        schedule_next_execution(result, slug, first_time_user, hours=0, minutes=10)
     else:
-        handle_no_history(result, slug)
+        handle_no_history(result, slug, first_time_user)
 
-def handle_no_history(result, slug):
-    schedule_next_execution(result, slug, hours=23, minutes=50)
+def handle_no_history(result, slug, first_time_user):
+    schedule_next_execution(result, slug,first_time_user, hours=23, minutes=50)
 
-def schedule_next_execution(result, slug, hours, minutes):
+def schedule_next_execution(result, slug, first_time_user, hours, minutes): 
     next_execution = datetime.now(timezone.utc) + timedelta(hours=hours, minutes=minutes)
-    create_pending_card.apply_async(kwargs={'result': result, 'slug': slug}, eta=next_execution)
+    async_result = create_pending_card.apply_async(kwargs={'result': result, 'slug': slug}, eta=next_execution)
+    task_type = 'NEW' if first_time_user else 'CRON'
+    task = CeleryTask(slug, async_result.id, task_type, async_result.status)       
+    task.save()
 # @shared_task(bind=True, base=AbortableTask)
 # def checking_next_task_schedule(self,name="next_task"):
 #     print("This is to be executed every 10 seconds")
