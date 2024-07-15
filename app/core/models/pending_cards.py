@@ -13,7 +13,7 @@ db_name = os.environ.get("DB_NAME")
 client = pymongo.MongoClient(mongo_uri)
 db = client.get_database(db_name)
 
-card_types= ("DataCard", "ImageCard", "DomainVisitCard", "IconCard")
+card_types= ("DataCard", "VisitChartCard", "DomainVisitCard")
 
 class PendingCard():
     def __init__(self, slug, type, content="",

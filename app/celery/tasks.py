@@ -3,6 +3,7 @@ from ..core.controllers.history import *
 from ..core.models.history import *
 from ..core.models.user import *
 from ..core.models.celery_task import *
+from ..core.models.visits import *
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
@@ -24,7 +25,9 @@ def categorize_history(self, data):
         domain = urlparse(item["url"]).netloc
         if domain is not None:
             domain_data = domain_exists_or_insert(domain)
-            history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], int(item['lastVisitTime']))       
+            history = History(slug, item["title"], domain_data["category"], domain_data["category_group"], item["url"], domain, domain_data["category_description"], int(item['lastVisitTime']))     
+            visit = Visits(slug, domain_data["category"], domain, int(item['lastVisitTime']))
+            visit.save()
             history.save()
         
     if self.is_aborted():

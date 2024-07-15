@@ -1,7 +1,9 @@
+from datetime import timedelta
 import math
 from bs4 import BeautifulSoup as bs
 from flask import jsonify
 from urllib.parse import urlparse
+from app.core.models.visits import fetch_visits_for_last_15_days, fetch_visits_for_week
 from ..models.history import *
 from ..models.pending_cards import *
 
@@ -203,6 +205,30 @@ def single_url_request(domain):
         return None
 
 def create_pending_cards(slug):
+    if datetime.today().weekday() == 0:  # Check if today is Monday
+        last_week_start, last_week_end = get_date_range(1)
+        last_to_last_week_start, last_to_last_week_end = get_date_range(2)
+        
+        last_week_visits = fetch_visits_for_week(slug, last_week_start, last_week_end)
+        last_to_last_week_visits = fetch_visits_for_week(slug, last_to_last_week_start, last_to_last_week_end)
+        
+        deviations = calculate_deviation(last_week_visits, last_to_last_week_visits)
+        top_domains = sorted(deviations.items(), key=lambda item: item[1], reverse=True)[:3]
+        
+        for domain, deviation in top_domains:
+            last_week_count = last_week_visits[domain]
+            last_to_last_week_count = last_to_last_week_visits.get(domain, 0)
+            create_visit_count_card(slug, domain, deviation, last_week_count, last_to_last_week_count, format_date_range(int(last_week_start.timestamp()), int(last_week_end.timestamp())))
+    
+    today = datetime.today()
+    if today.day == 1 or today.day == 15:
+        start_date = (today - timedelta(days=15)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = today.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        top_domains = fetch_visits_for_last_15_days(slug)
+        if top_domains:
+            create_visit_chart_card(slug, top_domains, start_date, end_date)
+            
     history_from_db = get_history_item(slug)
     print("Step 1")
     if not history_from_db:
@@ -409,3 +435,48 @@ def create_card_from_llm(slug,data):
     if len(final_results) > 0:
         delete_all_history(slug)
     return final_results
+
+def get_date_range(weeks_ago=0):
+    today = datetime.today()
+    start_date = (today - timedelta(days=today.weekday() + 7 * weeks_ago)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = (start_date + timedelta(days=6)).replace(hour=23, minute=59, second=59, microsecond=999999)
+    return start_date, end_date
+
+def format_date_range(start_epoch, end_epoch):
+    # Convert epoch to datetime objects
+    start_date = datetime.fromtimestamp(start_epoch)
+    end_date = datetime.fromtimestamp(end_epoch)
+    
+    # Format the dates
+    start_date_str = start_date.strftime("%d %b")
+    end_date_str = end_date.strftime("%d %b")
+    
+    # Return the formatted date range
+    return f"{start_date_str} - {end_date_str}"
+
+def calculate_deviation(last_week, last_to_last_week):
+    deviation = {}
+    for domain in last_week:
+        last_week_count = last_week[domain]
+        last_to_last_week_count = last_to_last_week.get(domain, 0)
+        deviation[domain] = abs(last_week_count - last_to_last_week_count)
+    return deviation
+
+def create_visit_count_card(slug, domain, deviation, last_week_count, last_to_last_week_count, date_range):
+    description =  f"{'increased' if last_week_count > last_to_last_week_count else 'decreased'} in visiting {domain}"
+    activity_percentage = round((deviation / (last_to_last_week_count if last_to_last_week_count else 1)) * 100, 0)
+    activity = ["increased" if last_week_count > last_to_last_week_count else "decreased"]
+    if activity_percentage > 0:
+        pendingCard = PendingCard(slug, "DomainVisitCard", description,
+                                        [str(activity_percentage)+"%", activity, date_range], [{"title": "","url": domain}],
+                                        {"activity":[activity_percentage, activity], "description":domain}, "Miscellaneous")
+        pendingCard.save()
+
+def create_visit_chart_card(slug, domains_data, start_date, end_date):
+    activity = [{"category": domain["_id"], "count": domain["count"]} for domain in domains_data]
+    pendingCard = PendingCard(slug, "VisitChartCard", "",
+                                      [], [],
+                                      {"activity": activity,
+                                        "dateFrom": int(start_date.timestamp()),
+                                            "dateTo": int(end_date.timestamp())}, "Miscellaneous")
+    pendingCard.save()
