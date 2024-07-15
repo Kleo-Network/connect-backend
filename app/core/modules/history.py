@@ -230,9 +230,11 @@ def create_pending_cards(slug):
             create_visit_chart_card(slug, top_domains, start_date, end_date)
             
     history_from_db = get_history_item(slug)
+    print("Step 1")
     if not history_from_db:
         return
     cluster_history_list = cluster_and_save(history_from_db)
+    print("Step 2")
     if not cluster_history_list:
         return
     response_from_llm = create_card_from_llm(slug, cluster_history_list)
@@ -295,15 +297,10 @@ def message_from_LLM_API(
         return chat_completion.choices[0].message.content
     
 def get_category_cards(data, num_cards):
-
     frequency_data = data["frequency"]
-
     total_frequency = sum(frequency_data.values())
-
     category_ratios = {category: (freq / total_frequency) * num_cards for category, freq in frequency_data.items()}
-
     category_cards = {}
-
     for category, ratio in category_ratios.items():
         if category in ["Social Networking", "Streaming Media and Download"]:
             category_cards[category] = max(0, math.floor(ratio))  # Ensure a minimum count of 0
@@ -350,36 +347,50 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
             service=input_service,
             max_tokens=max_tokens
         )
+    print(bot_response)
     if "choices" in bot_response and len(bot_response["choices"]) > 0 and "message" in bot_response["choices"][0] and "content" in bot_response["choices"][0]["message"]:
-        response_text_json = CardObject.model_validate(from_json(bot_response["choices"][0]["message"]["content"], allow_partial=True))
+        response_text_json = from_json(bot_response["choices"][0]["message"]["content"], allow_partial=True)
+        if isinstance(response_text_json, dict):
+            response_text_json = [response_text_json]
     else: 
         response_text_json = []
     
-    
-    if len(response_text_json) > 0:
+    print(response_text_json)
+    if response_text_json is not None and len(response_text_json) > 0:
         for card_data in response_text_json:
+            try:
+                validated_card_data = CardObject.model_validate(card_data)
+            except ValidationError as e:
+                logging.error(f"Validation error for card data in slug: {slug}. Error: {str(e)}")
+                logging.error(f"Problematic card data: {card_data}")
+                continue  # Skip this card and continue with the next one
+
             items_list = []
             for item in items:
-                if "titles" in card_data and item["title"].lower() in [title.lower() for title in card_data["titles"]]:
+                if "titles" in validated_card_data.dict() and item["title"].lower() in [title.lower() for title in validated_card_data.titles]:
                     items_list.append({"title": item["title"], "url": item["url"], "id": item["id"]})
             
             card = {
-                    "cardType": "DataCard",
-                    "content": card_data["description"],
-                    "metadata": card_data,
-                    "tags": card_data["entities"],
-                    "urls": items_list
-                }
-            pendingCard = PendingCard(slug, "DataCard", card_data["description"],
-                                      card_data["entities"], items_list,
-                                      card_data, get_tags_from_category(tags, items[0]["category"]))
-            pendingCard.save()
-            for item in items_list:
-                if delete_history(slug, item["id"]): #We protect user privacy by deleting history once we create pending cards
-                    cards_main.append(card)
-                else:
-                    print(f"error while deleting {item['id']} of {slug}")
-                    
+                "cardType": "DataCard",
+                "content": validated_card_data.description,
+                "metadata": validated_card_data.dict(),
+                "tags": validated_card_data.tags,
+                "urls": items_list
+            }
+
+            try:
+                pendingCard = PendingCard(slug, "DataCard", validated_card_data.description,
+                                          validated_card_data.tags, items_list,
+                                          validated_card_data.dict(), get_tags_from_category(tags, items[0]["category"]))
+                pendingCard.save()
+                for item in items_list:
+                    if delete_history(slug, item["id"]):
+                        cards_main.append(card)
+                    else:
+                        logging.error(f"Error while deleting {item['id']} of {slug}")
+            except Exception as e:
+                logging.error(f"Error while saving or processing PendingCard for slug: {slug}. Error: {str(e)}")
+    
     return cards_main
 
     
@@ -389,9 +400,9 @@ def create_card_from_llm(slug,data):
         Pick one specific context from the history having at maximum 4 titles, ignore other items.   
         The JSON strictly conforms to this schema. 
         {{
-            "activity" : [verb], 
+            "activity" : verb, 
             "tags": [2-3 categories]
-            "description": "describe one-line motive, reason or interest for @{slug}"
+            "description": describe one-line motive, reason or interest for @{slug}
             "titles": [related titles to this context]
         }}
         Use past tense for verbs
@@ -400,9 +411,9 @@ def create_card_from_llm(slug,data):
     initial_prompt_multiple_card = """
         The JSON object strictly conforms to this schema. 
         {{
-            "activity" : [verb], 
+            "activity" : verb, 
             "tags": [2-3 categories]
-            "description": "describe one-line motive, reason or interest for @{slug}"
+            "description": describe one-line motive, reason or interest for @{slug}
             "titles": [related titles in this cluster context]
         }}
         Use past tense for verbs
