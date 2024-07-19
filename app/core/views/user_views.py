@@ -148,6 +148,30 @@ def update_mint_count(slug):
     except Exception as e:
         print(e)
         return jsonify({"error": "error while updating mint count"}), 500
+    
+@core.route('/update-about/<string:slug>', methods=['PUT'])
+@token_required
+def update_about_for_user(slug, **kwargs):
+    try:
+        data = request.get_json()
+        about = data.get("about")
+        
+        if not all([slug, about]):
+            return jsonify({"error": f"Missing required parameters"}), 400
+        
+        address = find_by_address_slug(slug)
+        if not address:
+            return jsonify({"error": "user is not found"}), 401
+        address_from_token = kwargs.get('user_data')['payload']['publicAddress']
+        if not check_user_authenticity(address, address_from_token):
+            return jsonify({"error": "user is not authorised"}), 401
+        
+        response = update_about_by_slug(slug, about)
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": f"error while updating about for user {slug}"}), 500
 
 
 
