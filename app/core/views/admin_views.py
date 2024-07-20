@@ -1,21 +1,27 @@
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify, current_app, request
 from celery.result import AsyncResult
 from .auth_views import token_required
-from ..controllers.history import check_user_authenticity, find_by_address_slug
-from ..models.celery_task import get_celery_tasks_by_slug, update_celery_task_status, get_all_celery_tasks, CeleryTask
-from ...celery.tasks import celery_app
+from ..models.user import find_by_address_slug, get_all_users_with_count
+from ..models.celery_tasks import get_celery_tasks_by_slug, update_celery_task_status, get_all_celery_tasks, CeleryTask
+from celery import current_app as current_celery_app
+import os
+from ..modules.cards import process_slug
+from celery import group
+from functools import partial
 
-celery_tasks = Blueprint('celery_tasks', __name__)
+core = Blueprint('core', __name__)
 
-@celery_tasks.route('/tasks/update_tasks', methods=['POST'])
+@core.route('/tasks/update_tasks', methods=['POST'])
 def update_database_for_backlog_tasks(**kwargs):
     try:
+        print(kwargs.get('password'))
         password = kwargs.get('password')
+        print(os.environ.get('PASSWORD'))
         if password != os.environ.get('PASSWORD'):
             return jsonify({"error": "Unauthorized"}), 401
 
         # Fetch all tasks from Celery that have status other than SUCCESS and populate the database
-        i = celery_app.control.inspect()
+        i = current_celery_app.celery.control.inspect()
         active_tasks = i.active() or {}
         reserved_tasks = i.reserved() or {}
         
@@ -48,10 +54,36 @@ def update_database_for_backlog_tasks(**kwargs):
         current_app.logger.error(f"Error in update_database_for_backlog_tasks: {str(e)}")
         return jsonify({"error": "An error occurred while processing the request"}), 500
 
-@celery_tasks.route('/tasks/update_tasks_db', methods=['POST'])
+@core.route('/tasks/start_history_all', methods=['POST'])
+def start_history_all():
+    try:
+        data = request.get_json()
+        slugs = data.get('slugs', [])
+        print(slugs)
+        if slugs:
+            tasks = [process_slug(slug) for slug in slugs]
+            print(tasks)
+        else:
+            result = get_all_users_with_count()
+            print(result)
+            tasks = [process_slug(user['slug'], min_count=15) for user in result.get("users", [])]
+            print(tasks)
+        group(tasks)()
+
+        return jsonify({"status": "success", "message": "Tasks queued successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+        
+
+@core.route('/tasks/update_tasks_db', methods=['POST'])
 def update_database_for_existing_tasks(**kwargs):
     try:
-        password = kwargs.get('password')
+        print(os.environ.get('PASSWORD'))
+        print(kwargs)
+        data = request.get_json()
+        password = data.get("password", "hello")
+        print(password)
         if password != os.environ.get('PASSWORD'):
             return jsonify({"error": "Unauthorized"}), 401
 
@@ -62,7 +94,7 @@ def update_database_for_existing_tasks(**kwargs):
         deleted_count = 0
 
         for task in all_tasks:
-            celery_task = AsyncResult(task['task_id'], app=celery_app)
+            celery_task = AsyncResult(task['task_id'], app=current_celery_app)
             new_status = celery_task.state
             
             if new_status != task['status']:
@@ -83,7 +115,7 @@ def update_database_for_existing_tasks(**kwargs):
         current_app.logger.error(f"Error in update_database_for_existing_tasks: {str(e)}")
         return jsonify({"error": "An error occurred while processing the request"}), 500
 
-@celery_tasks.route('/tasks/<string:slug>', methods=['GET'])
+@core.route('/tasks/<string:slug>', methods=['GET'])
 def get_and_update_celery_tasks(slug, **kwargs):
     try:
         # Authenticate user
@@ -91,16 +123,18 @@ def get_and_update_celery_tasks(slug, **kwargs):
         if not address:
             return jsonify({"error": "User not found"}), 404
         
-        passsword = kwargs.get('password')
-        if passsword !== os.environ.get('PASSWORD'):
+        passsword = request.args.get('password')
+        if passsword != os.environ.get('PASSWORD'):
             return
         # Get all tasks for the slug
         tasks = get_celery_tasks_by_slug(slug)
+        
 
         # Check and update status for each task
         updated_tasks = []
+        
         for task in tasks:
-            celery_task = AsyncResult(task['task_id'], app=celery_app)
+            celery_task = AsyncResult(task['task_id'], app=current_celery_app)
             new_status = celery_task.state
             
             if new_status != task['status']:
@@ -110,6 +144,7 @@ def get_and_update_celery_tasks(slug, **kwargs):
             else:
                 updated_tasks.append(task)
 
+        
         return jsonify({
             "message": "Celery tasks retrieved and updated successfully",
             "tasks": updated_tasks

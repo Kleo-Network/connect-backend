@@ -42,7 +42,7 @@ def create_app():
         url_prefix='/api/v1/core/static-card'
     )
     app.register_blueprint(
-        core_static_card,
+        admin_views,
         name="admin_api",
         url_prefix='/api/v1/core/admin'
     )

@@ -2,7 +2,7 @@ from ..core.modules.history import create_pending_cards
 from ..core.controllers.history import *
 from ..core.models.history import *
 from ..core.models.user import *
-from ..core.models.celery_task import *
+from ..core.models.celery_tasks import *
 from ..core.models.visits import *
 
 from celery import shared_task

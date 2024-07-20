@@ -14,7 +14,7 @@ db = client.get_database(db_name)
 class CeleryTask():
     def __init__(self, slug, task_id, type_, status, timestamp = int(datetime.now().timestamp())):
         assert isinstance(slug, str)
-        assert isinstance(task_id, int)
+        assert isinstance(task_id, str)
         assert isinstance(type_, str)
         assert isinstance(status, str)
         assert isinstance(timestamp, int)
@@ -24,7 +24,7 @@ class CeleryTask():
             'task_id': task_id,
             'type_': type_,
             'status': status,
-            'timestamp': visitTime
+            'timestamp': timestamp
         }
         
     def save(self):
@@ -50,8 +50,9 @@ def get_celery_tasks_by_slug(slug):
             "timestamp": 1
         }}
     ]
-    
+    print(pipeline)
     tasks = list(db.celery.aggregate(pipeline))
+    print(tasks)
     return tasks
 
 def get_all_celery_tasks():
