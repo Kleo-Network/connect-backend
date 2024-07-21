@@ -316,6 +316,26 @@ def update_tobe_release_kleo_token(slug):
     except Exception as e:
         print(e)
         return {}
+    
+def update_about_by_slug(slug, about):
+    try:
+        filter_query = {"slug": slug}
+        update_operation = {
+            "$set": {
+                "about": about
+            }
+        }
+        user_of_db = db.users.find_one_and_update(filter_query, update_operation, projection={"_id": 0}, return_document = pymongo.ReturnDocument.AFTER)
+        return user_of_db
+
+    # TODO: Error Handling
+    # If an invalid ID is passed to `get_movie`, it should return None.
+    except (StopIteration) as _:
+        return None
+
+    except Exception as e:
+        print(e)
+        return {}
 
 def get_all_users_with_count():
     try:
