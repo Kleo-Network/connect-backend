@@ -121,7 +121,7 @@ def find_by_address_slug_first_time(slug):
             }
         ]
         user_of_db = db.users.aggregate(pipeline).next()
-        return user_of_db.get('address', '0x...'), user_of_db.get('first_time_user', False)
+        return user_of_db.get('address', '0x'), user_of_db.get('first_time_user', False)
     except (StopIteration) as _:
         return None
 def find_by_address_slug(slug):
@@ -336,3 +336,18 @@ def update_about_by_slug(slug, about):
     except Exception as e:
         print(e)
         return {}
+
+def get_all_users_with_count():
+    try:
+        users = list(db.users.find({}, {'_id': 0}))
+        user_count = len(users)
+        return {
+            "users": users,
+            "count": user_count
+        }
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return {
+            "users": [],
+            "count": 0
+        }

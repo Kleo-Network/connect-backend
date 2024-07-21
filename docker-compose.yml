@@ -8,8 +8,16 @@ services:
     command: gunicorn -w 4 --bind 0.0.0.0:5001 run:app
     ports:
       - 5001:5001
+    volumes:
+      - .:/app
+    container_name: development
   celery:
     build: .
     command: celery -A run.celery worker --loglevel=info
     depends_on:
       - api
+    volumes:
+      - .:/app
+
+volumes:
+  app:
