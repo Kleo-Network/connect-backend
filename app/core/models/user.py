@@ -351,3 +351,33 @@ def get_all_users_with_count():
             "users": [],
             "count": 0
         }
+    
+def update_kleo_points_for_user(slug):
+    try:
+        pipeline = [
+            {
+                "$match": {
+                    "slug": slug
+                }
+            }
+        ]
+        
+        # Execute the pipeline and get the user
+        cursor = db.users.aggregate(pipeline)
+        user = next(cursor, None)
+        
+        if user:
+            user_profile_metadata = user.get('profile_metadata', {})
+            kleo_points_for_user = user_profile_metadata.get('kleo_points', 0)
+            kleo_token_of_user = user_profile_metadata.get('kleo_token', 0)
+            tobe_released_token_of_user = user_profile_metadata.get('tobe_release_tokens', 0)
+            
+            if user_profile_metadata and kleo_points_for_user:
+                updated_kleo_points = int(kleo_points_for_user) + 1
+                user_profile_metadata['kleo_points'] = updated_kleo_points
+            else:
+                user_profile_metadata['kleo_points'] = int(kleo_token_of_user) + int(tobe_released_token_of_user) + 1
+            db.users.update_one({'slug': slug}, {'$set': {'profile_metadata': user_profile_metadata}})
+    except Exception as e:
+        print(e)
+        return {}
