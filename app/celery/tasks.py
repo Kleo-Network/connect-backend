@@ -49,7 +49,7 @@ def create_pending_card(self, result, slug):
     last_published_at = user['last_cards_marked']
     time_difference_days = (datetime.now().timestamp() - last_published_at) / (86400)  # 86400 seconds in a day
 
-    if time_difference_days > 4:
+    if time_difference_days > 12:
         print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")
         return
 
@@ -63,7 +63,7 @@ def process_user_history(result, slug, first_time_user):
     #celery = CeleryTask.save(slug: slug, task_id, type_: "regular", status: "created")
     if get_history_count(slug) > 0:
         create_pending_cards(slug)
-        schedule_next_execution(result, slug, first_time_user, hours=0, minutes=10)
+        schedule_next_execution(result, slug, first_time_user, hours=23, minutes=50)
     else:
         handle_no_history(result, slug, first_time_user)
 
