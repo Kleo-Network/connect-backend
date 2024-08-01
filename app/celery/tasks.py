@@ -5,6 +5,7 @@ from ..core.models.user import *
 from ..core.models.celery_tasks import *
 from ..core.models.visits import *
 
+
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
 from time import sleep
@@ -46,13 +47,6 @@ def create_pending_card(self, result, slug):
     if user["first_time_user"]:
         set_signup_upload_by_slug(slug)
 
-    last_published_at = user['last_cards_marked']
-    time_difference_days = (datetime.now().timestamp() - last_published_at) / (86400)  # 86400 seconds in a day
-
-    if time_difference_days > 12:
-        print(f"Last published time for user with slug {slug} is greater than 4 days. Skipping card creation.")
-        return
-
     try:
         process_user_history(result, slug, user.get('first_time_user', False))
     except ServerSelectionTimeoutError:
@@ -60,8 +54,7 @@ def create_pending_card(self, result, slug):
       
 
 def process_user_history(result, slug, first_time_user):
-    #celery = CeleryTask.save(slug: slug, task_id, type_: "regular", status: "created")
-    if get_history_count(slug) > 0:
+    if get_history_count(slug) > 20:
         create_pending_cards(slug)
         schedule_next_execution(result, slug, first_time_user, hours=23, minutes=50)
     else:

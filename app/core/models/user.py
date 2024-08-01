@@ -340,17 +340,10 @@ def update_about_by_slug(slug, about):
 def get_all_users_with_count():
     try:
         users = list(db.users.find({}, {'_id': 0}))
-        user_count = len(users)
-        return {
-            "users": users,
-            "count": user_count
-        }
+        return users
     except Exception as e:
         print(f"An error occurred: {e}")
-        return {
-            "users": [],
-            "count": 0
-        }
+        return []
     
 def update_kleo_points_for_user(slug):
     try:

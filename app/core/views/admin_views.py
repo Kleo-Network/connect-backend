@@ -5,11 +5,34 @@ from ..models.user import find_by_address_slug, get_all_users_with_count
 from ..models.celery_tasks import get_celery_tasks_by_slug, update_celery_task_status, get_all_celery_tasks, CeleryTask
 from celery import current_app as current_celery_app
 import os
-from ..modules.cards import process_slug
+from ..modules.cards import process_slug, history_count, get_pending_cards_count
 from celery import group
 from functools import partial
+from app.celery.tasks import *
 
 core = Blueprint('core', __name__)
+
+@core.route('/tasks/update_celery', methods=['POST'])
+def update_celery():
+    data = request.get_json()
+    print(data)
+
+    i = current_celery_app.control.inspect()
+    scheduled_tasks = i.scheduled()
+    
+
+    print(i)
+    print(scheduled_tasks.items())
+   
+    slug = "vaibhavgeek"
+    if history_count(slug, 15) and get_pending_cards_count(slug, 30):
+        print("true")
+        task = create_pending_card.apply_async(
+                                kwargs={'result': 'Create Pending Card from ADMIN', 'slug': slug},
+                                queue='create-pending-cards')
+        print(task)
+    #if pending cards are less than 15 and history count > 20 then create card for the user. 
+    return jsonify({"success": "hi"}), 200
 
 @core.route('/tasks/update_tasks', methods=['POST'])
 def update_database_for_backlog_tasks(**kwargs):
@@ -58,17 +81,26 @@ def update_database_for_backlog_tasks(**kwargs):
 def start_history_all():
     try:
         data = request.get_json()
-        slugs = data.get('slugs', [])
-        print(slugs)
-        if slugs:
-            tasks = [process_slug(slug) for slug in slugs]
-            print(tasks)
-        else:
-            result = get_all_users_with_count()
-            print(result)
-            tasks = [process_slug(user['slug'], min_count=15) for user in result.get("users", [])]
-            print(tasks)
-        group(tasks)()
+        print("data")
+        print(data)
+        if data is not None:
+            slugs = data.get('slugs', [])
+            print(slugs)
+            if slugs:
+                tasks = [process_slug(slug) for slug in slugs]
+                print(tasks)
+                group(tasks)()
+            else:
+                print("error?")
+                users = get_all_users_with_count()
+                tasks=[]
+                for user in users:
+                    task = process_slug(user["slug"], min_count=15)
+                    print("individual task")
+                    print(task)
+                    tasks.append(task)
+                print("all tasks???")
+                #group(tasks)()
 
         return jsonify({"status": "success", "message": "Tasks queued successfully"}), 200
 
