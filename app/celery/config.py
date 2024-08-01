@@ -27,8 +27,8 @@ class BaseSettings:
     broker_use_ssl = True
     broker_heartbeat = 60
     broker_login_method = 'AMQPLAIN'
-    broker_user = 'vaibhavgeek'
-    broker_password = 'helloKleoNetwork'
+    broker_user = os.environ.get('RABBIT_MQ_USERNAME','vaibhavgeek')
+    broker_password = os.environ.get('RABBIT_MQ_PASSWORD', 'helloKleoNetwork')
 
 def get_settings():
     return BaseSettings()
