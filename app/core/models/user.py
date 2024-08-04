@@ -401,3 +401,37 @@ def get_top_users_by_kleo_points(limit=20):
     except Exception as e:
         print(f"An error occurred: {e}")
         return []
+
+def calculate_rank(slug):
+    try:
+        # First, get the user's Kleo points
+        user = db.users.find_one(
+            {"slug": slug},
+            {"profile_metadata.kleo_points": 1, "_id": 0}
+        )
+        if not user:
+            return {"error": "User not found"}, 404
+
+        user_kleo_points = user.get('profile_metadata', {}).get('kleo_points', 0)
+
+        # Count how many users have more Kleo points
+        higher_ranked_users = db.users.count_documents({
+            "profile_metadata.kleo_points": {"$gt": user_kleo_points}
+        })
+
+        # The rank is the number of users with more points, plus one
+        rank = higher_ranked_users + 1
+
+        # Get total number of users
+        total_users = db.users.count_documents({})
+
+        return {
+            "slug": slug,
+            "kleo_points": user_kleo_points,
+            "rank": rank,
+            "total_users": total_users
+        }, 200
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return {"error": "An error occurred while calculating rank"}, 500

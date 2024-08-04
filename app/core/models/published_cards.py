@@ -87,6 +87,10 @@ def mint_cards(slug):
         return (f"Minted field updated to true for all cards of user '{slug}'")
     else:
         return (f"No unpublished cards found for user '{slug}'")
-
+        
+def count_published_cards(slug):
+    count = db.published_cards.count_documents({'slug': slug})
+    return count
+    
 def format_datetime(dt):
     return datetime.utcfromtimestamp(dt).strftime("%d %b %Y")

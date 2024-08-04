@@ -69,9 +69,9 @@ def get_pending_card(slug, object_id=None):
 def delete_pending_card(slug, id):
     result = db.pending_cards.delete_one({'_id': id, 'slug': slug})
     if result.deleted_count == 1:
-        return jsonify({'message': f'Card deleted successfully for {slug}'}), 200
+        return jsonify({'message': f'Card deleted successfully for {slug}'})
     else:
-        return jsonify({'message': f'Card not found or already deleted for {slug}'}), 404
+        return jsonify({'message': f'Card not found or already deleted for {slug}'})
 
 def get_pending_card_count(slug):
     count = db.pending_cards.count_documents({"slug": slug})

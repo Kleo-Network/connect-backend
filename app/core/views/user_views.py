@@ -183,5 +183,9 @@ def get_top_users():
         logger.error(f"Error in get_top_users: {str(e)}")
         return jsonify({"error": "An error occurred while fetching top users"}), 500
 
+@core.route('/rank/<string:slug>', methods=['GET'])
+def get_user_rank(slug):
+    result, status_code = calculate_rank(slug)
+    return jsonify(result), status_code
 
        

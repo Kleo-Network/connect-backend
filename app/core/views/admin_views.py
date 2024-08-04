@@ -5,7 +5,9 @@ from ..models.user import find_by_address_slug, get_all_users_with_count
 from ..models.celery_tasks import get_celery_tasks_by_slug, update_celery_task_status, get_all_celery_tasks, CeleryTask
 from celery import current_app as current_celery_app
 import os
-from ..modules.cards import process_slug, history_count, get_pending_cards_count
+from ..modules.cards import process_slug, history_count, get_pending_cards_count, move_pending_to_published
+from ..models.pending_cards import get_pending_card_count
+from ..models.published_cards import count_published_cards
 from celery import group
 from functools import partial
 from app.celery.tasks import *
@@ -29,11 +31,9 @@ def update_celery():
         
         # Check if the user's slug is not present in scheduled tasks    
         is_scheduled = is_slug_scheduled(slug, scheduled_tasks)
-        print(slug)
-        print(is_scheduled)
         
         # If the slug is not scheduled and meets the conditions, create a new task
-        if history_count(slug, 60) and get_pending_cards_count(slug, 30):
+        if not is_scheduled and history_count(slug, 60) and get_pending_cards_count(slug, 8):
             print("{} to be executed".format(slug))
             task = create_pending_card.apply_async(
                 kwargs={'result': 'Create Pending Card from ADMIN', 'slug': slug},
@@ -77,6 +77,16 @@ def list_active_users():
             active_users_with_no_pending_cards.append(user["slug"])
     return jsonify(active_users_with_no_pending_cards), 200
 
+@core.route('/tasks/active_users', methods=['POST'])
+def list_inactive_users():
+    users = get_all_users_with_count()
+    active_users_with_no_publishing_cards = []
+    for user in users:
+        slug = user["slug"]
+        count = count_published_cards(slug)
+        active_users_with_no_publishing_cards.append({"slug": user["slug"], "count": count})
+    return jsonify(active_users_with_no_publishing_cards), 200
+
 
 @core.route('/tasks/single_cards_create', methods=['POST'])
 def single_slug_card_create():
@@ -91,7 +101,7 @@ def move_pending_cards_to_published():
     moved_cards_count = 0
     for user in users:
         slug = user["slug"]
-        pending_count = get_pending_cards_count(slug, 0)
+        pending_count = get_pending_card_count(slug)
         
         if pending_count > 0:
             moved_count = move_pending_to_published(slug)

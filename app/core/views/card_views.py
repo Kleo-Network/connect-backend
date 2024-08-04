@@ -39,7 +39,7 @@ def delete_pending_cards(slug,**kwargs):
         return jsonify({"error": "user is not authorised"}), 401
     
     result = delete_pending_card(slug, ObjectId(id))
-    return result
+    return result,200
 
 @core.route('/published/<string:slug>', methods=["GET"])
 @token_required
@@ -139,8 +139,7 @@ def get_static_cards(slug,**kwargs):
     if not address:
         return jsonify({"error": "user is not found"}), 401
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
-    if not check_user_authenticity(address, address_from_token):
-        return jsonify({"error": "user is not authorised"}), 401
+   
     
     response = get_static_card(slug)
     return jsonify(response), 200
