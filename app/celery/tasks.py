@@ -15,6 +15,37 @@ from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from pymongo.errors import ServerSelectionTimeoutError
 import random
+import requests
+
+def send_telegram_message(slug, body):
+    tg_token_api = os.environ.get('TELEGRAM_API_TOKEN')
+    channel_id = "-1002178791722"  # The channel ID you provided
+
+    subject = f'Acticity for Slug: {slug}'
+    message = f'```{json.dumps(body, indent=2)}```'
+
+    # Send the message
+    telegram_api_url = f"https://api.telegram.org/bot{tg_token_api}/sendMessage"
+    
+    payload = {
+        "chat_id": channel_id,
+        "text": f"{subject}\n\n{message}",
+        "parse_mode": "Markdown"
+    }
+
+    try:
+        response = requests.post(telegram_api_url, json=payload)
+        if response.status_code == 200:
+            print(f"Telegram message sent successfully for slug: {slug}")
+        else:
+            print(f"Failed to send Telegram message for slug: {slug}. Status code: {response.status_code}")
+    except Exception as e:
+        print(f"Failed to send Telegram message for slug: {slug}. Error: {str(e)}")
+        
+@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="send-email")
+def send_telegram_notification(self, slug, response):
+    send_telegram_message(slug,response)
+
 # upload history & categorize it properly
 @shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="upload-history")
 def categorize_history(self, data): 
@@ -40,6 +71,7 @@ def categorize_history(self, data):
 @shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards")
 def create_pending_card(self, result, slug):
     user = find_by_slug(slug)
+    # when a task is created send a email to vaibhav.dkm@gmail.com from vaibhavblogger@gmail with the slug that task is created. 
     if not user:
         print(f"User with slug {slug} not found.")
         return
@@ -48,27 +80,29 @@ def create_pending_card(self, result, slug):
         set_signup_upload_by_slug(slug)
 
     try:
-        process_user_history(result, slug, user.get('first_time_user', False))
+        history_response = process_user_history(result, slug, user.get('first_time_user', False))
+        schedule_next_execution(result, slug, user.get('first_time_user', False), hours=23, minutes=0)
+        send_telegram_notification.delay(slug, history_response)
     except ServerSelectionTimeoutError:
         print("MongoDB connection timeout error occurred.")
       
 
 def process_user_history(result, slug, first_time_user):
     if get_history_count(slug) > 20:
-        create_pending_cards(slug)
-        schedule_next_execution(result, slug, first_time_user, hours=23, minutes=50)
+        response_llm = create_pending_cards(slug)
+        schedule_next_execution(result, slug, first_time_user, hours=23, minutes=0)
+        return response_llm
     else:
         handle_no_history(result, slug, first_time_user)
+        return
 
 def handle_no_history(result, slug, first_time_user):
-    schedule_next_execution(result, slug,first_time_user, hours=23, minutes=50)
+    schedule_next_execution(result, slug,first_time_user, hours=23, minutes=0)
 
 def schedule_next_execution(result, slug, first_time_user, hours, minutes): 
     next_execution = datetime.now(timezone.utc) + timedelta(hours=hours, minutes=minutes)
     async_result = create_pending_card.apply_async(kwargs={'result': result, 'slug': slug}, eta=next_execution)
-    task_type = 'NEW' if first_time_user else 'CRON'
-    task = CeleryTask(slug, async_result.id, task_type, async_result.status)       
-    task.save()
+    
 # @shared_task(bind=True, base=AbortableTask)
 # def checking_next_task_schedule(self,name="next_task"):
 #     print("This is to be executed every 10 seconds")

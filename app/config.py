@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Kleo Backend"
     APP_VERSION: str = "1.0"
     DEBUG: bool = os.getenv("DEBUG", False)
+    
 
 def get_settings():
        return Settings()

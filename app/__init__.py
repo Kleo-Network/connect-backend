@@ -4,12 +4,17 @@ from os import environ
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
+import os 
 
 
 def create_app():
     load_dotenv()
     app = Flask('KLEO-NETWORK')
+    
+   
     CORS(app, resources={r'/api/*': {'origins': '*'}})
+    
+
     from .core.views.user_views import core as core_user
     from .core.views.auth_views import core as core_auth
     from .core.views.card_views import core as core_card

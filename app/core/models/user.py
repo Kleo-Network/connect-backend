@@ -374,3 +374,30 @@ def update_kleo_points_for_user(slug):
     except Exception as e:
         print(e)
         return {}
+def get_top_users_by_kleo_points(limit=20):
+    try:
+        # Fetch users and sort them by Kleo points in descending order
+        users = list(db.users.find(
+            {},
+            {
+                '_id': 0,
+                'slug': 1,
+                'name': 1,
+                'profile_metadata.kleo_points': 1
+            }
+        ).sort('profile_metadata.kleo_points', pymongo.DESCENDING).limit(limit))
+
+        # Format the result
+        leaderboard = []
+        for index, user in enumerate(users, start=1):
+            leaderboard.append({
+                'rank': index,
+                'slug': user['slug'],
+                'name': user.get('name', 'Anonymous'),
+                'kleo_points': user.get('profile_metadata', {}).get('kleo_points', 0)
+            })
+
+        return leaderboard
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return []

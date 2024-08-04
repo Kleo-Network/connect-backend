@@ -9,179 +9,96 @@ from ..modules.cards import process_slug, history_count, get_pending_cards_count
 from celery import group
 from functools import partial
 from app.celery.tasks import *
+from ..modules.history import create_pending_cards
 
 core = Blueprint('core', __name__)
 
 @core.route('/tasks/update_celery', methods=['POST'])
 def update_celery():
     data = request.get_json()
-    print(data)
-
     i = current_celery_app.control.inspect()
-    scheduled_tasks = i.scheduled()
+    scheduled_tasks = i.scheduled() or {}
     
-
-    print(i)
-    print(scheduled_tasks.items())
-   
-    slug = "vaibhavgeek"
-    if history_count(slug, 15) and get_pending_cards_count(slug, 30):
-        print("true")
-        task = create_pending_card.apply_async(
-                                kwargs={'result': 'Create Pending Card from ADMIN', 'slug': slug},
-                                queue='create-pending-cards')
-        print(task)
-    #if pending cards are less than 15 and history count > 20 then create card for the user. 
-    return jsonify({"success": "hi"}), 200
-
-@core.route('/tasks/update_tasks', methods=['POST'])
-def update_database_for_backlog_tasks(**kwargs):
-    try:
-        print(kwargs.get('password'))
-        password = kwargs.get('password')
-        print(os.environ.get('PASSWORD'))
-        if password != os.environ.get('PASSWORD'):
-            return jsonify({"error": "Unauthorized"}), 401
-
-        # Fetch all tasks from Celery that have status other than SUCCESS and populate the database
-        i = current_celery_app.celery.control.inspect()
-        active_tasks = i.active() or {}
-        reserved_tasks = i.reserved() or {}
+    users = get_all_users_with_count()
         
-        all_tasks = []
-        for worker, tasks in active_tasks.items():
-            all_tasks.extend(tasks)
-        for worker, tasks in reserved_tasks.items():
-            all_tasks.extend(tasks)
-
-        updated_count = 0
-        for task in all_tasks:
-            task_id = task['id']
-            status = task['status']
-            if status != 'SUCCESS':
-                # Assuming the task contains 'slug' and 'type' information
-                slug = task.get('kwargs', {}).get('slug')
-                task_type = task.get('name')  # This might need adjustment based on how you store task types
-                
-                if slug and task_type:
-                    celery_task = CeleryTask(slug, task_id, task_type, status)
-                    celery_task.save()
-                    updated_count += 1
-
-        return jsonify({
-            "message": f"Database updated with {updated_count} backlog tasks",
-            "updated_count": updated_count
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Error in update_database_for_backlog_tasks: {str(e)}")
-        return jsonify({"error": "An error occurred while processing the request"}), 500
-
-@core.route('/tasks/start_history_all', methods=['POST'])
-def start_history_all():
-    try:
-        data = request.get_json()
-        print("data")
-        print(data)
-        if data is not None:
-            slugs = data.get('slugs', [])
-            print(slugs)
-            if slugs:
-                tasks = [process_slug(slug) for slug in slugs]
-                print(tasks)
-                group(tasks)()
-            else:
-                print("error?")
-                users = get_all_users_with_count()
-                tasks=[]
-                for user in users:
-                    task = process_slug(user["slug"], min_count=15)
-                    print("individual task")
-                    print(task)
-                    tasks.append(task)
-                print("all tasks???")
-                #group(tasks)()
-
-        return jsonify({"status": "success", "message": "Tasks queued successfully"}), 200
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    new_tasks_count = 0
+    
+    # Loop through each user
+    for user in users:
+        slug = user["slug"]
         
-
-@core.route('/tasks/update_tasks_db', methods=['POST'])
-def update_database_for_existing_tasks(**kwargs):
-    try:
-        print(os.environ.get('PASSWORD'))
-        print(kwargs)
-        data = request.get_json()
-        password = data.get("password", "hello")
-        print(password)
-        if password != os.environ.get('PASSWORD'):
-            return jsonify({"error": "Unauthorized"}), 401
-
-        # Fetch all tasks from the database and update their status
-        all_tasks = get_all_celery_tasks()
-
-        updated_count = 0
-        deleted_count = 0
-
-        for task in all_tasks:
-            celery_task = AsyncResult(task['task_id'], app=current_celery_app)
-            new_status = celery_task.state
-            
-            if new_status != task['status']:
-                updated_task = update_celery_task_status(task['slug'], task['task_id'], new_status)
-                if updated_task:
-                    updated_count += 1
-                else:
-                    # Task was deleted (SUCCESS status)
-                    deleted_count += 1
-
-        return jsonify({
-            "message": "Database tasks updated",
-            "updated_count": updated_count,
-            "deleted_count": deleted_count
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Error in update_database_for_existing_tasks: {str(e)}")
-        return jsonify({"error": "An error occurred while processing the request"}), 500
-
-@core.route('/tasks/<string:slug>', methods=['GET'])
-def get_and_update_celery_tasks(slug, **kwargs):
-    try:
-        # Authenticate user
-        address = find_by_address_slug(slug)
-        if not address:
-            return jsonify({"error": "User not found"}), 404
+        # Check if the user's slug is not present in scheduled tasks    
+        is_scheduled = is_slug_scheduled(slug, scheduled_tasks)
+        print(slug)
+        print(is_scheduled)
         
-        passsword = request.args.get('password')
-        if passsword != os.environ.get('PASSWORD'):
-            return
-        # Get all tasks for the slug
-        tasks = get_celery_tasks_by_slug(slug)
-        
+        # If the slug is not scheduled and meets the conditions, create a new task
+        if history_count(slug, 60) and get_pending_cards_count(slug, 30):
+            print("{} to be executed".format(slug))
+            task = create_pending_card.apply_async(
+                kwargs={'result': 'Create Pending Card from ADMIN', 'slug': slug},
+                queue='create-pending-cards-2'
+            )
+            print(f"Scheduled task for slug: {slug}, task id: {task.id}")
+            new_tasks_count += 1
 
-        # Check and update status for each task
-        updated_tasks = []
-        
-        for task in tasks:
-            celery_task = AsyncResult(task['task_id'], app=current_celery_app)
-            new_status = celery_task.state
-            
-            if new_status != task['status']:
-                updated_task = update_celery_task_status(slug, task['task_id'], new_status)
-                if updated_task:
-                    updated_tasks.append(updated_task)
-            else:
-                updated_tasks.append(task)
+    return jsonify({
+        "success": True,
+        "message": "All tasks for users queued for Celery to execute with count numbers",
+        "new_tasks_scheduled": new_tasks_count
+    }), 200
 
-        
-        return jsonify({
-            "message": "Celery tasks retrieved and updated successfully",
-            "tasks": updated_tasks
-        }), 200
+def is_slug_scheduled(slug, scheduled_tasks):
+    for worker_tasks in scheduled_tasks.values():
+        for task in worker_tasks:
+            if task['request']['name'] == 'app.celery.tasks.create_pending_card':
+                if task['request']['kwargs'].get('slug') == slug:
+                    return True
+    return False
 
-    except Exception as e:
-        current_app.logger.error(f"Error in get_and_update_celery_tasks: {str(e)}")
-        return jsonify({"error": "An error occurred while processing the request"}), 500
+@core.route('/tasks/list_active_users', methods=['POST'])
+def list_active_users_zero_pending():
+    users = get_all_users_with_count()
+    active_users_with_no_pending_cards = []
+    for user in users:
+        slug = user["slug"]
+        if history_count(slug, 60) and get_pending_cards_count(slug, 0):
+            active_users_with_no_pending_cards.append(user["slug"])
+    return jsonify(active_users_with_no_pending_cards), 200
+
+
+@core.route('/tasks/list_users_active_history', methods=['POST'])
+def list_active_users():
+    users = get_all_users_with_count()
+    active_users_with_no_pending_cards = []
+    for user in users:
+        slug = user["slug"]
+        if history_count(slug, 60):
+            active_users_with_no_pending_cards.append(user["slug"])
+    return jsonify(active_users_with_no_pending_cards), 200
+
+
+@core.route('/tasks/single_cards_create', methods=['POST'])
+def single_slug_card_create():
+    data = request.get_json()
+    slug = data["slug"]
+    response_llm = create_pending_cards(slug)
+    return jsonify({"success": "{} cards created".format(slug)}),200
+
+@core.route('/tasks/move_pending_cards_published', methods=['POST'])
+def move_pending_cards_to_published():
+    users = get_all_users_with_count()
+    moved_cards_count = 0
+    for user in users:
+        slug = user["slug"]
+        pending_count = get_pending_cards_count(slug, 0)
+        
+        if pending_count > 0:
+            moved_count = move_pending_to_published(slug)
+            moved_cards_count += moved_count
+            print(f"Moved {moved_count} cards for user {slug}")
+
+    return jsonify({
+        "message": "Successfully moved pending cards to published cards",
+        "total_cards_moved": moved_cards_count
+    }), 200

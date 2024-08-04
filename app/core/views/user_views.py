@@ -173,6 +173,15 @@ def update_about_for_user(slug, **kwargs):
         print(e)
         return jsonify({"error": f"error while updating about for user {slug}"}), 500
 
+@core.route('/top-users', methods=['GET'])
+def get_top_users():
+    try:
+        limit = request.args.get('limit', default=20, type=int)
+        leaderboard = get_top_users_by_kleo_points(limit)
+        return jsonify(leaderboard), 200
+    except Exception as e:
+        logger.error(f"Error in get_top_users: {str(e)}")
+        return jsonify({"error": "An error occurred while fetching top users"}), 500
 
 
        

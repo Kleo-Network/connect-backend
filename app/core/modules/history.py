@@ -239,6 +239,7 @@ def create_pending_cards(slug):
         return
     response_from_llm = create_card_from_llm(slug, cluster_history_list)
     print(response_from_llm)
+    return response_from_llm
     
 def cluster_and_save(data):
     # Prepare the result structure
@@ -402,7 +403,7 @@ def create_card_from_llm(slug,data):
         {{
             "activity" : verb, 
             "tags": [2-3 categories]
-            "description": describe one-line motive, reason or interest for @{slug}
+            "description": describe one-two-line motive, reason or interest for @{slug}
             "titles": [related titles to this context]
         }}
         Use past tense for verbs
@@ -413,7 +414,7 @@ def create_card_from_llm(slug,data):
         {{
             "activity" : verb, 
             "tags": [2-3 categories]
-            "description": describe one-line motive, reason or interest for @{slug}
+            "description": describe one-two-line motive, reason or interest for @{slug}
             "titles": [related titles in this cluster context]
         }}
         Use past tense for verbs
