@@ -15,6 +15,46 @@ from ..modules.history import create_pending_cards
 
 core = Blueprint('core', __name__)
 
+@core.route('/tasks/abort_scheduled', methods=['GET'])
+def abort_scheduled_tasks():
+    slug = 'aviral10x'
+    if not slug:
+        return jsonify({"error": "Slug is required"}), 400
+
+    i = current_celery_app.control.inspect()
+    scheduled_tasks = i.scheduled() or {}
+
+    tasks_to_revoke = []
+    kept_task = None
+
+    for worker, tasks in scheduled_tasks.items():
+        for task in tasks:
+            if task['request']['kwargs'].get('slug') == slug:
+                if not kept_task:
+                    kept_task = task
+                else:
+                    tasks_to_revoke.append(task['request']['id'])
+
+    revoked_count = 0
+    for task_id in tasks_to_revoke:
+        try:
+            current_celery_app.control.revoke(task_id, terminate=True)
+            revoked_count += 1
+        except TaskRevokedError:
+            pass  # Task was already completed or doesn't exist
+
+    return jsonify({
+        "message": f"Aborted {revoked_count} tasks for slug '{slug}'",
+        "kept_task": kept_task['request']['id'] if kept_task else None
+    }), 200
+
+
+@core.route('/tasks/inspect_celery_tasks', methods=['GET'])
+def inspect_scheduled_tasks():
+    i = current_celery_app.control.inspect()
+    scheduled_tasks = i.scheduled() or {}
+    return jsonify({"tasks": list(scheduled_tasks.values())}), 200
+
 @core.route('/tasks/update_celery', methods=['POST'])
 def update_celery():
     data = request.get_json()

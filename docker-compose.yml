@@ -13,7 +13,7 @@ services:
     container_name: development
   celery:
     build: .
-    command: celery -A run.celery worker --loglevel=info
+    command: celery -A run.celery worker --pool=prefork --concurrency=1 --loglevel=info
     depends_on:
       - api
     volumes:
