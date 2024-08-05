@@ -26,9 +26,13 @@ def upload(**kwargs):
     if not all([slug, history]):
         return jsonify({"error": f"Missing required parameters"}), 400
     
-    address, signup = find_by_address_slug_first_time(slug)
-    if not address:
-        return jsonify({"error": "user is not found"}), 401
+    
+    result = find_by_address_slug_first_time(slug)
+    if result is None:
+        send_telegram_notification.delay(slug, "UPLOAD ERROR FOR THE SLUG, CHECK DATABASE")
+        return jsonify({"error": "User is not found"}), 401
+    
+    address, signup = result
         
     address_from_token = kwargs.get('user_data')['payload']['publicAddress']
     if not check_user_authenticity(address, address_from_token):

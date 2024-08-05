@@ -47,7 +47,7 @@ def send_telegram_notification(self, slug, response):
     send_telegram_message(slug,response)
 
 # upload history & categorize it properly
-@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="upload-history")
+@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=0, queue="upload-history")
 def categorize_history(self, data): 
     chunk = data["chunk"]
     slug = data["slug"]
@@ -68,7 +68,7 @@ def categorize_history(self, data):
     return last_processed_timestamp
     
 # create pending tasks celery task       
-@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=2, queue="create-pending-cards")
+@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=0, queue="create-pending-cards")
 def create_pending_card(self, result, slug):
     user = find_by_slug(slug)
     # when a task is created send a email to vaibhav.dkm@gmail.com from vaibhavblogger@gmail with the slug that task is created. 
