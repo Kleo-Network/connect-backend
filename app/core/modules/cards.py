@@ -10,7 +10,12 @@ def process_slug(slug):
 
 def get_pending_cards_count(slug, count):
     actual_count = get_pending_card_count(slug)
-    return actual_count < count
+    print("pending cards")
+    print(actual_count)
+    if actual_count == 0:
+        return True
+    else:
+        return False
 
 def history_count(slug, count):
     actual_count = get_history_count(slug)
@@ -23,27 +28,24 @@ def move_pending_to_published(slug):
     moved_count = 0
     print("pending cards")
     print(pending_cards)
-    if slug not in ["rahat","YuriChetverikov","uvazhaemii"]:
-        for card in pending_cards:
-            # Create a new PublishedCard object
-            published_card = PublishedCard(
-                slug=slug,
-                type=card['cardType'],
-                content=card['content'],
-                tags=card['tags'],
-                urls=card['urls'],
-                metadata=card['metadata'],
-                category=card['category'],
-                timestamp=card['date']
-            )
+    for card in pending_cards:
+        # Create a new PublishedCard object
+        published_card = PublishedCard(
+            slug=slug,
+            type=card['cardType'],
+            content=card['content'],
+            tags=card['tags'],
+            urls=card['urls'],
+            metadata=card['metadata'],
+            category=card['category'],
+            timestamp=card['date']
+        )
 
-            # Save the published card
-            published_card.save()
-            
-            
-            print(delete_pending_card(slug, card['id']))
-            moved_count += 1
+        # Save the published card
+        published_card.save()
+        
+        
+        print(delete_pending_card(slug, card['id']))
+        moved_count += 1
 
-        return moved_count
-    else:
-        return moved_count
+    return moved_count

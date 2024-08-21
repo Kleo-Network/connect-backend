@@ -21,6 +21,7 @@ def create_app():
     from .core.views.history_views import core as core_history
     from .core.views.static_views import core as core_static_card
     from .core.views.admin_views import core as admin_views
+    from .core.views.frame_views import core as frame_views
     app.register_blueprint(
         core_user,
         name="user_api",
@@ -50,6 +51,11 @@ def create_app():
         admin_views,
         name="admin_api",
         url_prefix='/api/v1/core/admin'
+    )
+    app.register_blueprint(
+        frame_views,
+        name="frame_api",
+        url_prefix='/api/v1/core/frame'
     )
     return app
 

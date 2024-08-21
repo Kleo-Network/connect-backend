@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.ERROR)
+
 from datetime import timedelta
 import math
 from bs4 import BeautifulSoup as bs
@@ -13,7 +16,6 @@ import re
 import openai
 import random
 import os
-
 from pydantic_core import from_json
 
 from pydantic import BaseModel

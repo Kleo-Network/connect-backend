@@ -215,6 +215,36 @@ def update_cards():
     else:
         return jsonify({"error": "Please provide correct password"}), 500
 
+
+@core.route('/published/<string:slug>/adjacent', methods=["GET"])
+def get_adjacent_published_cards(slug, **kwargs):
+    try:
+        card_id = request.args.get('card_id', None)
+        date = request.args.get('date', None)
+
+        if not date:
+            return jsonify({"error": "Date parameter is required"}), 400
+
+        try:
+            date = int(date)
+        except ValueError:
+            return jsonify({"error": "Invalid date format. Use epoch timestamp (integer)"}), 400
+
+        address = find_by_address_slug(slug)
+        if not address:
+            return jsonify({"error": "User not found"}), 404
+
+        result = get_published_card_with_adjacent(slug, date, card_id)
+
+        if result is None:
+            return jsonify({"error": "No card found"}), 404
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in get_adjacent_published_cards: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
+
 # @core.route('/check-timed-tasks', methods=["GET"])
 # def check_timed_tasks():
 #     checking_next_task_schedule.delay()

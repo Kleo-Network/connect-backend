@@ -17,35 +17,37 @@ core = Blueprint('core', __name__)
 
 @core.route('/tasks/abort_scheduled', methods=['GET'])
 def abort_scheduled_tasks():
-    slug = 'aviral10x'
-    if not slug:
-        return jsonify({"error": "Slug is required"}), 400
-
+    users = get_all_users_with_count()
+    
     i = current_celery_app.control.inspect()
     scheduled_tasks = i.scheduled() or {}
 
-    tasks_to_revoke = []
-    kept_task = None
+    tasks_to_revoke = {}
+    kept_tasks = {}
 
     for worker, tasks in scheduled_tasks.items():
         for task in tasks:
-            if task['request']['kwargs'].get('slug') == slug:
-                if not kept_task:
-                    kept_task = task
+            task_slug = task['request']['kwargs'].get('slug')
+            if task_slug in [user['slug'] for user in users]:
+                if task_slug not in kept_tasks:
+                    kept_tasks[task_slug] = task
                 else:
-                    tasks_to_revoke.append(task['request']['id'])
+                    if task_slug not in tasks_to_revoke:
+                        tasks_to_revoke[task_slug] = []
+                    tasks_to_revoke[task_slug].append(task['request']['id'])
 
     revoked_count = 0
-    for task_id in tasks_to_revoke:
-        try:
-            current_celery_app.control.revoke(task_id, terminate=True)
-            revoked_count += 1
-        except TaskRevokedError:
-            pass  # Task was already completed or doesn't exist
+    for slug, task_ids in tasks_to_revoke.items():
+        for task_id in task_ids:
+            try:
+                current_celery_app.control.revoke(task_id, terminate=True)
+                revoked_count += 1
+            except TaskRevokedError:
+                pass  # Task was already completed or doesn't exist
 
     return jsonify({
-        "message": f"Aborted {revoked_count} tasks for slug '{slug}'",
-        "kept_task": kept_task['request']['id'] if kept_task else None
+        "message": f"Aborted {revoked_count} tasks for all users",
+        "kept_tasks": {slug: task['request']['id'] for slug, task in kept_tasks.items()}
     }), 200
 
 
@@ -64,6 +66,7 @@ def update_celery():
     users = get_all_users_with_count()
         
     new_tasks_count = 0
+    revoked_tasks_count = 0
     
     # Loop through each user
     for user in users:
@@ -72,21 +75,44 @@ def update_celery():
         # Check if the user's slug is not present in scheduled tasks    
         is_scheduled = is_slug_scheduled(slug, scheduled_tasks)
         
-        # If the slug is not scheduled and meets the conditions, create a new task
-        if not is_scheduled and history_count(slug, 60) and get_pending_cards_count(slug, 8):
-            print("{} to be executed".format(slug))
-            task = create_pending_card.apply_async(
-                kwargs={'result': 'Create Pending Card from ADMIN', 'slug': slug},
-                queue='create-pending-cards-2'
-            )
-            print(f"Scheduled task for slug: {slug}, task id: {task.id}")
-            new_tasks_count += 1
+        # Check if user has no pending cards and history count > 60
+        has_no_pending_cards = get_pending_cards_count(slug, 0)
+        has_sufficient_history = history_count(slug, 60)
+        
+        # If the conditions are met, create a new task
+        if has_no_pending_cards and has_sufficient_history:
+            if not is_scheduled:
+                print(f"{slug} to be executed")
+                task = create_pending_card.apply_async(
+                    kwargs={'result': 'Create Pending Card from ADMIN', 'slug': slug},
+                    queue='create-pending-cards-2'
+                )
+                print(f"Scheduled task for slug: {slug}, task id: {task.id}")
+                new_tasks_count += 1
+        else:
+            # If conditions are not met, revoke any existing tasks for this user
+            revoked_count = revoke_user_tasks(slug, scheduled_tasks)
+            revoked_tasks_count += revoked_count
 
     return jsonify({
         "success": True,
-        "message": "All tasks for users queued for Celery to execute with count numbers",
-        "new_tasks_scheduled": new_tasks_count
+        "message": "Tasks updated for all users",
+        "new_tasks_scheduled": new_tasks_count,
+        "tasks_revoked": revoked_tasks_count
     }), 200
+
+def revoke_user_tasks(slug, scheduled_tasks):
+    revoked_count = 0
+    for worker, tasks in scheduled_tasks.items():
+        for task in tasks:
+            if (task['request']['name'] == 'app.celery.tasks.create_pending_card' and
+                task['request']['kwargs'].get('slug') == slug):
+                try:
+                    current_celery_app.control.revoke(task['request']['id'], terminate=True)
+                    revoked_count += 1
+                except TaskRevokedError:
+                    pass  # Task was already completed or doesn't exist
+    return revoked_count
 
 def is_slug_scheduled(slug, scheduled_tasks):
     for worker_tasks in scheduled_tasks.values():
@@ -152,3 +178,40 @@ def move_pending_cards_to_published():
         "message": "Successfully moved pending cards to published cards",
         "total_cards_moved": moved_cards_count
     }), 200
+
+@core.route('/tasks/move_specific_pending_cards/<string:slug>', methods=['GET'])
+def move_specific_pending_cards(slug):
+    # Get query parameters for card IDs
+    moved_count = move_pending_to_published(slug)
+
+    return jsonify({
+        "message": f"Successfully moved pending cards to published for user {slug}",
+        "cards_moved": moved_count
+    }), 200
+
+@core.route('/tasks/pending_cards_count', methods=['GET'])
+def get_all_pending_cards_count():
+    users = get_all_users_with_count()
+    pending_cards_count = {}
+
+    for user in users:
+        slug = user["slug"]
+        count = get_pending_card_count(slug)
+        pending_cards_count[slug] = count
+
+    total_count = sum(pending_cards_count.values())
+
+    return jsonify({
+        "pending_cards_count": pending_cards_count,
+        "total_pending_cards": total_count
+    }), 200
+
+@core.route('/tasks/get_top',methods=['GET'])
+def get_top():
+    users = get_all_users_with_count()
+    result = []
+    for user in users:
+        count = count_published_cards(user["slug"])
+        result.append({user["slug"]: count})
+
+    return jsonify(result), 200

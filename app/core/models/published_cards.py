@@ -2,6 +2,7 @@ from datetime import datetime
 from flask import jsonify
 import pymongo
 import os
+from bson import ObjectId
 
 # MongoDB connection URI
 mongo_uri = os.environ.get("DB_URL")
@@ -94,3 +95,55 @@ def count_published_cards(slug):
     
 def format_datetime(dt):
     return datetime.utcfromtimestamp(dt).strftime("%d %b %Y")
+
+
+def get_published_card_with_adjacent(slug, date, card_id=None):
+    
+    if card_id:
+        object_id = ObjectId(card_id)
+        card = db.published_cards.find_one({"_id": object_id, "slug": slug})
+    else:
+        card = db.published_cards.find_one(
+            {"slug": slug, "timestamp": {"$gte": date}},
+            sort=[("timestamp", 1)]
+        )
+    
+    if not card:
+        return None
+
+    current_timestamp = card['timestamp']
+    
+    next_card = db.published_cards.find_one(
+        {"slug": slug, "timestamp": {"$gt": current_timestamp}},
+        sort=[("timestamp", 1)],
+        projection={"_id": 1}
+    )
+
+    prev_card = db.published_cards.find_one(
+        {"slug": slug, "timestamp": {"$lt": current_timestamp, "$gte": date}},
+        sort=[("timestamp", -1)],
+        projection={"_id": 1}
+    )
+    
+    result = {
+        "card": format_card(card),
+        "prevCard": str(prev_card["_id"]) if prev_card else None,
+        "nextCard": str(next_card["_id"]) if next_card else None
+    }
+
+    return result
+
+def format_card(card):
+    return {
+        "id": str(card['_id']),
+        "date": format_datetime(card['timestamp']),
+        "cardType": card['type'],
+        "category": card.get('category', 'Miscellaneous'),
+        "content": card['content'],
+        "metadata": card['metadata'],
+        "tags": card['tags'],
+        "urls": card['urls'],
+        "minted": card['minted'],
+        "slug": card['slug'],
+        "timestamp": card['timestamp']
+    }

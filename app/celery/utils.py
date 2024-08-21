@@ -4,7 +4,6 @@ from app.celery.config import get_settings as celery_settings
 settings = celery_settings()
 
 def create_celery():
-    print("IT IS CALLED!")
     celery_app = current_celery_app
     celery_app.config_from_object(settings, namespace="CELERY")
     celery_app.conf.update(accept_content=["json", 'pickle'])

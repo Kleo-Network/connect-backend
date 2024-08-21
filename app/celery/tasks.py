@@ -68,7 +68,7 @@ def categorize_history(self, data):
     return last_processed_timestamp
     
 # create pending tasks celery task       
-@shared_task(bind=True, base=AbortableTask,ack_later=True, default_retry_delay=20, max_retries=0, queue="create-pending-cards")
+@shared_task(bind=True, base=AbortableTask,ack_later=False, default_retry_delay=20, max_retries=0, queue="create-pending-cards")
 def create_pending_card(self, result, slug):
     user = find_by_slug(slug)
     # when a task is created send a email to vaibhav.dkm@gmail.com from vaibhavblogger@gmail with the slug that task is created. 
