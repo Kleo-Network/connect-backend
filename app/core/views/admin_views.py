@@ -71,24 +71,17 @@ def update_celery():
     # Loop through each user
     for user in users:
         slug = user["slug"]
-        
-        # Check if the user's slug is not present in scheduled tasks    
-        is_scheduled = is_slug_scheduled(slug, scheduled_tasks)
-        
-        # Check if user has no pending cards and history count > 60
         has_no_pending_cards = get_pending_cards_count(slug, 0)
         has_sufficient_history = history_count(slug, 60)
         
-        # If the conditions are met, create a new task
-        if has_no_pending_cards and has_sufficient_history:
-            if not is_scheduled:
-                print(f"{slug} to be executed")
-                task = create_pending_card.apply_async(
+        if has_no_pending_cards:
+            print(f"{slug} to be executed")
+            task = create_pending_card.apply_async(
                     kwargs={'result': 'Create Pending Card from ADMIN', 'slug': slug},
                     queue='create-pending-cards-2'
                 )
-                print(f"Scheduled task for slug: {slug}, task id: {task.id}")
-                new_tasks_count += 1
+            print(f"Scheduled task for slug: {slug}, task id: {task.id}")
+            new_tasks_count += 1
         else:
             # If conditions are not met, revoke any existing tasks for this user
             revoked_count = revoke_user_tasks(slug, scheduled_tasks)

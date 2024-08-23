@@ -19,7 +19,7 @@ import os
 from pydantic_core import from_json
 
 from pydantic import BaseModel
-
+import time
 
 class CardObject(BaseModel):
     activity: str
@@ -271,33 +271,60 @@ def cluster_and_save(data):
 def message_from_LLM_API(
     initial_prompt, model_name, prompt, temperature, base_url, api_key, service, max_tokens=200
 ):
-    if service == "azure":
-        headers = { "Content-Type": "application/json", "api-key": f"{api_key}" }
-        data = {
-            "messages":[
-                {"role": "system", "content": initial_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            "response_format": { "type": "json_object" },
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": 0.8
-        }
-        response = requests.post(base_url, headers=headers, json=data)
-        print(response.json())
-        return response.json()
-    elif service == "ansycale":
-        client = openai.OpenAI(base_url=base_url, api_key=api_key)
-        chat_completion = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": initial_prompt},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=temperature,
-    )
-        print(chat_completion)
-        return chat_completion.choices[0].message.content
+    max_retries = 3
+    retry_delay = 600  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            if service == "azure":
+                headers = { "Content-Type": "application/json", "api-key": f"{api_key}" }
+                data = {
+                    "messages":[
+                        {"role": "system", "content": initial_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": { "type": "json_object" },
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "top_p": 0.8
+                }
+                response = requests.post(base_url, headers=headers, json=data)
+                response_json = response.json()
+
+                if 'error' in response_json and response_json['error'].get('code') == '429':
+                    if attempt < max_retries - 1:  # don't sleep on the last attempt
+                        logging.warning(f"Rate limit exceeded. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                        time.sleep(retry_delay)
+                        continue
+                else:
+                    logging.info(f"Azure API response: {response_json}")
+                    return response_json
+
+            elif service == "ansycale":
+                client = openai.OpenAI(base_url=base_url, api_key=api_key)
+                chat_completion = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": initial_prompt},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=temperature,
+                )
+                logging.info(f"Ansycale API response: {chat_completion}")
+                return chat_completion.choices[0].message.content
+
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                logging.error(f"Request failed. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{max_retries})")
+                logging.error(f"Error details: {str(e)}")
+                time.sleep(retry_delay)
+            else:
+                logging.error(f"All retry attempts failed. Last error: {str(e)}")
+                raise
+
+    # If we've exhausted all retries, return the last error response
+    logging.error(f"All retry attempts failed. Last response: {response_json}")
+    return response_json
     
 def get_category_cards(data, num_cards):
     frequency_data = data["frequency"]
@@ -387,10 +414,7 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
                                           validated_card_data.dict(), get_tags_from_category(tags, items[0]["category"]))
                 pendingCard.save()
                 for item in items_list:
-                    if delete_history(slug, item["id"]):
-                        cards_main.append(card)
-                    else:
-                        logging.error(f"Error while deleting {item['id']} of {slug}")
+                    cards_main.append(card)
             except Exception as e:
                 logging.error(f"Error while saving or processing PendingCard for slug: {slug}. Error: {str(e)}")
     
