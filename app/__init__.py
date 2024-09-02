@@ -16,6 +16,7 @@ def create_app():
     
 
     from .core.views.user_views import core as core_user
+    from .core.views.user_v2_views import core as core_user_v2
     from .core.views.auth_views import core as core_auth
     from .core.views.card_views import core as core_card
     from .core.views.history_views import core as core_history
@@ -26,6 +27,11 @@ def create_app():
         core_user,
         name="user_api",
         url_prefix='/api/v1/core/user'
+    )
+    app.register_blueprint(
+        core_user_v2,
+        name = "user_api_v2",
+        url_prefix = '/api/v2/core/user'   
     )
     app.register_blueprint(
         core_auth,
