@@ -14,6 +14,8 @@ def create_user():
     user = find_by_address(walletAddress)
 
     if user:
+        user['address'] = walletAddress
+        user['token'] = get_jwt_token(walletAddress, walletAddress)
         return user, 200
     else:
         user = User(walletAddress, walletAddress, 1)
