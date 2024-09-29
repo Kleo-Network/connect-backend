@@ -1,41 +1,31 @@
-from flask import Blueprint, jsonify, current_app, request
-from celery.result import AsyncResult
-from .auth_views import token_required
-from ..models.user import find_by_address_slug, get_all_users_with_count
-from ..models.celery_tasks import (
-    get_celery_tasks_by_slug,
-    update_celery_task_status,
-    get_all_celery_tasks,
-    CeleryTask,
-)
+from flask import Blueprint, jsonify, request
+from ..models.user import get_all_users_with_count
 from celery import current_app as current_celery_app
-import os
 from ..modules.cards import (
-    process_slug,
     history_count,
     get_pending_cards_count,
     move_pending_to_published,
 )
 from ..models.pending_cards import get_pending_card_count
 from ..models.published_cards import count_published_cards
-from celery import group
-from functools import partial
 from app.celery.tasks import *
 from ..modules.history import create_pending_cards
 
 core = Blueprint("core", __name__)
 
 
+# Route to abort scheduled tasks for users
 @core.route("/tasks/abort_scheduled", methods=["GET"])
 def abort_scheduled_tasks():
+    """Abort scheduled tasks for all users based on their slugs."""
     users = get_all_users_with_count()
-
     i = current_celery_app.control.inspect()
     scheduled_tasks = i.scheduled() or {}
 
     tasks_to_revoke = {}
     kept_tasks = {}
 
+    # Identify tasks to revoke and keep
     for worker, tasks in scheduled_tasks.items():
         for task in tasks:
             task_slug = task["request"]["kwargs"].get("slug")
@@ -53,8 +43,8 @@ def abort_scheduled_tasks():
             try:
                 current_celery_app.control.revoke(task_id, terminate=True)
                 revoked_count += 1
-            except TaskRevokedError:
-                pass  # Task was already completed or doesn't exist
+            except Exception:  # Catch any exception for a revoked task
+                pass
 
     return (
         jsonify(
@@ -69,19 +59,22 @@ def abort_scheduled_tasks():
     )
 
 
+# Route to inspect scheduled tasks
 @core.route("/tasks/inspect_celery_tasks", methods=["GET"])
 def inspect_scheduled_tasks():
+    """Inspect currently scheduled tasks."""
     i = current_celery_app.control.inspect()
     scheduled_tasks = i.scheduled() or {}
     return jsonify({"tasks": list(scheduled_tasks.values())}), 200
 
 
+# Route to update scheduled tasks based on user status
 @core.route("/tasks/update_celery", methods=["POST"])
 def update_celery():
+    """Update Celery tasks for all users based on their status."""
     data = request.get_json()
     i = current_celery_app.control.inspect()
     scheduled_tasks = i.scheduled() or {}
-
     users = get_all_users_with_count()
 
     new_tasks_count = 0
@@ -120,6 +113,7 @@ def update_celery():
 
 
 def revoke_user_tasks(slug, scheduled_tasks):
+    """Revoke existing tasks for a given user slug."""
     revoked_count = 0
     for worker, tasks in scheduled_tasks.items():
         for task in tasks:
@@ -132,22 +126,14 @@ def revoke_user_tasks(slug, scheduled_tasks):
                         task["request"]["id"], terminate=True
                     )
                     revoked_count += 1
-                except TaskRevokedError:
+                except Exception:  # Catch any exception for a revoked task
                     pass  # Task was already completed or doesn't exist
     return revoked_count
 
 
-def is_slug_scheduled(slug, scheduled_tasks):
-    for worker_tasks in scheduled_tasks.values():
-        for task in worker_tasks:
-            if task["request"]["name"] == "app.celery.tasks.create_pending_card":
-                if task["request"]["kwargs"].get("slug") == slug:
-                    return True
-    return False
-
-
 @core.route("/tasks/list_active_users", methods=["POST"])
 def list_active_users_zero_pending():
+    """List active users with no pending cards."""
     users = get_all_users_with_count()
     active_users_with_no_pending_cards = []
     for user in users:
@@ -159,6 +145,7 @@ def list_active_users_zero_pending():
 
 @core.route("/tasks/list_users_active_history", methods=["POST"])
 def list_active_users():
+    """List active users with activity history."""
     users = get_all_users_with_count()
     active_users_with_no_pending_cards = []
     for user in users:
@@ -170,6 +157,7 @@ def list_active_users():
 
 @core.route("/tasks/active_users", methods=["POST"])
 def list_inactive_users():
+    """List users with published card counts."""
     users = get_all_users_with_count()
     active_users_with_no_publishing_cards = []
     for user in users:
@@ -183,14 +171,16 @@ def list_inactive_users():
 
 @core.route("/tasks/single_cards_create", methods=["POST"])
 def single_slug_card_create():
+    """Create pending cards for a single user slug."""
     data = request.get_json()
     slug = data["slug"]
     response_llm = create_pending_cards(slug)
-    return jsonify({"success": "{} cards created".format(slug)}), 200
+    return jsonify({"success": f"{slug} cards created"}), 200
 
 
 @core.route("/tasks/move_pending_cards_published", methods=["POST"])
 def move_pending_cards_to_published():
+    """Move all pending cards to published for all users."""
     users = get_all_users_with_count()
     moved_cards_count = 0
     for user in users:
@@ -215,7 +205,7 @@ def move_pending_cards_to_published():
 
 @core.route("/tasks/move_specific_pending_cards/<string:slug>", methods=["GET"])
 def move_specific_pending_cards(slug):
-    # Get query parameters for card IDs
+    """Move specific pending cards to published for a user."""
     moved_count = move_pending_to_published(slug)
 
     return (
@@ -231,6 +221,7 @@ def move_specific_pending_cards(slug):
 
 @core.route("/tasks/pending_cards_count", methods=["GET"])
 def get_all_pending_cards_count():
+    """Get the count of all pending cards for all users."""
     users = get_all_users_with_count()
     pending_cards_count = {}
 
@@ -254,6 +245,7 @@ def get_all_pending_cards_count():
 
 @core.route("/tasks/get_top", methods=["GET"])
 def get_top():
+    """Get top published cards count for all users."""
     users = get_all_users_with_count()
     result = []
     for user in users:
