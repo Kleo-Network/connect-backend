@@ -1,15 +1,17 @@
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 import os
+
+
 class Settings(BaseSettings):
     load_dotenv()
     APP_NAME: str = "Kleo Backend"
     APP_VERSION: str = "1.0"
     DEBUG: bool = os.getenv("DEBUG", False)
-    
+
 
 def get_settings():
-       return Settings()
+    return Settings()
 
 
 # from os import environ, path
