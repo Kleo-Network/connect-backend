@@ -1,4 +1,4 @@
-from app.celery.utils import remove_pii
+from app.celery.userDataComputation.pii import remove_pii
 from ..core.controllers.history import *
 from ..core.models.history import *
 from ..core.models.user import *
