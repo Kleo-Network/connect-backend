@@ -1,14 +1,38 @@
-# https://editorconfig.org/
+# EditorConfig is awesome: https://editorconfig.org
 
+# Top-most EditorConfig file
 root = true
 
+# Default settings for all files
 [*]
-indent_style = space
-indent_size = 4
+charset = utf-8
+end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
-end_of_line = lf
-charset = utf-8
 
+# Indentation style and size for Python code
 [*.py]
-max_line_length = 79
+indent_style = space
+indent_size = 4
+max_line_length = 88 # Recommended for tools like Black
+insert_final_newline = true
+
+# JSON and YAML files
+[*.{json,yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown and text files
+[*.{md,txt}]
+trim_trailing_whitespace = false
+insert_final_newline = true
+
+# Configuration files (e.g., .ini, .cfg, .toml, .editorconfig)
+[*.{ini,cfg,toml,editorconfig}]
+indent_style = space
+indent_size = 2
+
+# HTML, CSS, and JavaScript files
+[*.{html,css,js}]
+indent_style = space
+indent_size = 2
