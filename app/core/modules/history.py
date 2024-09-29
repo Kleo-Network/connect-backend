@@ -1,21 +1,15 @@
 import logging
+import math
 
 logging.basicConfig(level=logging.ERROR)
 
 from datetime import timedelta
-import math
-from bs4 import BeautifulSoup as bs
-from flask import jsonify
-from urllib.parse import urlparse
 from app.core.models.visits import fetch_visits_for_last_15_days, fetch_visits_for_week
 from ..models.history import *
-from ..models.pending_cards import *
 
 import requests
 import json
-import re
 import openai
-import random
 import os
 from pydantic_core import from_json
 
@@ -520,10 +514,10 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
 def create_card_from_llm(slug, data):
 
     initial_prompt_single_card = """
-        Pick one specific context from the history having at maximum 4 titles, ignore other items.   
-        The JSON strictly conforms to this schema. 
+        Pick one specific context from the history having at maximum 4 titles, ignore other items.
+        The JSON strictly conforms to this schema.
         {{
-            "activity" : verb, 
+            "activity" : verb,
             "tags": [2-3 categories]
             "description": describe one-two-line motive, reason or interest for @{slug}
             "titles": [related titles to this context]
@@ -534,9 +528,9 @@ def create_card_from_llm(slug, data):
     )
 
     initial_prompt_multiple_card = """
-        The JSON object strictly conforms to this schema. 
+        The JSON object strictly conforms to this schema.
         {{
-            "activity" : verb, 
+            "activity" : verb,
             "tags": [2-3 categories]
             "description": describe one-two-line motive, reason or interest for @{slug}
             "titles": [related titles in this cluster context]

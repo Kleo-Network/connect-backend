@@ -1,10 +1,8 @@
 from flask import Blueprint, current_app, request, jsonify
-from app.core.models.static_cards import get_static_card
 from app.core.modules.auth import get_jwt_token
 from werkzeug.local import LocalProxy
 from .auth_views import *
 from ..models.user import *
-from ..models.published_cards import get_published_card
 import os
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -144,19 +142,6 @@ def update_user_settings(slug, **kwargs):
         return jsonify({"error": "User is not authorized"}), 401
 
     response = update_settings_by_slug(slug, settings, stage, "")
-    return jsonify(response), 200
-
-
-@core.route("/<string:slug>/published-cards/info", methods=["GET"])
-def get_user_and_card_detail(slug):
-    """Get user details along with published cards and static cards."""
-    if not slug:
-        return jsonify({"error": "Missing required parameters"}), 400
-
-    user = find_by_slug(slug)
-    cards = get_published_card(slug)
-    static_cards = get_static_card(slug)
-    response = {"user": user, "published_cards": cards, "static_cards": static_cards}
     return jsonify(response), 200
 
 
