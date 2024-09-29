@@ -130,3 +130,5 @@ google-auth==2.6.0
 pymongo[srv]
 openai
 uuid
+keybert
+sentence_transformers
