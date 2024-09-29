@@ -7,12 +7,11 @@ from celery import chord, group
 from .auth_views import token_required
 from flask import jsonify
 
-core = Blueprint('core', __name__)
+core = Blueprint("core", __name__)
 
 logger = LocalProxy(lambda: current_app.logger)
 
 
 @core.before_request
 def before_request_func():
-    current_app.logger.name = 'core'
-    
+    current_app.logger.name = "core"

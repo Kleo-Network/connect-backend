@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup as bs
 import json
 from urllib.parse import urlparse
 import time
+
+
 def get_category(raw_resp):
     soup = bs(raw_resp.text)
     result = soup.find("div", {"id": "webfilter-result"})
@@ -12,13 +14,13 @@ def get_category(raw_resp):
     category_group = paragraph.split("Group:")[1]
     category = main_result.getText()
     time.sleep(1)
-    
+
     return category_group, category_description, category
 
 
 def single_url_request(main_url, item):
     url = "https://www.fortiguard.com/webfilter"
-    payload = {'url': main_url}
+    payload = {"url": main_url}
     response = requests.request("POST", url, headers={}, data=payload, files=[])
     category_group, category_description, category = get_category(response)
     item["category_group"] = category_group
