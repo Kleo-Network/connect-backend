@@ -48,3 +48,21 @@ def convert_floats_to_decimal(item):
 
 def check_user_authenticity(user_address_from_ui, user_address_from_header):
     return user_address_from_ui == user_address_from_header
+
+
+# Example usage
+
+
+def get_last_third_month_start_date():
+    today = datetime.now()
+    # Calculate the starting date of the last third month
+    last_month_end_date = today.replace(day=1) - timedelta(days=1)
+    last_to_last_month_end_date = last_month_end_date - timedelta(
+        days=last_month_end_date.day
+    )
+    last_to_last_to_last_month_end_date = last_to_last_month_end_date.replace(
+        day=1
+    ) - timedelta(days=1)
+    starting_date_last_third_month = last_to_last_to_last_month_end_date.replace(day=1)
+
+    return starting_date_last_third_month

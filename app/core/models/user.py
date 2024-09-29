@@ -246,6 +246,33 @@ def fetch_user_slug():
     return user_slugs
 
 
+def update_last_cards_marked(slug):
+    try:
+        db.users.update_one(
+            {"slug": slug},
+            {"$set": {"last_cards_marked": int(datetime.now().timestamp())}},
+        )
+
+    # TODO: Error Handling
+    # If an invalid ID is passed to `get_movie`, it should return None.
+    except StopIteration as _:
+        return None
+
+    except Exception as e:
+        print(e)
+        return {}
+
+
+def update_last_attested(slug):
+    try:
+        db.users.update_one(
+            {"slug": slug}, {"$set": {"last_attested": int(datetime.now().timestamp())}}
+        )
+    except Exception as e:
+        print(e)
+        return {}
+
+
 def update_minting_count(slug):
     try:
         pipeline = [{"$match": {"slug": slug}}]
@@ -286,6 +313,33 @@ def update_minting_count(slug):
         return {}
 
 
+def update_tobe_release_kleo_token(slug):
+    try:
+        pipeline = [{"$match": {"slug": slug}}]
+
+        # Execute the pipeline and get the user
+        cursor = db.users.aggregate(pipeline)
+        user = next(cursor, None)
+
+        if user:
+            user_profile_metadata = user.get("profile_metadata", {})
+            tobe_release_tokens = user_profile_metadata.get("tobe_release_tokens", 0)
+
+            if user_profile_metadata and tobe_release_tokens:
+                updated_tobe_release_tokens = int(tobe_release_tokens) + 1
+                user_profile_metadata["tobe_release_tokens"] = (
+                    updated_tobe_release_tokens
+                )
+            else:
+                user_profile_metadata["tobe_release_tokens"] = 1
+            db.users.update_one(
+                {"slug": slug}, {"$set": {"profile_metadata": user_profile_metadata}}
+            )
+    except Exception as e:
+        print(e)
+        return {}
+
+
 def update_about_by_slug(slug, about):
     try:
         filter_query = {"slug": slug}
@@ -315,6 +369,37 @@ def get_all_users_with_count():
     except Exception as e:
         print(f"An error occurred: {e}")
         return []
+
+
+def update_kleo_points_for_user(slug):
+    try:
+        pipeline = [{"$match": {"slug": slug}}]
+
+        # Execute the pipeline and get the user
+        cursor = db.users.aggregate(pipeline)
+        user = next(cursor, None)
+
+        if user:
+            user_profile_metadata = user.get("profile_metadata", {})
+            kleo_points_for_user = user_profile_metadata.get("kleo_points", 0)
+            kleo_token_of_user = user_profile_metadata.get("kleo_token", 0)
+            tobe_released_token_of_user = user_profile_metadata.get(
+                "tobe_release_tokens", 0
+            )
+
+            if user_profile_metadata and kleo_points_for_user:
+                updated_kleo_points = int(kleo_points_for_user) + 1
+                user_profile_metadata["kleo_points"] = updated_kleo_points
+            else:
+                user_profile_metadata["kleo_points"] = (
+                    int(kleo_token_of_user) + int(tobe_released_token_of_user) + 1
+                )
+            db.users.update_one(
+                {"slug": slug}, {"$set": {"profile_metadata": user_profile_metadata}}
+            )
+    except Exception as e:
+        print(e)
+        return {}
 
 
 def get_top_users_by_kleo_points(limit=20):

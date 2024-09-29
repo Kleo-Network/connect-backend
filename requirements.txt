@@ -14,6 +14,7 @@ beautifulsoup4==4.12.2
 billiard==4.2.0
 bitarray==2.8.2
 blinker==1.6.2
+black
 boto3==1.28.55
 botocore==1.31.55
 bs4==0.0.1
@@ -92,6 +93,7 @@ pyflakes==3.0.1
 Pygments==2.15.1
 PyJWT==2.8.0
 pymongo==4.6.3
+pymongo[srv]
 PyNaCl==1.5.0
 python-dateutil==2.8.2
 python-dotenv==1.0.0
@@ -118,6 +120,7 @@ traitlets==5.9.0
 typing_extensions==4.8.0
 tzdata==2024.1
 urllib3==1.26.16
+uuid
 vine==5.1.0
 wcwidth==0.2.6
 web3==6.11.1
