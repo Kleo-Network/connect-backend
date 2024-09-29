@@ -1,5 +1,6 @@
 import json
 import boto3
+
 # Sample history data
 from decimal import Decimal
 from boto3.dynamodb.conditions import Key, Attr
@@ -8,6 +9,8 @@ from datetime import datetime, timedelta
 import math
 
 import boto3
+
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
@@ -19,11 +22,11 @@ class DecimalEncoder(json.JSONEncoder):
 session = boto3.Session(
     aws_access_key_id="os.environ.get('AWS_ACCESS_KEY_ID')",
     aws_secret_access_key="os.environ.get('AWS_SECRET_ACCESS_KEY')",
-    region_name="ap-south-1"
+    region_name="ap-south-1",
 )
 
 # Create DynamoDB resource.
-dynamodb = session.resource('dynamodb')
+dynamodb = session.resource("dynamodb")
 
 from collections import defaultdict
 
@@ -54,7 +57,7 @@ from collections import defaultdict
 
 #     try:
 #         response = graph_data_pinned_table.query(
-#             KeyConditionExpression=Key('domain_user_id').eq(user_domain_key) & 
+#             KeyConditionExpression=Key('domain_user_id').eq(user_domain_key) &
 #                                     Key('date').between(Decimal(start_date), Decimal(end_date))
 #         )
 #         print(start_date)
@@ -63,8 +66,7 @@ from collections import defaultdict
 #         return items
 #     except Exception as e:
 #         print(f"Error querying table: {e}")
-#         return []  
-
+#         return []
 
 
 # def process_items_pinned_data(user_id, pinned_domain, days_counter=365):
@@ -77,7 +79,7 @@ from collections import defaultdict
 #     end_timestamp = int(now.timestamp() * 1000)
 #     table = dynamodb.Table('history')
 #     response = table.query(
-#                             KeyConditionExpression=Key('user_id').eq(user_id) & 
+#                             KeyConditionExpression=Key('user_id').eq(user_id) &
 #                             Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
 #                             FilterExpression="contains(#url_attr, :domain_name)",
 #                             ExpressionAttributeNames={
@@ -87,10 +89,10 @@ from collections import defaultdict
 #                                 ":domain_name": pinned_domain
 #                             })
 #     items = response['Items']
-   
+
 #     while 'LastEvaluatedKey' in response:
 #         response = table.query(
-#                             KeyConditionExpression=Key('user_id').eq(user_id) & 
+#                             KeyConditionExpression=Key('user_id').eq(user_id) &
 #                             Key('visitTime').between(Decimal(start_timestamp), Decimal(end_timestamp)),
 #                             FilterExpression="contains(#url_attr, :domain_name)",
 #                             ExpressionAttributeNames={
@@ -101,8 +103,8 @@ from collections import defaultdict
 #                             },
 #                             ExclusiveStartKey=response['LastEvaluatedKey'])
 #         items.extend(response['Items'])
-            
-    
+
+
 #     output = defaultdict(lambda: defaultdict(lambda: {"data": defaultdict(int)}))
 
 #     for item in items:
@@ -123,7 +125,7 @@ from collections import defaultdict
 #                 "date": date,
 #                 "data": [{"time_bracket": tb, "visitCount": count} for tb, count in data["data"].items()]
 #             })
-    
+
 #     graph_data_pinned_table = dynamodb.Table('pinned_graph_data')
 #     for record in formatted_output:
 #         user_domain_key = f"{record['user_id']}#{pinned_domain}"
@@ -218,7 +220,7 @@ from collections import defaultdict
 #                 'proccessed': False,
 #                 'verified': True,
 #                 'gitcoin_passport': False,
-                 
+
 #             }
 #         )
 
@@ -267,7 +269,7 @@ from collections import defaultdict
 #         )
 
 #     all_items.extend(response['Items'])
-#print(unique_user_ids)
+# print(unique_user_ids)
 # def delete_category(cat):
 #     table = dynamodb.Table('history')
 #     response = table.scan(
@@ -303,37 +305,43 @@ from collections import defaultdict
 #                 }
 #             )
 
-def delete_all_history_items(user_id):
-    table = dynamodb.Table('history')
-    
-    # Scan the table to get all items.
-    response = table.scan(FilterExpression=Attr('user_id').eq(user_id))
 
-    items = response['Items']
-    counter =0
+def delete_all_history_items(user_id):
+    table = dynamodb.Table("history")
+
+    # Scan the table to get all items.
+    response = table.scan(FilterExpression=Attr("user_id").eq(user_id))
+
+    items = response["Items"]
+    counter = 0
     for item in items:
         print(counter)
         counter = counter + 1
-        table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
+        table.delete_item(
+            Key={"user_id": item["user_id"], "visitTime": item["visitTime"]}
+        )
     # Keep scanning until all items are fetched
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response['Items'])
+    while "LastEvaluatedKey" in response:
+        response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        items.extend(response["Items"])
 
     # Delete each item
-    counter =0
+    counter = 0
     for item in items:
         print(counter)
         counter + 1
-        table.delete_item(Key={"user_id": item["user_id"], "visitTime": item["visitTime"]})
+        table.delete_item(
+            Key={"user_id": item["user_id"], "visitTime": item["visitTime"]}
+        )
 
     print(f"Deleted {len(items)} items from the history table.")
 
+
 delete_all_history_items("0x86b06319b906e61631f7edbe5a3fe2edb95a3fae")
 # Call the function to delete all items
-#delete_category("Pornography")
-#delete_category("Search Engines and Portals")
-  # Your list of dictionaries from the history table
+# delete_category("Pornography")
+# delete_category("Search Engines and Portals")
+# Your list of dictionaries from the history table
 
 # Initialize the output data structure
 
@@ -398,10 +406,10 @@ delete_all_history_items("0x86b06319b906e61631f7edbe5a3fe2edb95a3fae")
 #                 "domains": {},
 #                 "totalCategoryVisits": 0
 #             }
-        
+
 #         if domain not in output_data[group_value][category]["domains"]:
 #             output_data[group_value][category]["domains"][domain] = 0
-        
+
 #         output_data[group_value][category]["domains"][domain] += 1
 #         output_data[group_value][category]["totalCategoryVisits"] += 1
 
@@ -423,7 +431,7 @@ delete_all_history_items("0x86b06319b906e61631f7edbe5a3fe2edb95a3fae")
 
 # def update_history_items_by_user_id(user_id):
 #     table = dynamodb.Table('history')
-    
+
 #     # Scan the table to get all items for the given user_id.
 #     response = table.scan(
 #         FilterExpression=Attr('user_id').eq(user_id)
@@ -443,7 +451,7 @@ delete_all_history_items("0x86b06319b906e61631f7edbe5a3fe2edb95a3fae")
 #         print("update item with id: {}".format(item["id"]))
 #         # Here you can modify the item as needed, e.g.:
 #         # item['new_attribute'] = 'new_value'
-        
+
 #         # Call the update_item method to update the item in DynamoDB
 #         table.update_item(
 #             Key={
@@ -460,4 +468,4 @@ delete_all_history_items("0x86b06319b906e61631f7edbe5a3fe2edb95a3fae")
 #     print(f"Updated {len(items)} items in the history table for user_id: {user_id}.")
 
 # Call the function to update items for a specific user_id
-#update_history_items_by_user_id('e09720d3-15cd-4b39-b9ca-e54534f3c31c')
+# update_history_items_by_user_id('e09720d3-15cd-4b39-b9ca-e54534f3c31c')

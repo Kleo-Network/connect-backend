@@ -4,66 +4,83 @@ from ..modules.auth import get_jwt_token
 import os
 import requests
 
-core = Blueprint('core', __name__)
+core = Blueprint("core", __name__)
 
-@core.route('/create-user', methods=["POST"])
+
+@core.route("/create-user", methods=["POST"])
 def create_user():
+    """
+    Create a new user or return existing user information.
+    If the user exists, return their data along with a JWT token.
+    If the user doesn't exist, create a new user and allocate Vana points and tokens.
+    """
     data = request.get_json()
-    walletAddress = data.get("walletAddress")
+    wallet_address = data.get("walletAddress")
 
-    user = find_by_address(walletAddress)
+    user = find_by_address(wallet_address)
 
     if user:
-        user['address'] = walletAddress
-        user['token'] = get_jwt_token(walletAddress, walletAddress)
-        return user, 200
-    else:
-        user = User(walletAddress, walletAddress, 1)
-        response = user.save(True)
-        response['token'] = get_jwt_token(walletAddress, walletAddress)
-        response['vana_point_allocation_response_status_code'] = allocate_vana_points(walletAddress)
-        response['vana_token_allocation_hash'] = allocate_vana_tokens(walletAddress)
-        
-    return response, 200
+        user["token"] = get_jwt_token(wallet_address, wallet_address)
+        return jsonify(user), 200
 
-def allocate_vana_points(walletAddress):
-    vana_project_name = os.environ.get('VANA_PROJECT_NAME')
-    vana_api_key = os.environ.get('VANA_API_KEY')
+    # Create a new user
+    user = User(wallet_address, wallet_address, 1)
+    response = user.save(True)
 
-    headers = {
-        'Authorization': f'Bearer {vana_api_key}'
-    } 
+    # Allocate Vana points and tokens
+    response["token"] = get_jwt_token(wallet_address, wallet_address)
+    response["vana_point_allocation_response_status_code"] = allocate_vana_points(
+        wallet_address
+    )
+    response["vana_token_allocation_hash"] = allocate_vana_tokens(wallet_address)
 
-    vana_api_url = f"https://www.vanadatahero.com/api/integrations/{vana_project_name}/deposit"
+    return jsonify(response), 201  # 201 Created
 
-    vana_payload = {
-        "walletAddress": walletAddress
-    }
+
+def allocate_vana_points(wallet_address):
+    """
+    Allocate Vana points to a user's wallet address.
+    Returns the status code of the allocation response.
+    """
+    vana_project_name = os.environ.get("VANA_PROJECT_NAME")
+    vana_api_key = os.environ.get("VANA_API_KEY")
+
+    headers = {"Authorization": f"Bearer {vana_api_key}"}
+    vana_api_url = (
+        f"https://www.vanadatahero.com/api/integrations/{vana_project_name}/deposit"
+    )
+    vana_payload = {"walletAddress": wallet_address}
 
     try:
-        response_from_vana = requests.post(vana_api_url, json=vana_payload,  headers=headers)
+        response_from_vana = requests.post(
+            vana_api_url, json=vana_payload, headers=headers
+        )
         return response_from_vana.status_code
     except Exception as e:
-        print(f"Failed to allocate vana points to address: {walletAddress}. Error: {str(e)}")
-        return 500
-    
-def allocate_vana_tokens(walletAddress):
-    vana_api_key = os.environ.get('VANA_API_KEY')
+        print(
+            f"Failed to allocate Vana points to address: {wallet_address}. Error: {str(e)}"
+        )
+        return 500  # Internal Server Error
 
-    headers = {
-        'Authorization': f'Bearer {vana_api_key}'
-    } 
 
+def allocate_vana_tokens(wallet_address):
+    """
+    Allocate Vana tokens to a user's wallet address.
+    Returns the transaction hash or status code.
+    """
+    vana_api_key = os.environ.get("VANA_API_KEY")
+
+    headers = {"Authorization": f"Bearer {vana_api_key}"}
     vana_api_url = "https://faucet.vana.org/api/transactions"
-
-    vana_payload_allocate_token = {
-        "address": walletAddress
-    }
+    vana_payload_allocate_token = {"address": wallet_address}
 
     try:
-        response_from_vana = requests.post(vana_api_url, json=vana_payload_allocate_token,  headers=headers)
+        response_from_vana = requests.post(
+            vana_api_url, json=vana_payload_allocate_token, headers=headers
+        )
         return response_from_vana.json().get("hash") or response_from_vana.status_code
     except Exception as e:
-        print(f"Failed to allocate vana token to address: {walletAddress}. Error: {str(e)}")
-        return 500
-    
+        print(
+            f"Failed to allocate Vana token to address: {wallet_address}. Error: {str(e)}"
+        )
+        return 500  # Internal Server Error
