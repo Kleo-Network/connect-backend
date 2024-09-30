@@ -133,5 +133,7 @@ google-auth==2.6.0
 pymongo[srv]
 openai
 uuid
+keybert
+sentence_transformers
 presidio-analyzer     # Detects PII in text
 presidio-anonymizer   # Anonymizes detected PII

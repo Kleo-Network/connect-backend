@@ -1,3 +1,6 @@
+from app.celery.userDataComputation.activityClassification import (
+    get_most_relevant_activity,
+)
 from app.celery.userDataComputation.pii import remove_pii
 from ..core.controllers.history import *
 from ..core.models.history import *
@@ -16,7 +19,7 @@ def send_telegram_message(slug, body):
     tg_token_api = os.environ.get("TELEGRAM_API_TOKEN")
     channel_id = "-1002178791722"  # The channel ID you provided
 
-    subject = f"Acticity for Slug: {slug}"
+    subject = f"Activity for Slug: {slug}"
     message = f"```{json.dumps(body, indent=2)}```"
 
     # Send the message
@@ -50,6 +53,19 @@ def send_telegram_message(slug, body):
 )
 def send_telegram_notification(self, slug, response):
     send_telegram_message(slug, response)
+
+
+@shared_task(
+    bind=True,
+    base=AbortableTask,
+    ack_later=True,
+    default_retry_delay=20,
+    max_retries=0,
+    queue="activity-classification",
+)
+def contextual_activity_classification(self, content, address):
+    # TODO: Please provide what to do with this activity.
+    activity = get_most_relevant_activity(content)
 
 
 @shared_task(

@@ -1,4 +1,8 @@
 from flask import Blueprint, request, jsonify
+
+from app.celery.userDataComputation.activityClassification import (
+    get_most_relevant_activity,
+)
 from ..models.user import User, find_by_address
 from ..modules.auth import get_jwt_token
 import os
@@ -84,3 +88,13 @@ def allocate_vana_tokens(wallet_address):
             f"Failed to allocate Vana token to address: {wallet_address}. Error: {str(e)}"
         )
         return 500  # Internal Server Error
+
+
+@core.route("/activity_classification", methods=["POST"])
+def classify_content():
+    data = request.json
+
+    activity = get_most_relevant_activity(data["content"])
+    return jsonify(
+        {"response": f"Most relevant activity for the content given is {activity}"}
+    )
