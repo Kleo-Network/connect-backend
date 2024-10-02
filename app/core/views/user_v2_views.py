@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from app.celery.userDataComputation.activityClassification import (
     get_most_relevant_activity,
 )
+from app.core.modules.activity_chart import upload_image_to_imgur
 from ..models.user import User, find_by_address
 from ..modules.auth import get_jwt_token
 import os
@@ -98,3 +99,23 @@ def classify_content():
     return jsonify(
         {"response": f"Most relevant activity for the content given is {activity}"}
     )
+
+
+@core.route("/upload_activity_chart", methods=["POST"])
+def upload_activity_chart():
+    try:
+        # Retrieve base64 image data from the POST request body
+        image_data = request.json.get("image")
+
+        if not image_data:
+            return jsonify({"error": "No image data provided"}), 400
+
+        # Call the upload service to upload the image to Imgur
+        image_url = upload_image_to_imgur(image_data)
+
+        if image_url:
+            return jsonify({"url": image_url}), 200
+        else:
+            return jsonify({"error": "Image upload failed"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
