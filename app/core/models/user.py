@@ -1,8 +1,11 @@
 import pymongo
 from datetime import datetime
 import os
+import ssl
+
 
 # MongoDB connection URI
+
 mongo_uri = os.environ.get("DB_URL")
 db_name = os.environ.get("DB_NAME")
 
@@ -19,7 +22,7 @@ class User:
         self,
         address,
         slug,
-        stage,
+        stage=1,
         name="",
         pfp="",
         verified=False,
@@ -72,20 +75,9 @@ class User:
         existing_user_address = find_by_address(self.document["address"])
         if existing_user_address:
             return existing_user_address
-        existing_user_slug = find_by_slug(self.document["slug"])
-        if existing_user_slug:
-            return existing_user_slug
-        if signup:
-            self.document["stage"] = self.document.get("stage") or 1
-            self.document["last_cards_marked"] = self.document.get(
-                "last_cards_marked"
-            ) or int(datetime.now().timestamp())
-            self.document["last_attested"] = self.document.get("last_attested") or int(
-                datetime.now().timestamp()
-            )
+        else:
             user_collection.insert_one(self.document)
-            return find_by_slug(self.document["slug"])
-        return {}
+        return self.document
 
 
 def set_signup_upload_by_slug(slug):

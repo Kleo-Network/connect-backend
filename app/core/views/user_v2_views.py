@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-
+import random
 from app.celery.userDataComputation.activityClassification import (
     get_most_relevant_activity,
 )
@@ -8,19 +8,53 @@ from ..models.user import User, find_by_address
 from ..modules.auth import get_jwt_token
 import os
 import requests
-
+from ...celery.tasks import *
+from ..models.history import get_top_activities
 core = Blueprint("core", __name__)
 
+@core.route("/get-user-graph", methods=["GET"])
+def get_user_graph():
+    try:
+        address = request.args.get('address')
+        if not address:
+            return jsonify({"error": "Address is required"}), 400
+        top_activities = get_top_activities(address)
+
+        if not top_activities:
+            return jsonify({"error": "No activity data found"}), 404
+
+        return jsonify({"data": top_activities}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    
+
+@core.route("/save-history", methods=["POST"])
+def save_history():
+    data = request.get_json()
+    user_address = data.get('address')
+    print(user_address)
+    print(data.get('signup'))
+    history = data.get('history')
+    for item in history:
+        task = contextual_activity_classification.delay(item, user_address)
+
+    # THIS IS JSON OF ITEM
+    #{'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
+    return jsonify({"data": True}), 200
 
 @core.route("/create-user", methods=["POST"])
 def create_user():
     """
     Create a new user or return existing user information.
     If the user exists, return their data along with a JWT token.
-    If the user doesn't exist, create a new user and allocate Vana points and tokens.
+    If the user doesn't exist, create a new user, allocate Vana points and tokens,
+    and generate a 5-digit random code.
     """
     data = request.get_json()
-    wallet_address = data.get("walletAddress")
+    
+    print("data", data.get("address"))
+    wallet_address = data.get("address")
 
     user = find_by_address(wallet_address)
 
@@ -28,78 +62,20 @@ def create_user():
         user["token"] = get_jwt_token(wallet_address, wallet_address)
         return jsonify(user), 200
 
-    # Create a new user
-    user = User(wallet_address, wallet_address, 1)
-    response = user.save(True)
+    # Generate a 5-digit random code
+    random_code = str(random.randint(100, 9999999))
 
-    # Allocate Vana points and tokens
-    response["token"] = get_jwt_token(wallet_address, wallet_address)
-    response["vana_point_allocation_response_status_code"] = allocate_vana_points(
-        wallet_address
-    )
-    response["vana_token_allocation_hash"] = allocate_vana_tokens(wallet_address)
+    # Create a new user with the random code
+    user = User(address=wallet_address, slug=random_code)
+    response = user.save(signup=True)
 
-    return jsonify(response), 201  # 201 Created
-
-
-def allocate_vana_points(wallet_address):
-    """
-    Allocate Vana points to a user's wallet address.
-    Returns the status code of the allocation response.
-    """
-    vana_project_name = os.environ.get("VANA_PROJECT_NAME")
-    vana_api_key = os.environ.get("VANA_API_KEY")
-
-    headers = {"Authorization": f"Bearer {vana_api_key}"}
-    vana_api_url = (
-        f"https://www.vanadatahero.com/api/integrations/{vana_project_name}/deposit"
-    )
-    vana_payload = {"walletAddress": wallet_address}
-
-    try:
-        response_from_vana = requests.post(
-            vana_api_url, json=vana_payload, headers=headers
-        )
-        return response_from_vana.status_code
-    except Exception as e:
-        print(
-            f"Failed to allocate Vana points to address: {wallet_address}. Error: {str(e)}"
-        )
-        return 500  # Internal Server Error
-
-
-def allocate_vana_tokens(wallet_address):
-    """
-    Allocate Vana tokens to a user's wallet address.
-    Returns the transaction hash or status code.
-    """
-    vana_api_key = os.environ.get("VANA_API_KEY")
-
-    headers = {"Authorization": f"Bearer {vana_api_key}"}
-    vana_api_url = "https://faucet.vana.org/api/transactions"
-    vana_payload_allocate_token = {"address": wallet_address}
-
-    try:
-        response_from_vana = requests.post(
-            vana_api_url, json=vana_payload_allocate_token, headers=headers
-        )
-        return response_from_vana.json().get("hash") or response_from_vana.status_code
-    except Exception as e:
-        print(
-            f"Failed to allocate Vana token to address: {wallet_address}. Error: {str(e)}"
-        )
-        return 500  # Internal Server Error
-
-
-@core.route("/activity_classification", methods=["POST"])
-def classify_content():
-    data = request.json
-
-    activity = get_most_relevant_activity(data["content"])
-    return jsonify(
-        {"response": f"Most relevant activity for the content given is {activity}"}
-    )
-
+    # Prepare the response object
+    user_data = {
+        "password": response["slug"],
+        "token": get_jwt_token(wallet_address, wallet_address)
+    }
+    print(jsonify(user_data))
+    return jsonify(user_data), 200  # 201 Created
 
 @core.route("/upload_activity_chart", methods=["POST"])
 def upload_activity_chart():

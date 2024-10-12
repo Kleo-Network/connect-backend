@@ -138,3 +138,5 @@ sentence_transformers
 presidio-analyzer     # Detects PII in text
 presidio-anonymizer   # Anonymizes detected PII
 imgurpython           # IMGUR uploading chart images
+gunicorn
+celery

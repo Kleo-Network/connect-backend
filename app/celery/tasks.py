@@ -8,7 +8,6 @@ from ..core.models.user import *
 from ..core.models.celery_tasks import *
 from ..core.models.visits import *
 
-
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
 import json
@@ -55,17 +54,43 @@ def send_telegram_notification(self, slug, response):
     send_telegram_message(slug, response)
 
 
+
+
 @shared_task(
     bind=True,
     base=AbortableTask,
     ack_later=True,
-    default_retry_delay=20,
+    default_retry_delay=1,
     max_retries=0,
     queue="activity-classification",
 )
-def contextual_activity_classification(self, content, address):
-    # TODO: Please provide what to do with this activity.
-    activity = get_most_relevant_activity(content)
+def contextual_activity_classification(self, item, address):
+    # Get the activity classification
+    print(item)
+    activity = get_most_relevant_activity(item['title'])
+    print(activity)
+    # Find the user by address
+    user = find_by_address(address)
+    
+    if not user:
+        print(f"User with address {address} not found")
+        return
+    
+    # Create a new History entry
+    history_entry = History(
+        address=address,
+        url=item['url'],
+        title=item['title'],
+        visitTime=item['lastVisitTime'],
+        category=activity
+    )
+    
+    # Save the history entry to the database
+    history_entry.save()
+    
+    print(f"Saved history entry for user {address}: {item['title']} - Activity: {activity}")
+    
+    return activity
 
 
 @shared_task(
