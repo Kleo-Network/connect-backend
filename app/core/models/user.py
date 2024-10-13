@@ -415,71 +415,6 @@ def update_kleo_points_for_user(slug):
         return {}
 
 
-def get_top_users_by_kleo_points(limit=20):
-    try:
-        # Fetch users and sort them by Kleo points in descending order
-        users = list(
-            db.users.find(
-                {}, {"_id": 0, "slug": 1, "name": 1, "profile_metadata.kleo_points": 1}
-            )
-            .sort("profile_metadata.kleo_points", pymongo.DESCENDING)
-            .limit(limit)
-        )
-
-        # Format the result
-        leaderboard = []
-        for index, user in enumerate(users, start=1):
-            leaderboard.append(
-                {
-                    "rank": index,
-                    "slug": user["slug"],
-                    "name": user.get("name", "Anonymous"),
-                    "kleo_points": user.get("profile_metadata", {}).get(
-                        "kleo_points", 0
-                    ),
-                }
-            )
-
-        return leaderboard
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return []
-
-
-def calculate_rank(slug):
-    try:
-        # First, get the user's Kleo points
-        user = db.users.find_one(
-            {"slug": slug}, {"profile_metadata.kleo_points": 1, "_id": 0}
-        )
-        if not user:
-            return {"error": "User not found"}, 404
-
-        user_kleo_points = user.get("profile_metadata", {}).get("kleo_points", 0)
-
-        # Count how many users have more Kleo points
-        higher_ranked_users = db.users.count_documents(
-            {"profile_metadata.kleo_points": {"$gt": user_kleo_points}}
-        )
-
-        # The rank is the number of users with more points, plus one
-        rank = higher_ranked_users + 1
-
-        # Get total number of users
-        total_users = db.users.count_documents({})
-
-        return {
-            "slug": slug,
-            "kleo_points": user_kleo_points,
-            "rank": rank,
-            "total_users": total_users,
-        }, 200
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return {"error": "An error occurred while calculating rank"}, 500
-
-
 # Updates the PIIRemovedCount and TotalDataContributed Size in DB for an User.
 def update_user_data_by_address(address, pii_count, text_size):
     try:
@@ -538,3 +473,72 @@ def update_user_milestones_data_by_address(address, milestones, kleo_points):
     except Exception as e:
         print(f"An error occurred while updating user data: {e}")
         return None
+
+
+# Get top N users based on KleoPoints. Leaderboard.
+def get_top_users_by_kleo_points(limit=10):
+    try:
+        # Fetch users sorted by Kleo points in descending order, limit the result to `limit`
+        users = list(
+            db.users.find(
+                {},  # No filter, fetch all users
+                {
+                    "_id": 0,  # Exclude `_id`
+                    "address": 1,  # Include `address`
+                    "kleo_points": 1,  # Include `kleo_points`
+                },
+            )
+            .sort(
+                "kleo_points", pymongo.DESCENDING
+            )  # Sort by `kleo_points` in descending order
+            .limit(limit)  # Limit the number of results to `limit`
+        )
+
+        # Format the result
+        leaderboard = []
+        for index, user in enumerate(users, start=1):
+            leaderboard.append(
+                {
+                    "rank": index,  # Rank starts from 1
+                    "address": user["address"],  # Include user's address
+                    "kleo_points": user.get("kleo_points", 0),  # Include kleo_points
+                }
+            )
+
+        return leaderboard
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return []
+
+
+# Calculate the user's rank based on their Kleo points compared to other users.
+def calculate_rank(address):
+    try:
+        # First, get the user's Kleo points by address
+        user = db.users.find_one({"address": address}, {"kleo_points": 1, "_id": 0})
+        if not user:
+            return {"error": "User not found"}, 404
+
+        user_kleo_points = user.get("kleo_points", 0)
+
+        # Count how many users have more Kleo points
+        higher_ranked_users = db.users.count_documents(
+            {"kleo_points": {"$gt": user_kleo_points}}
+        )
+
+        # The rank is the number of users with more points, plus one
+        rank = higher_ranked_users + 1
+
+        # Get total number of users
+        total_users = db.users.count_documents({})
+
+        return {
+            "address": address,
+            "kleo_points": user_kleo_points,
+            "rank": rank,
+            "total_users": total_users,
+        }
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return {"error": "An error occurred while calculating rank"}, 500

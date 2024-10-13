@@ -118,3 +118,24 @@ def get_user(userAddress):
     except Exception as e:
         # Handle any exceptions that occur and return a 500 error
         return jsonify({"error": str(e)}), 500
+
+
+@core.route("/top-users", methods=["GET"])
+def get_top_users():
+    """Fetch the top users based on Kleo points."""
+    try:
+        limit = request.args.get("limit", default=10, type=int)
+        leaderboard = get_top_users_by_kleo_points(limit)
+        return jsonify(leaderboard), 200
+    except Exception as e:
+        return jsonify({"error": "An error occurred while fetching top users"}), 500
+
+
+@core.route("/rank/<userAddress>", methods=["GET"])
+def get_user_rank(userAddress):
+    """Fetch the user's rank according to kleo_points"""
+    try:
+        rank = calculate_rank(userAddress)
+        return rank
+    except Exception as e:
+        return jsonify({"error": "An error occurred while fetching user's rank"})
