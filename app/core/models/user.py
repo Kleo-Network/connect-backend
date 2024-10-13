@@ -478,3 +478,23 @@ def calculate_rank(slug):
     except Exception as e:
         print(f"An error occurred: {e}")
         return {"error": "An error occurred while calculating rank"}, 500
+
+
+# Updates the PIIRemovedCount and TotalDataContributed Size in DB for an User.
+def update_user_data_by_address(address, pii_count, text_size):
+    try:
+        filter_query = {"address": address}
+        update_operation = {
+            "$inc": {"pii_removed_count": pii_count, "total_data_quantity": text_size}
+        }
+        user_of_db = db.users.find_one_and_update(
+            filter_query,
+            update_operation,
+            projection={"_id": 0},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return user_of_db
+
+    except Exception as e:
+        print(f"An error occurred while updating user data: {e}")
+        return None

@@ -65,8 +65,16 @@ def send_telegram_notification(self, slug, response):
 def contextual_activity_classification(self, item, address):
     # Get the activity classification
     print(item)
-    activity = get_most_relevant_activity(item["title"])
-    print(activity)
+
+    # Remove PII first, then pass for classification.
+    pii_result = remove_pii(item["title"])
+    clean_content = pii_result["updated_text"]
+    pii_count = pii_result["pii_count"]
+    # Calculate the size of the clean_text in bytes
+    text_size_in_bytes = len(clean_content.encode("utf-8"))
+
+    activity = get_most_relevant_activity(clean_content)
+    print(f"Most relevant activity is {activity}")
     # Find the user by address
     user = find_by_address(address)
 
@@ -89,6 +97,14 @@ def contextual_activity_classification(self, item, address):
     print(
         f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
     )
+
+    # Update the pii_removed_count and total_data_quantity in the user table using the address
+    user_updated = update_user_data_by_address(address, pii_count, text_size_in_bytes)
+
+    if user_updated:
+        print(f"Successfully updated PII count for user with address {address}")
+    else:
+        print(f"Failed to update PII count for user with address {address}")
 
     return activity
 
