@@ -107,18 +107,18 @@ def delete_all_history(address):
     except Exception as e:
         print(e)
         return 0
-        
+
+
 def get_top_activities(address):
     histories = get_history_item(address)
-    activities = [history['category'] for history in histories]
+    activities = [history["category"] for history in histories]
     activity_counts = Counter(activities)
     total_activities = sum(activity_counts.values())
     activity_percentages = [
-        {
-            'label': activity,
-            'percentage': round((count / total_activities) * 100)
-        }
+        {"label": activity, "percentage": round((count / total_activities) * 100)}
         for activity, count in activity_counts.items()
     ]
-    top_activities = sorted(activity_percentages, key=lambda x: x['percentage'], reverse=True)[:8]
+    top_activities = sorted(
+        activity_percentages, key=lambda x: x["percentage"], reverse=True
+    )[:8]
     return top_activities
