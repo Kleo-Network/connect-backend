@@ -150,3 +150,65 @@ def list_inactive_users():
             {"slug": user["slug"], "count": count}
         )
     return jsonify(active_users_with_no_publishing_cards), 200
+
+
+@core.route("/tasks/update_milestone", methods=["POST"])
+def update_milestone():
+    """Update a user's milestone and Kleo points."""
+    data = request.get_json()
+
+    # Extract input parameters
+    address = data.get("address")
+    mileStoneKey = data.get("mileStoneKey")
+    kleoPoints = data.get("kleoPoints", 0)  # Default to 0 if not provided
+    newValue = data.get("newValue")
+
+    # Input validation
+    if not address or not mileStoneKey or newValue is None:
+        return (
+            jsonify(
+                {
+                    "error": "Invalid input. Address, mileStoneKey, and newValue are required."
+                }
+            ),
+            400,
+        )
+
+    # Find the user by address
+    user = find_by_address(address)
+    if not user:
+        return jsonify({"error": f"User with address {address} not found."}), 404
+
+    # Check if the milestone key exists
+    milestones = user.get("milestones", {})
+    if mileStoneKey not in milestones:
+        return (
+            jsonify({"error": f"Milestone key {mileStoneKey} not found in user data."}),
+            400,
+        )
+
+    # Update the milestone value
+    milestones[mileStoneKey] = newValue
+
+    # Add kleoPoints to the user's current kleo_points
+    current_kleo_points = user.get("kleo_points", 0)
+    updated_kleo_points = current_kleo_points + kleoPoints
+
+    # Update the user in the database
+    updated_user = update_user_milestones_data_by_address(
+        address, milestones, updated_kleo_points
+    )
+
+    if updated_user:
+        return (
+            jsonify(
+                {
+                    "message": "Milestone and Kleo points updated successfully",
+                    "milestones": updated_user.get("milestones"),
+                    "kleo_points": updated_user.get("kleo_points"),
+                }
+            ),
+            200,
+        )
+    else:
+        return jsonify({"error": "Failed to update user data."}), 500

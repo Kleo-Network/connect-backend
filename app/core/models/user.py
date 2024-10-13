@@ -515,3 +515,26 @@ def update_user_data_by_address(address, pii_count, text_size):
     except Exception as e:
         print(f"An error occurred while updating user data: {e}")
         return None
+
+
+# Admin can update the mileStones.
+def update_user_milestones_data_by_address(address, milestones, kleo_points):
+    try:
+        filter_query = {"address": address}
+        update_operation = {
+            "$set": {
+                "milestones": milestones,
+                "kleo_points": kleo_points,
+            }
+        }
+        user_of_db = db.users.find_one_and_update(
+            filter_query,
+            update_operation,
+            projection={"_id": 0},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return user_of_db
+
+    except Exception as e:
+        print(f"An error occurred while updating user data: {e}")
+        return None
