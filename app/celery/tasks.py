@@ -54,8 +54,6 @@ def send_telegram_notification(self, slug, response):
     send_telegram_message(slug, response)
 
 
-
-
 @shared_task(
     bind=True,
     base=AbortableTask,
@@ -67,29 +65,31 @@ def send_telegram_notification(self, slug, response):
 def contextual_activity_classification(self, item, address):
     # Get the activity classification
     print(item)
-    activity = get_most_relevant_activity(item['title'])
+    activity = get_most_relevant_activity(item["title"])
     print(activity)
     # Find the user by address
     user = find_by_address(address)
-    
+
     if not user:
         print(f"User with address {address} not found")
         return
-    
+
     # Create a new History entry
     history_entry = History(
         address=address,
-        url=item['url'],
-        title=item['title'],
-        visitTime=item['lastVisitTime'],
-        category=activity
+        url=item["url"],
+        title=item["title"],
+        visitTime=item["lastVisitTime"],
+        category=activity,
     )
-    
+
     # Save the history entry to the database
     history_entry.save()
-    
-    print(f"Saved history entry for user {address}: {item['title']} - Activity: {activity}")
-    
+
+    print(
+        f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
+    )
+
     return activity
 
 
