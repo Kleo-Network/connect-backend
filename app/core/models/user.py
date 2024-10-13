@@ -32,15 +32,26 @@ class User:
         last_attested=0,
         identity_tags=[],
         badges=[],
-        profile_metadata={},
+        kleo_points=0,
         settings={},
         first_time_user=True,
+        total_data_quantity=0,
+        milestones={
+            "tweet_activity_graph": False,  # Boolean, true if milestone completed
+            "data_owned": 0,  # Integer, MB of data owned
+            "referred_count": 0,  # Integer, number of friends referred
+            "followed_on_twitter": False,  # Boolean, true if followed on Twitter
+        },
+        referrals=[],  # List of users referred by this user
+        referee=None,  # Who referred this user
+        pii_removed_count=0,
     ):
 
+        # Type assertions for validation
         assert isinstance(address, str)
         assert isinstance(slug, str)
-        assert isinstance(name, str)
         assert isinstance(stage, int)
+        assert isinstance(name, str)
         assert isinstance(verified, bool)
         assert isinstance(last_cards_marked, int)
         assert isinstance(about, str)
@@ -49,9 +60,14 @@ class User:
         assert isinstance(last_attested, int)
         assert isinstance(identity_tags, list)
         assert isinstance(badges, list)
-        assert isinstance(profile_metadata, dict)
+        assert isinstance(kleo_points, int)
         assert isinstance(settings, dict)
         assert isinstance(first_time_user, bool)
+        assert isinstance(total_data_quantity, int)
+        assert isinstance(milestones, dict)
+        assert isinstance(referrals, list)
+        assert referee is None or isinstance(referee, str)
+        assert isinstance(pii_removed_count, int)
 
         self.document = {
             "address": address,
@@ -66,9 +82,14 @@ class User:
             "last_attested": last_attested,
             "identity_tags": identity_tags,
             "badges": badges,
-            "profile_metadata": profile_metadata,
+            "kleo_points": kleo_points,
             "settings": settings,
             "first_time_user": first_time_user,
+            "total_data_quantity": total_data_quantity,
+            "milestones": milestones,
+            "referrals": referrals,  # Track users referred by this user
+            "referee": referee,  # Track who referred this user
+            "pii_removed_count": pii_removed_count,
         }
 
     def save(self, signup):
