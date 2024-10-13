@@ -9,18 +9,23 @@ from ..modules.auth import get_jwt_token
 import os
 import requests
 from ...celery.tasks import *
-from ..models.history import get_top_activities
+from ..models.history import get_top_activities, get_history_count
 
 core = Blueprint("core", __name__)
 
 
-@core.route("/get-user-graph", methods=["GET"])
-def get_user_graph():
+@core.route("/get-user-graph/<userAddress>", methods=["GET"])
+def get_user_graph(userAddress):
     try:
-        address = request.args.get("address")
-        if not address:
+        print(userAddress)
+        count_user = get_history_count(userAddress)
+        print(count_user)
+        if count_user < 10:
+            return jsonify({"processing": True}), 200
+            
+        if not userAddress:
             return jsonify({"error": "Address is required"}), 400
-        top_activities = get_top_activities(address)
+        top_activities = get_top_activities(userAddress)
 
         if not top_activities:
             return jsonify({"error": "No activity data found"}), 404
