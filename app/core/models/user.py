@@ -483,18 +483,25 @@ def calculate_rank(slug):
 # Updates the PIIRemovedCount and TotalDataContributed Size in DB for an User.
 def update_user_data_by_address(address, pii_count, text_size):
     try:
-        # Increment `pii_removed_count` and `total_data_quantity`
-        # and set `milestones.data_owned` to the value of `total_data_quantity`
+        # First, retrieve the current total_data_quantity value for this user
+        user = db.users.find_one({"address": address}, {"total_data_quantity": 1})
+        if not user:
+            print(f"User with address {address} not found.")
+            return None
+
+        # Calculate the new total_data_quantity
+        current_total_data_quantity = user.get("total_data_quantity", 0)
+        new_total_data_quantity = current_total_data_quantity + text_size
+
+        # Now perform the update
         filter_query = {"address": address}
         update_operation = {
             "$inc": {
-                "pii_removed_count": pii_count,
-                "total_data_quantity": text_size,
+                "pii_removed_count": pii_count,  # Increment pii_removed_count
             },
             "$set": {
-                "milestones.data_owned": {
-                    "$add": ["$total_data_quantity", text_size]
-                }  # Sync with total_data_quantity
+                "total_data_quantity": new_total_data_quantity,  # Update total_data_quantity
+                "milestones.data_owned": new_total_data_quantity,  # Sync milestones.data_owned with total_data_quantity
             },
         }
         user_of_db = db.users.find_one_and_update(
