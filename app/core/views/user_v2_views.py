@@ -10,12 +10,14 @@ import os
 import requests
 from ...celery.tasks import *
 from ..models.history import get_top_activities
+
 core = Blueprint("core", __name__)
+
 
 @core.route("/get-user-graph", methods=["GET"])
 def get_user_graph():
     try:
-        address = request.args.get('address')
+        address = request.args.get("address")
         if not address:
             return jsonify({"error": "Address is required"}), 400
         top_activities = get_top_activities(address)
@@ -27,21 +29,21 @@ def get_user_graph():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    
 
 @core.route("/save-history", methods=["POST"])
 def save_history():
     data = request.get_json()
-    user_address = data.get('address')
+    user_address = data.get("address")
     print(user_address)
-    print(data.get('signup'))
-    history = data.get('history')
+    print(data.get("signup"))
+    history = data.get("history")
     for item in history:
         task = contextual_activity_classification.delay(item, user_address)
 
     # THIS IS JSON OF ITEM
-    #{'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
+    # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
     return jsonify({"data": True}), 200
+
 
 @core.route("/create-user", methods=["POST"])
 def create_user():
@@ -52,7 +54,7 @@ def create_user():
     and generate a 5-digit random code.
     """
     data = request.get_json()
-    
+
     print("data", data.get("address"))
     wallet_address = data.get("address")
 
@@ -72,10 +74,11 @@ def create_user():
     # Prepare the response object
     user_data = {
         "password": response["slug"],
-        "token": get_jwt_token(wallet_address, wallet_address)
+        "token": get_jwt_token(wallet_address, wallet_address),
     }
     print(jsonify(user_data))
     return jsonify(user_data), 200  # 201 Created
+
 
 @core.route("/upload_activity_chart", methods=["POST"])
 def upload_activity_chart():
@@ -94,4 +97,24 @@ def upload_activity_chart():
         else:
             return jsonify({"error": "Image upload failed"}), 500
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@core.route("/get-user/<userAddress>", methods=["GET"])
+def get_user(userAddress):
+    """
+    Fetch user data from MongoDB based on the user's address.
+    """
+    try:
+        # Query the MongoDB collection using the user's address
+        user_data = find_by_address(userAddress)
+
+        # If user data is not found, return a 404 error
+        if not user_data:
+            return jsonify({"error": "User not found"}), 404
+
+        # Return the user data as JSON
+        return jsonify(user_data), 200
+    except Exception as e:
+        # Handle any exceptions that occur and return a 500 error
         return jsonify({"error": str(e)}), 500
