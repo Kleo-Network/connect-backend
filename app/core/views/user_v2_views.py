@@ -10,7 +10,7 @@ import os
 import requests
 from ...celery.tasks import *
 from ..models.history import get_top_activities, get_history_count
-
+from ...core.models.constants import ABI, POLYGON_RPC
 core = Blueprint("core", __name__)
 
 
@@ -43,11 +43,29 @@ def save_history():
     print(data.get("signup"))
     history = data.get("history")
     for item in history:
-        task = contextual_activity_classification.delay(item, user_address)
-
+        if "content" not in item:
+            task = contextual_activity_classification.delay(item, user_address)
+        else:
+            user = find_by_address(user_address)
+            contractData = {
+                'address': '0xD133A1aE09EAA45c51Daa898031c0037485347B0',
+                'abi': ABI,
+                'functionName': 'safeMint',
+                'functionParams': [user_address, 'https://www.youtube.com/watch?v=bUrCR4jQQg8']
+            }
+    
+    # Construct the response
+            response = {
+                'contractData': contractData,
+                'password': user.get("slug"),
+                'rpc': POLYGON_RPC
+            }
+            print(response)
     # THIS IS JSON OF ITEM
     # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
-    return jsonify({"data": True}), 200
+            return jsonify({"data": response}), 200
+    return jsonify({"process": True}), 200
+    
 
 
 @core.route("/create-user", methods=["POST"])
