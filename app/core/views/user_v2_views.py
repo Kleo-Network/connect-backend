@@ -122,10 +122,34 @@ def get_user(userAddress):
 
 @core.route("/top-users", methods=["GET"])
 def get_top_users():
-    """Fetch the top users based on Kleo points."""
+    """Fetch the top users based on Kleo points and include the user's rank at the first index if the address is provided."""
     try:
-        limit = request.args.get("limit", default=10, type=int)
+        limit = request.args.get("limit", default=20, type=int)
+        user_address = request.args.get("address", default=None, type=str)
         leaderboard = get_top_users_by_kleo_points(limit)
+
+        # If user_address is provided, calculate the rank and add it at the first position
+        if user_address:
+            user_rank_data = calculate_rank(user_address)
+
+            if user_rank_data:
+                user_rank_entry = {
+                    "address": user_rank_data["address"],
+                    "kleo_points": user_rank_data["kleo_points"],
+                    "rank": user_rank_data["rank"],
+                }
+
+                # Insert the user's rank at the first position
+                leaderboard.insert(0, user_rank_entry)
+            else:
+                return (
+                    jsonify(
+                        {
+                            "error": "Error fetching user's rank for address: {user_address}"
+                        }
+                    ),
+                    500,
+                )
         return jsonify(leaderboard), 200
     except Exception as e:
         return jsonify({"error": "An error occurred while fetching top users"}), 500
