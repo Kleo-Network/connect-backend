@@ -41,11 +41,6 @@ def save_history():
     signup = data.get("signup")
     history = data.get("history")
 
-    # Filter out the first 100 latest entries if "signup" is present
-    if signup:
-        # Sort the history based on `lastVisitTime` in descending order and take the first 100 entries
-        history = sorted(history, key=lambda x: x["lastVisitTime"], reverse=True)[:100]
-
     responses = []  # Store responses for items with "content"
 
     # Check for entries with "content" and prepare responses for them
