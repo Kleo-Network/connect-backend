@@ -87,7 +87,7 @@ def contextual_activity_classification(self, item, address):
         address=address,
         url=item["url"],
         title=item["title"],
-        visitTime=item["lastVisitTime"],
+        visitTime=float(item["lastVisitTime"]),
         category=activity,
     )
 

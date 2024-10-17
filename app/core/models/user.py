@@ -167,7 +167,7 @@ def find_by_address(address):
     try:
         pipeline = [
             {"$match": {"address": address}},
-            {"$project": {"_id": 0, "address": 0}},  # Exclude the _id field
+            {"$project": {"_id": 0}},  # Exclude the _id field
         ]
         user_of_db = db.users.aggregate(pipeline).next()
         return user_of_db

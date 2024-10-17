@@ -10,7 +10,7 @@ settings = app_settings()
 class BaseSettings:
     """Celery Configuration"""
 
-    broker_url = "amqps://b-046c127e-1a88-4235-ad47-21d8f04bc4f0.mq.ap-south-1.amazonaws.com:5671"
+    broker_url =  os.environ.get("RABBITMQ_URL","amqps://")
     result_backend = f"redis://redis:6379"
     broker_transport = "amqp"
     task_default_queue = "default"

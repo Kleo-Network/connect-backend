@@ -31,9 +31,5 @@ def get_relevant_activity_via_context(pass_content):
 
 
 def get_most_relevant_activity(content):
-    print("-" * 50)
-    print("Content : ", content)
     most_relevant_activity = get_relevant_activity_via_context(content)
-    print(f"The most relevant activity is: {most_relevant_activity}")
-    print("-" * 50)
     return most_relevant_activity

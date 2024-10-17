@@ -19,11 +19,11 @@ class History:
         address,
         title,
         category,
-        subcategory,
         url,
-        domain,
-        summary,
         visitTime,
+        subcategory="",
+        domain="",
+        summary="",
         create_timestamp=int(datetime.now().timestamp()),
     ):
         assert isinstance(address, str)
@@ -34,7 +34,7 @@ class History:
         assert isinstance(url, str)
         assert isinstance(domain, str)
         assert isinstance(summary, str)
-        assert isinstance(visitTime, int)
+        assert isinstance(visitTime, float)
 
         self.document = {
             "address": address,

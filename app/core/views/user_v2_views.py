@@ -9,18 +9,22 @@ from ..modules.auth import get_jwt_token
 import os
 import requests
 from ...celery.tasks import *
-from ..models.history import get_top_activities
+from ..models.history import get_top_activities, get_history_count
+from ...core.models.constants import ABI, POLYGON_RPC
 
 core = Blueprint("core", __name__)
 
 
-@core.route("/get-user-graph", methods=["GET"])
-def get_user_graph():
+@core.route("/get-user-graph/<userAddress>", methods=["GET"])
+def get_user_graph(userAddress):
     try:
-        address = request.args.get("address")
-        if not address:
+        count_user = get_history_count(userAddress)
+        if count_user < 10:
+            return jsonify({"processing": True}), 200
+
+        if not userAddress:
             return jsonify({"error": "Address is required"}), 400
-        top_activities = get_top_activities(address)
+        top_activities = get_top_activities(userAddress)
 
         if not top_activities:
             return jsonify({"error": "No activity data found"}), 404
@@ -38,11 +42,31 @@ def save_history():
     print(data.get("signup"))
     history = data.get("history")
     for item in history:
-        task = contextual_activity_classification.delay(item, user_address)
+        if "content" not in item:
+            task = contextual_activity_classification.delay(item, user_address)
+        else:
+            user = find_by_address(user_address)
+            contractData = {
+                "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                "abi": ABI,
+                "functionName": "safeMint",
+                "functionParams": [
+                    user_address,
+                    "https://www.youtube.com/watch?v=bUrCR4jQQg8",
+                ],
+            }
 
-    # THIS IS JSON OF ITEM
-    # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
-    return jsonify({"data": True}), 200
+            # Construct the response
+            response = {
+                "contractData": contractData,
+                "password": user.get("slug"),
+                "rpc": POLYGON_RPC,
+            }
+            print(response)
+            # THIS IS JSON OF ITEM
+            # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
+            return jsonify({"data": response}), 200
+    return jsonify({"process": True}), 200
 
 
 @core.route("/create-user", methods=["POST"])
