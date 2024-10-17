@@ -67,7 +67,7 @@ def save_history():
             responses.append(response)
 
     # Send all history items in a batch for classification (up to 100)
-    contextual_activity_classification.delay(history, user_address)
+    contextual_activity_classification_for_batch.delay(history, user_address)
 
     # Return all collected responses for the items with "content"
     return jsonify({"data": responses}), 200

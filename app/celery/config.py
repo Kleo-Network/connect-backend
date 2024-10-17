@@ -16,6 +16,7 @@ class BaseSettings:
     task_default_queue = "default"
     task_queues = (
         Queue("activity-classification"),
+        Queue("activity-classification-new"),
         Queue("default"),
         Queue("remove-pii"),
         Queue("send-email"),
