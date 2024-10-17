@@ -62,51 +62,65 @@ def send_telegram_notification(self, slug, response):
     max_retries=0,
     queue="activity-classification",
 )
-def contextual_activity_classification(self, item, address):
-    # Get the activity classification
-    print(item)
+def contextual_activity_classification(self, history_batch, address):
+    # Store PII-removed content
+    clean_contents = []
+    pii_counts = []
 
-    # Remove PII first, then pass for classification.
-    pii_result = remove_pii(item["title"])
-    clean_content = pii_result["updated_text"]
-    pii_count = pii_result["pii_count"]
-    # Calculate the size of the clean_text in bytes
-    text_size_in_bytes = len(clean_content.encode("utf-8"))
+    # Iterate through the batch of 100 history items
+    for item in history_batch:
+        # Remove PII and gather clean content
+        pii_result = remove_pii(item["title"])
+        clean_content = pii_result["updated_text"]
+        pii_count = pii_result["pii_count"]
 
-    activity = get_most_relevant_activity(clean_content)
-    print(f"Most relevant activity is {activity}")
-    # Find the user by address
-    user = find_by_address(address)
+        # Store the cleaned content and PII count for later processing
+        clean_contents.append(clean_content)
+        pii_counts.append(pii_count)
 
-    if not user:
-        print(f"User with address {address} not found")
-        return
+    # Classify the batch of clean content
+    activities = get_most_relevant_activity(clean_contents)
 
-    # Create a new History entry
-    history_entry = History(
-        address=address,
-        url=item["url"],
-        title=item["title"],
-        visitTime=float(item["lastVisitTime"]),
-        category=activity,
-    )
+    # Iterate through each classified activity and save it along with history entries
+    for idx, item in enumerate(history_batch):
+        activity = activities[idx]
+        print(f"Most relevant activity for item {idx} is {activity}")
 
-    # Save the history entry to the database
-    history_entry.save()
+        # Find the user by address
+        user = find_by_address(address)
 
-    print(
-        f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
-    )
+        if not user:
+            print(f"User with address {address} not found")
+            continue
 
-    # Update the pii_removed_count and total_data_quantity in the user table using the address
-    user_updated = update_user_data_by_address(address, pii_count, text_size_in_bytes)
+        # Create a new History entry
+        history_entry = History(
+            address=address,
+            url=item["url"],
+            title=item["title"],
+            visitTime=float(item["lastVisitTime"]),
+            category=activity,
+        )
 
-    if user_updated:
-        print(f"Successfully updated PII count for user with address {address}")
-    else:
-        print(f"Failed to update PII count for user with address {address}")
+        # Save the history entry to the database
+        history_entry.save()
 
-    return activity
+        print(
+            f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
+        )
+
+        # Update the PII count and data quantity for the user
+        text_size_in_bytes = len(clean_contents[idx].encode("utf-8"))
+        user_updated = update_user_data_by_address(
+            address, pii_counts[idx], text_size_in_bytes
+        )
+
+        if user_updated:
+            print(f"Successfully updated PII count for user with address {address}")
+        else:
+            print(f"Failed to update PII count for user with address {address}")
+
+    return activities
 
 
 @shared_task(
