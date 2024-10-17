@@ -415,15 +415,83 @@ def update_kleo_points_for_user(slug):
         return {}
 
 
-def get_top_users_by_kleo_points(limit=20):
+# Updates the PIIRemovedCount and TotalDataContributed Size in DB for an User.
+def update_user_data_by_address(address, pii_count, text_size):
     try:
-        # Fetch users and sort them by Kleo points in descending order
+        # First, retrieve the current total_data_quantity value for this user
+        user = db.users.find_one({"address": address}, {"total_data_quantity": 1})
+        if not user:
+            print(f"User with address {address} not found.")
+            return None
+
+        # Calculate the new total_data_quantity
+        current_total_data_quantity = user.get("total_data_quantity", 0)
+        new_total_data_quantity = current_total_data_quantity + text_size
+
+        # Now perform the update
+        filter_query = {"address": address}
+        update_operation = {
+            "$inc": {
+                "pii_removed_count": pii_count,  # Increment pii_removed_count
+            },
+            "$set": {
+                "total_data_quantity": new_total_data_quantity,  # Update total_data_quantity
+                "milestones.data_owned": new_total_data_quantity,  # Sync milestones.data_owned with total_data_quantity
+            },
+        }
+        user_of_db = db.users.find_one_and_update(
+            filter_query,
+            update_operation,
+            projection={"_id": 0},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return user_of_db
+
+    except Exception as e:
+        print(f"An error occurred while updating user data: {e}")
+        return None
+
+
+# Admin can update the mileStones.
+def update_user_milestones_data_by_address(address, milestones, kleo_points):
+    try:
+        filter_query = {"address": address}
+        update_operation = {
+            "$set": {
+                "milestones": milestones,
+                "kleo_points": kleo_points,
+            }
+        }
+        user_of_db = db.users.find_one_and_update(
+            filter_query,
+            update_operation,
+            projection={"_id": 0},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return user_of_db
+
+    except Exception as e:
+        print(f"An error occurred while updating user data: {e}")
+        return None
+
+
+# Get top N users based on KleoPoints. Leaderboard.
+def get_top_users_by_kleo_points(limit=10):
+    try:
+        # Fetch users sorted by Kleo points in descending order, limit the result to `limit`
         users = list(
             db.users.find(
-                {}, {"_id": 0, "slug": 1, "name": 1, "profile_metadata.kleo_points": 1}
+                {},  # No filter, fetch all users
+                {
+                    "_id": 0,  # Exclude `_id`
+                    "address": 1,  # Include `address`
+                    "kleo_points": 1,  # Include `kleo_points`
+                },
             )
-            .sort("profile_metadata.kleo_points", pymongo.DESCENDING)
-            .limit(limit)
+            .sort(
+                "kleo_points", pymongo.DESCENDING
+            )  # Sort by `kleo_points` in descending order
+            .limit(limit)  # Limit the number of results to `limit`
         )
 
         # Format the result
@@ -431,12 +499,9 @@ def get_top_users_by_kleo_points(limit=20):
         for index, user in enumerate(users, start=1):
             leaderboard.append(
                 {
-                    "rank": index,
-                    "slug": user["slug"],
-                    "name": user.get("name", "Anonymous"),
-                    "kleo_points": user.get("profile_metadata", {}).get(
-                        "kleo_points", 0
-                    ),
+                    "rank": index,  # Rank starts from 1
+                    "address": user["address"],  # Include user's address
+                    "kleo_points": user.get("kleo_points", 0),  # Include kleo_points
                 }
             )
 
@@ -446,20 +511,19 @@ def get_top_users_by_kleo_points(limit=20):
         return []
 
 
-def calculate_rank(slug):
+# Calculate the user's rank based on their Kleo points compared to other users.
+def calculate_rank(address):
     try:
-        # First, get the user's Kleo points
-        user = db.users.find_one(
-            {"slug": slug}, {"profile_metadata.kleo_points": 1, "_id": 0}
-        )
+        # First, get the user's Kleo points by address
+        user = db.users.find_one({"address": address}, {"kleo_points": 1, "_id": 0})
         if not user:
             return {"error": "User not found"}, 404
 
-        user_kleo_points = user.get("profile_metadata", {}).get("kleo_points", 0)
+        user_kleo_points = user.get("kleo_points", 0)
 
         # Count how many users have more Kleo points
         higher_ranked_users = db.users.count_documents(
-            {"profile_metadata.kleo_points": {"$gt": user_kleo_points}}
+            {"kleo_points": {"$gt": user_kleo_points}}
         )
 
         # The rank is the number of users with more points, plus one
@@ -469,11 +533,11 @@ def calculate_rank(slug):
         total_users = db.users.count_documents({})
 
         return {
-            "slug": slug,
+            "address": address,
             "kleo_points": user_kleo_points,
             "rank": rank,
             "total_users": total_users,
-        }, 200
+        }
 
     except Exception as e:
         print(f"An error occurred: {e}")

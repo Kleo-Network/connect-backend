@@ -5,6 +5,7 @@ from ..modules.cards import history_count
 from app.celery.tasks import *
 from collections import defaultdict
 import ast
+
 core = Blueprint("core", __name__)
 
 
@@ -14,10 +15,12 @@ def enforce_reserved_task_limit():
     enforce_reserved_task_limit_per_user()
     return jsonify({"message": "Reserved task limits enforced"}), 200
 
+
 def enforce_reserved_task_limit_per_user():
     reserved_tasks = get_reserved_tasks()
     tasks_per_user = group_tasks_by_user(reserved_tasks)
     limit_reserved_tasks_per_user(tasks_per_user, max_tasks=150)
+
 
 def get_reserved_tasks():
     inspector = current_celery_app.control.inspect()
@@ -30,11 +33,12 @@ def get_reserved_tasks():
 
     return all_reserved_tasks
 
+
 def group_tasks_by_user(tasks):
     tasks_per_user = defaultdict(list)
 
     for task in tasks:
-        args = task.get('args', [])
+        args = task.get("args", [])
         if isinstance(args, str):
             args = ast.literal_eval(args)
 
@@ -47,13 +51,14 @@ def group_tasks_by_user(tasks):
 
     return tasks_per_user
 
+
 def limit_reserved_tasks_per_user(tasks_per_user, max_tasks=150):
     for address, tasks in tasks_per_user.items():
         if len(tasks) > max_tasks:
             # Optionally sort tasks to determine which ones to revoke
             tasks_to_revoke = tasks[max_tasks:]
             for task in tasks_to_revoke:
-                task_id = task.get('id')
+                task_id = task.get("id")
                 if task_id:
                     current_celery_app.control.revoke(task_id, terminate=True)
 
@@ -201,3 +206,65 @@ def list_inactive_users():
             {"slug": user["slug"], "count": count}
         )
     return jsonify(active_users_with_no_publishing_cards), 200
+
+
+@core.route("/tasks/update_milestone", methods=["POST"])
+def update_milestone():
+    """Update a user's milestone and Kleo points."""
+    data = request.get_json()
+
+    # Extract input parameters
+    address = data.get("address")
+    mileStoneKey = data.get("mileStoneKey")
+    kleoPoints = data.get("kleoPoints", 0)  # Default to 0 if not provided
+    newValue = data.get("newValue")
+
+    # Input validation
+    if not address or not mileStoneKey or newValue is None:
+        return (
+            jsonify(
+                {
+                    "error": "Invalid input. Address, mileStoneKey, and newValue are required."
+                }
+            ),
+            400,
+        )
+
+    # Find the user by address
+    user = find_by_address(address)
+    if not user:
+        return jsonify({"error": f"User with address {address} not found."}), 404
+
+    # Check if the milestone key exists
+    milestones = user.get("milestones", {})
+    if mileStoneKey not in milestones:
+        return (
+            jsonify({"error": f"Milestone key {mileStoneKey} not found in user data."}),
+            400,
+        )
+
+    # Update the milestone value
+    milestones[mileStoneKey] = newValue
+
+    # Add kleoPoints to the user's current kleo_points
+    current_kleo_points = user.get("kleo_points", 0)
+    updated_kleo_points = current_kleo_points + kleoPoints
+
+    # Update the user in the database
+    updated_user = update_user_milestones_data_by_address(
+        address, milestones, updated_kleo_points
+    )
+
+    if updated_user:
+        return (
+            jsonify(
+                {
+                    "message": "Milestone and Kleo points updated successfully",
+                    "milestones": updated_user.get("milestones"),
+                    "kleo_points": updated_user.get("kleo_points"),
+                }
+            ),
+            200,
+        )
+    else:
+        return jsonify({"error": "Failed to update user data."}), 500

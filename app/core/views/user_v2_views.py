@@ -11,18 +11,17 @@ import requests
 from ...celery.tasks import *
 from ..models.history import get_top_activities, get_history_count
 from ...core.models.constants import ABI, POLYGON_RPC
+
 core = Blueprint("core", __name__)
 
 
 @core.route("/get-user-graph/<userAddress>", methods=["GET"])
 def get_user_graph(userAddress):
     try:
-        print(userAddress)
         count_user = get_history_count(userAddress)
-        print(count_user)
         if count_user < 10:
             return jsonify({"processing": True}), 200
-            
+
         if not userAddress:
             return jsonify({"error": "Address is required"}), 400
         top_activities = get_top_activities(userAddress)
@@ -48,24 +47,26 @@ def save_history():
         else:
             user = find_by_address(user_address)
             contractData = {
-                'address': '0xD133A1aE09EAA45c51Daa898031c0037485347B0',
-                'abi': ABI,
-                'functionName': 'safeMint',
-                'functionParams': [user_address, 'https://www.youtube.com/watch?v=bUrCR4jQQg8']
+                "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                "abi": ABI,
+                "functionName": "safeMint",
+                "functionParams": [
+                    user_address,
+                    "https://www.youtube.com/watch?v=bUrCR4jQQg8",
+                ],
             }
-    
-    # Construct the response
+
+            # Construct the response
             response = {
-                'contractData': contractData,
-                'password': user.get("slug"),
-                'rpc': POLYGON_RPC
+                "contractData": contractData,
+                "password": user.get("slug"),
+                "rpc": POLYGON_RPC,
             }
             print(response)
-    # THIS IS JSON OF ITEM
-    # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
+            # THIS IS JSON OF ITEM
+            # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
             return jsonify({"data": response}), 200
     return jsonify({"process": True}), 200
-    
 
 
 @core.route("/create-user", methods=["POST"])
@@ -141,3 +142,48 @@ def get_user(userAddress):
     except Exception as e:
         # Handle any exceptions that occur and return a 500 error
         return jsonify({"error": str(e)}), 500
+
+
+@core.route("/top-users", methods=["GET"])
+def get_top_users():
+    """Fetch the top users based on Kleo points and include the user's rank at the first index if the address is provided."""
+    try:
+        limit = request.args.get("limit", default=20, type=int)
+        user_address = request.args.get("address", default=None, type=str)
+        leaderboard = get_top_users_by_kleo_points(limit)
+
+        # If user_address is provided, calculate the rank and add it at the first position
+        if user_address:
+            user_rank_data = calculate_rank(user_address)
+
+            if user_rank_data:
+                user_rank_entry = {
+                    "address": user_rank_data["address"],
+                    "kleo_points": user_rank_data["kleo_points"],
+                    "rank": user_rank_data["rank"],
+                }
+
+                # Insert the user's rank at the first position
+                leaderboard.insert(0, user_rank_entry)
+            else:
+                return (
+                    jsonify(
+                        {
+                            "error": "Error fetching user's rank for address: {user_address}"
+                        }
+                    ),
+                    500,
+                )
+        return jsonify(leaderboard), 200
+    except Exception as e:
+        return jsonify({"error": "An error occurred while fetching top users"}), 500
+
+
+@core.route("/rank/<userAddress>", methods=["GET"])
+def get_user_rank(userAddress):
+    """Fetch the user's rank according to kleo_points"""
+    try:
+        rank = calculate_rank(userAddress)
+        return rank
+    except Exception as e:
+        return jsonify({"error": "An error occurred while fetching user's rank"})

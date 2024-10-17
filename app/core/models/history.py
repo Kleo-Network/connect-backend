@@ -1,8 +1,8 @@
+from collections import Counter
 from bson import ObjectId
 import pymongo
 from datetime import datetime
 import os
-from collections import Counter
 
 # MongoDB connection URI
 mongo_uri = os.environ.get("DB_URL")
