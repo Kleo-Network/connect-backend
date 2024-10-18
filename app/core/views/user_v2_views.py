@@ -38,13 +38,14 @@ def get_user_graph(userAddress):
 def save_history():
     data = request.get_json()
     user_address = data.get("address")
-    print(user_address)
-    print(data.get("signup"))
+    signup = data.get("signup")
     history = data.get("history")
+
+    responses = []  # Store responses for items with "content"
+
+    # Check for entries with "content" and prepare responses for them
     for item in history:
-        if "content" not in item:
-            task = contextual_activity_classification.delay(item, user_address)
-        else:
+        if "content" in item:
             user = find_by_address(user_address)
             contractData = {
                 "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
@@ -56,17 +57,55 @@ def save_history():
                 ],
             }
 
-            # Construct the response
+            # Construct the response for this item
             response = {
                 "contractData": contractData,
                 "password": user.get("slug"),
                 "rpc": POLYGON_RPC,
             }
             print(response)
-            # THIS IS JSON OF ITEM
-            # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
-            return jsonify({"data": response}), 200
-    return jsonify({"process": True}), 200
+            responses.append(response)
+
+    # Send all history items in a batch for classification (up to 100)
+    contextual_activity_classification_for_batch.delay(history, user_address)
+
+    # Return all collected responses for the items with "content"
+    return jsonify({"data": responses}), 200
+
+
+# @core.route("/save-history", methods=["POST"])
+# def save_history():
+#     data = request.get_json()
+#     user_address = data.get("address")
+#     print(user_address)
+#     print(data.get("signup"))
+#     history = data.get("history")
+#     for item in history:
+#         if "content" not in item:
+#             task = contextual_activity_classification.delay(item, user_address)
+#         else:
+#             user = find_by_address(user_address)
+#             contractData = {
+#                 "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+#                 "abi": ABI,
+#                 "functionName": "safeMint",
+#                 "functionParams": [
+#                     user_address,
+#                     "https://www.youtube.com/watch?v=bUrCR4jQQg8",
+#                 ],
+#             }
+
+#             # Construct the response
+#             response = {
+#                 "contractData": contractData,
+#                 "password": user.get("slug"),
+#                 "rpc": POLYGON_RPC,
+#             }
+#             print(response)
+#             # THIS IS JSON OF ITEM
+#             # {'id': '16132', 'url': 'https://www.google.com/search?q=imgflip&oq=imgflip&gs_lcrp=EgZjaHJvbWUyDAgAEEUYORixAxiABDIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABNIBCDE1MDRqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8', 'title': 'imgflip - Google Search', 'lastVisitTime': 1727571259983.67, 'visitCount': 2, 'typedCount': 0}
+#             return jsonify({"data": response}), 200
+#     return jsonify({"process": True}), 200
 
 
 @core.route("/create-user", methods=["POST"])

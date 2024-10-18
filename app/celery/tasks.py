@@ -1,5 +1,6 @@
 from app.celery.userDataComputation.activityClassification import (
     get_most_relevant_activity,
+    get_most_relevant_activity_for_batch,
 )
 from app.celery.userDataComputation.pii import remove_pii
 from ..core.controllers.history import *
@@ -107,6 +108,75 @@ def contextual_activity_classification(self, item, address):
         print(f"Failed to update PII count for user with address {address}")
 
     return activity
+
+
+@shared_task(
+    bind=True,
+    base=AbortableTask,
+    ack_later=True,
+    default_retry_delay=1,
+    max_retries=0,
+    queue="activity-classification-new",
+)
+def contextual_activity_classification_for_batch(self, history_batch, address):
+    # Store PII-removed content
+    clean_contents = []
+    pii_counts = []
+
+    # Iterate through the batch of 100 history items
+    for item in history_batch:
+        # Remove PII and gather clean content
+        pii_result = remove_pii(item["title"])
+        clean_content = pii_result["updated_text"]
+        pii_count = pii_result["pii_count"]
+
+        # Store the cleaned content and PII count for later processing
+        clean_contents.append(clean_content)
+        pii_counts.append(pii_count)
+
+    # Classify the batch of clean content
+    activities = get_most_relevant_activity_for_batch(clean_contents)
+
+    # Iterate through each classified activity and save it along with history entries
+    for idx, item in enumerate(history_batch):
+        activity = activities[idx]
+        print(f"Most relevant activity for item {idx} is {activity}")
+
+        # Find the user by address
+        user = find_by_address(address)
+
+        if not user:
+            print(f"User with address {address} not found")
+            continue
+
+        # Create a new History entry
+        history_entry = History(
+            address=address,
+            url=item["url"],
+            title=item["title"],
+            visitTime=float(item["lastVisitTime"]),
+            category=activity,
+        )
+
+        # Save the history entry to the database
+        history_entry.save()
+
+        print(
+            f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
+        )
+
+        # Update the PII count and data quantity for the user
+        text_size_in_bytes = len(clean_contents[idx].encode("utf-8"))
+        user_updated = update_user_data_by_address(
+            address, pii_counts[idx], text_size_in_bytes
+        )
+
+        if user_updated:
+            print(f"Successfully updated PII count for user with address {address}")
+        else:
+            print(f"Failed to update PII count for user with address {address}")
+
+    return activities
 
 
 @shared_task(

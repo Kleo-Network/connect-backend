@@ -9,60 +9,6 @@ import ast
 core = Blueprint("core", __name__)
 
 
-@core.route("/tasks/enforce_reserved_task_limit", methods=["POST"])
-def enforce_reserved_task_limit():
-    """Enforce a limit of 70 reserved tasks per user in the Celery queue."""
-    enforce_reserved_task_limit_per_user()
-    return jsonify({"message": "Reserved task limits enforced"}), 200
-
-
-def enforce_reserved_task_limit_per_user():
-    reserved_tasks = get_reserved_tasks()
-    tasks_per_user = group_tasks_by_user(reserved_tasks)
-    limit_reserved_tasks_per_user(tasks_per_user, max_tasks=150)
-
-
-def get_reserved_tasks():
-    inspector = current_celery_app.control.inspect()
-    reserved = inspector.reserved() or {}
-
-    all_reserved_tasks = []
-
-    for tasks in reserved.values():
-        all_reserved_tasks.extend(tasks)
-
-    return all_reserved_tasks
-
-
-def group_tasks_by_user(tasks):
-    tasks_per_user = defaultdict(list)
-
-    for task in tasks:
-        args = task.get("args", [])
-        if isinstance(args, str):
-            args = ast.literal_eval(args)
-
-        if len(args) >= 2:
-            address = args[1]
-            tasks_per_user[address].append(task)
-        else:
-            # Handle tasks without a valid address if necessary
-            pass
-
-    return tasks_per_user
-
-
-def limit_reserved_tasks_per_user(tasks_per_user, max_tasks=150):
-    for address, tasks in tasks_per_user.items():
-        if len(tasks) > max_tasks:
-            # Optionally sort tasks to determine which ones to revoke
-            tasks_to_revoke = tasks[max_tasks:]
-            for task in tasks_to_revoke:
-                task_id = task.get("id")
-                if task_id:
-                    current_celery_app.control.revoke(task_id, terminate=True)
-
-
 # Route to abort scheduled tasks for users
 @core.route("/tasks/abort_scheduled", methods=["GET"])
 def abort_scheduled_tasks():
