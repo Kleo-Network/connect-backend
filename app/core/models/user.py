@@ -542,3 +542,44 @@ def calculate_rank(address):
     except Exception as e:
         print(f"An error occurred: {e}")
         return {"error": "An error occurred while calculating rank"}, 500
+
+
+# Finds a user and returns the referrals object for that user, including their kleo points.
+def fetch_users_referrals(address):
+    try:
+        # First, get the user's details by address
+        user = db.users.find_one({"address": address})
+        if not user:
+            return {"error": "User not found"}, 404
+
+        # Get the referrals list
+        referrals = user.get("referrals", [])
+        if not referrals:
+            return []
+
+        # Initialize a list to store referral details
+        referral_details = []
+
+        # Iterate through each referral and get their kleo_points
+        for referral in referrals:
+            referred_user = db.users.find_one(
+                {"address": referral["address"]}, {"kleo_points": 1, "_id": 0}
+            )
+
+            # Extract kleo_points if user is found, otherwise default to 0
+            kleo_points = referred_user.get("kleo_points", 0) if referred_user else 0
+
+            # Append the referral data along with kleo_points
+            referral_details.append(
+                {
+                    "address": referral["address"],
+                    "joining_date": referral["joining_date"],
+                    "kleo_points": kleo_points,
+                }
+            )
+
+        return referral_details
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return {"error": "An error occurred while fetching referrals."}, 500

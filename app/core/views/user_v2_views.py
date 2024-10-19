@@ -226,3 +226,12 @@ def get_user_rank(userAddress):
         return rank
     except Exception as e:
         return jsonify({"error": "An error occurred while fetching user's rank"})
+
+
+@core.route("/referrals/<userAddress>", methods=["GET"])
+def get_user_referrals(userAddress):
+    try:
+        referrals = fetch_users_referrals(userAddress)
+        return referrals
+    except Exception as e:
+        return jsonify({"error": "An error occurred while fetching user's referrals"})
