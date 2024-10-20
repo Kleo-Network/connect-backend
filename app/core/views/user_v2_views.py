@@ -44,41 +44,36 @@ def save_history():
     responses = []  # Store responses for items with "content"
 
     if signup:
-        # If the user doesn't have a referee, check the history for a referral link
         referee_address = find_referral_in_history(history)
-
         if referee_address:
-            # Update the referee for the user and assign the referral bonus
             update_referee_and_bonus(user_address, referee_address)
+        contextual_activity_classification_for_batch.delay(history, user_address)
+        return jsonify({"signup": "Signup successful!"}), 200
+    else:
+        for item in history:
+            if "content" in item:
+                user = find_by_address(user_address)
+                contextual_activity_classification.delay(item, address)
+                if get_history_count > 100:
+                    contractData = {
+                        "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                        "abi": ABI,
+                        "functionName": "safeMint",
+                        "functionParams": [
+                            user_address,
+                            user.get("previous_hash", ""),
+                            ],
+                    }
 
-    # Process history items with "content" and prepare responses
-    for item in history:
-        if "content" in item:
-            user = find_by_address(user_address)
-            contractData = {
-                "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
-                "abi": ABI,
-                "functionName": "safeMint",
-                "functionParams": [
-                    user_address,
-                    "https://www.youtube.com/watch?v=bUrCR4jQQg8",
-                ],
-            }
-
-            # Construct the response for this item
-            response = {
-                "contractData": contractData,
-                "password": user.get("slug"),
-                "rpc": POLYGON_RPC,
-            }
-            print(response)
-            responses.append(response)
-
-    # Send all history items in a batch for classification (up to 100)
-    contextual_activity_classification_for_batch.delay(history, user_address)
-
-    # Return all collected responses for the items with "content"
-    return jsonify({"data": responses}), 200
+                    response = {
+                        "contractData": contractData,
+                        "password": user.get("slug"),
+                        "rpc": POLYGON_RPC,
+                    }
+                    responses.append(response)
+                    return jsonify({"data": responses}), 200
+        return jsonify({"history": "History added successfully!"}), 200
+    
 
 
 # @core.route("/save-history", methods=["POST"])
