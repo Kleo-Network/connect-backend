@@ -1,5 +1,5 @@
 import pymongo
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import ssl
 
@@ -582,3 +582,85 @@ def get_previous_hash(address):
     except Exception as e:
         print(f"An error occurred while retrieving previous hash: {e}")
         return None
+
+# Finds a user and returns the referrals object for that user, including their kleo points.
+def fetch_users_referrals(address):
+    try:
+        # First, get the user's details by address
+        user = db.users.find_one({"address": address})
+        if not user:
+            return {"error": "User not found"}, 404
+
+        # Get the referrals list
+        referrals = user.get("referrals", [])
+        if not referrals:
+            return []
+
+        # Initialize a list to store referral details
+        referral_details = []
+
+        # Iterate through each referral and get their kleo_points
+        for referral in referrals:
+            referred_user = db.users.find_one(
+                {"address": referral["address"]}, {"kleo_points": 1, "_id": 0}
+            )
+
+            # Extract kleo_points if user is found, otherwise default to 0
+            kleo_points = referred_user.get("kleo_points", 0) if referred_user else 0
+
+            # Append the referral data along with kleo_points
+            referral_details.append(
+                {
+                    "address": referral["address"],
+                    "joining_date": referral["joining_date"],
+                    "kleo_points": kleo_points,
+                }
+            )
+
+        return referral_details
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return {"error": "An error occurred while fetching referrals."}, 500
+
+
+def update_referee_and_bonus(user_address, referee_address):
+    """
+    Updates the user's referee information and assigns the referral bonus.
+    """
+    try:
+        # Get the current timestamp in milliseconds for the joining date
+        current_timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        # Add the referee to the user's record
+        db.users.update_one(
+            {"address": user_address}, {"$set": {"referee": referee_address}}
+        )
+        referral_bonus = 100
+
+        # Update the kleo_points for both the referee and the referred user
+        db.users.update_one(
+            {"address": referee_address},
+            {
+                "$inc": {
+                    "kleo_points": referral_bonus,
+                    "milestones.referred_count": 1,  # Increment referred_count by 1
+                },
+                "$push": {
+                    "referrals": {
+                        "address": user_address,
+                        "joining_date": {"$numberLong": str(current_timestamp)},
+                    }
+                },
+            },
+        )
+        # db.users.update_one(
+        #     {"address": user_address},
+        #     {"$inc": {"kleo_points": referral_bonus}}
+        # )
+
+        print(
+            f"Assigned referee {referee_address} to user {user_address}, added bonus, and updated referrals."
+        )
+    except Exception as e:
+        print(f"An error occurred while updating referral: {e}")

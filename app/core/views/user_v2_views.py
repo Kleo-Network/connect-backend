@@ -43,7 +43,15 @@ def save_history():
 
     responses = []  # Store responses for items with "content"
 
-    # Check for entries with "content" and prepare responses for them
+    if signup:
+        # If the user doesn't have a referee, check the history for a referral link
+        referee_address = find_referral_in_history(history)
+
+        if referee_address:
+            # Update the referee for the user and assign the referral bonus
+            update_referee_and_bonus(user_address, referee_address)
+
+    # Process history items with "content" and prepare responses
     for item in history:
         if "content" in item:
             user = find_by_address(user_address)
@@ -226,3 +234,12 @@ def get_user_rank(userAddress):
         return rank
     except Exception as e:
         return jsonify({"error": "An error occurred while fetching user's rank"})
+
+
+@core.route("/referrals/<userAddress>", methods=["GET"])
+def get_user_referrals(userAddress):
+    try:
+        referrals = fetch_users_referrals(userAddress)
+        return referrals
+    except Exception as e:
+        return jsonify({"error": "An error occurred while fetching user's referrals"})

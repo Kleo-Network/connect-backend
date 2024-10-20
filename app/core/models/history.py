@@ -136,7 +136,7 @@ def get_top_activities(address):
         activity_percentages, key=lambda x: x["percentage"], reverse=True
     )[:8]
     return top_activities
-
+  
 def get_all_history_items(address, limit=100):
     try:
         # Query the database for history items
@@ -163,3 +163,24 @@ def get_all_history_items(address, limit=100):
     except Exception as e:
         print(f"An error occurred while retrieving history items: {e}")
         return []
+
+
+def find_referral_in_history(history):
+    """
+    Finds the referrer address in the user's history if available.
+    Looks for visits to the Chrome Web Store with a 'refAddress' parameter.
+    https://chromewebstore.google.com/detail/kleo-network/jimpblheogbjfgajkccdoehjfadmimoo?refAddress=XYZ
+    """
+    for item in history:
+        url = item.get("url")
+        if url and "chromewebstore.google.com/detail/kleo-network" in url:
+            # Parse the query parameters to find 'refAddress'
+            from urllib.parse import urlparse, parse_qs
+
+            parsed_url = urlparse(url)
+            query_params = parse_qs(parsed_url.query)
+            ref_address = query_params.get("refAddress")
+            if ref_address:
+                return ref_address[0]  # Get the first refAddress found
+
+    return None
