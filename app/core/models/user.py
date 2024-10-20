@@ -25,6 +25,7 @@ class User:
         stage=1,
         name="",
         pfp="",
+        previous_hash=""
         verified=False,
         last_cards_marked=0,
         about="",
@@ -161,6 +162,28 @@ def find_by_address_slug(slug):
 
     except Exception as e:
         return {}
+
+def update_previous_hash(address, new_hash):
+    try:
+        filter_query = {"address": address}
+        update_operation = {"$set": {"previous_hash": new_hash}}
+        
+        user_of_db = db.users.find_one_and_update(
+            filter_query,
+            update_operation,
+            projection={"_id": 0},
+            return_document=pymongo.ReturnDocument.AFTER
+        )
+        
+        return user_of_db
+
+    # TODO: Error Handling
+    # If an invalid ID is passed to `get_movie`, it should return None.
+    except StopIteration as _:
+        return None
+
+    except Exception as e:
+        return {} 
 
 
 def find_by_address(address):
@@ -543,6 +566,22 @@ def calculate_rank(address):
         print(f"An error occurred: {e}")
         return {"error": "An error occurred while calculating rank"}, 500
 
+def get_previous_hash(address):
+    try:
+        # Find the user by address
+        user = db.users.find_one(
+            {"address": address},
+            {"_id": 0, "previous_hash": 1}  # Exclude _id, include only previous_hash
+        )
+        
+        if user:
+            return user.get("previous_hash", "")  # Return previous_hash if it exists, empty string otherwise
+        else:
+            return None  # Return None if user not found
+
+    except Exception as e:
+        print(f"An error occurred while retrieving previous hash: {e}")
+        return None
 
 # Finds a user and returns the referrals object for that user, including their kleo points.
 def fetch_users_referrals(address):
