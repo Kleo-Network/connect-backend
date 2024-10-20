@@ -4,6 +4,11 @@ import pymongo
 from datetime import datetime
 import os
 
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
+
 # MongoDB connection URI
 mongo_uri = os.environ.get("DB_URL")
 db_name = os.environ.get("DB_NAME")
@@ -11,7 +16,15 @@ db_name = os.environ.get("DB_NAME")
 # Connect to MongoDB
 client = pymongo.MongoClient(mongo_uri)
 db = client.get_database(db_name)
+nltk.download('stopwords')
+nltk.download('punkt')
 
+def remove_stopwords(text):
+    stop_words = set(stopwords.words('english'))
+    word_tokens = word_tokenize(text.lower())
+    filtered_text = ' '.join([word for word in word_tokens if word.isalnum() and word not in stop_words])
+    
+    return filtered_text
 
 class History:
     def __init__(
@@ -44,7 +57,7 @@ class History:
             "subcategory": subcategory,
             "url": url,
             "domain": domain,
-            "summary": summary,
+            "summary": remove_stopwords(summary),
             "visitTime": visitTime,
         }
 
@@ -123,3 +136,30 @@ def get_top_activities(address):
         activity_percentages, key=lambda x: x["percentage"], reverse=True
     )[:8]
     return top_activities
+
+def get_all_history_items(address, limit=100):
+    try:
+        # Query the database for history items
+        pipeline = [
+            {"$match": {"address": address}},
+            {"$sort": {"visitTime": -1}},  # Sort by visitTime in descending order
+            {"$limit": limit},
+            {"$project": {
+                "_id": 0,
+                "id": {"$toString": "$_id"},  # Convert ObjectId to string
+                "visitTime": 1,
+                "category": 1,
+                "title": 1,
+                "url": 1,
+                "domain": 1,
+                "summary": 1
+            }}
+        ]
+
+        history_items = list(db.history.aggregate(pipeline))
+        
+        return history_items
+
+    except Exception as e:
+        print(f"An error occurred while retrieving history items: {e}")
+        return []

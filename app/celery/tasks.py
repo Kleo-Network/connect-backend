@@ -8,6 +8,7 @@ from ..core.models.history import *
 from ..core.models.user import *
 from ..core.models.celery_tasks import *
 from ..core.models.visits import *
+from ..core.modules.upload import upload_to_arweave, prepare_history_json
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
@@ -64,50 +65,46 @@ def send_telegram_notification(self, slug, response):
     queue="activity-classification",
 )
 def contextual_activity_classification(self, item, address):
-    # Get the activity classification
-    print(item)
-
-    # Remove PII first, then pass for classification.
-    pii_result = remove_pii(item["title"])
+    pii_result = remove_pii(item["content"])
     clean_content = pii_result["updated_text"]
     pii_count = pii_result["pii_count"]
-    # Calculate the size of the clean_text in bytes
     text_size_in_bytes = len(clean_content.encode("utf-8"))
 
     activity = get_most_relevant_activity(clean_content)
-    print(f"Most relevant activity is {activity}")
-    # Find the user by address
     user = find_by_address(address)
 
     if not user:
         print(f"User with address {address} not found")
         return
 
-    # Create a new History entry
     history_entry = History(
         address=address,
         url=item["url"],
         title=item["title"],
         visitTime=float(item["lastVisitTime"]),
         category=activity,
+        summary=item["content"]
     )
 
-    # Save the history entry to the database
     history_entry.save()
-
-    print(
-        f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
-    )
-
-    # Update the pii_removed_count and total_data_quantity in the user table using the address
     user_updated = update_user_data_by_address(address, pii_count, text_size_in_bytes)
 
     if user_updated:
         print(f"Successfully updated PII count for user with address {address}")
     else:
         print(f"Failed to update PII count for user with address {address}")
+    
+    counter = get_history_count(address)
+    if counter > 100:
+        history_items = get_all_history_items(address)
+        json_object = prepare_history_json(history_items, address, user)
+        new_hash = upload_to_arweave(json_object)
+        update_previous_hash(address, new_hash)
+        delete_all_history(address)
 
     return activity
+
+
 
 
 @shared_task(

@@ -7,7 +7,7 @@ AWS_ACCESS_KEY_ID = os.environ.get("API_KEY")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION")
 
-POLYGON_RPC = "https://polygon-mainnet.infura.io/v3/d490a183bf494060b57d4658a9cf4c69"
+POLYGON_RPC = os.environ.get("NODE_API_KEY")
 
 ACTIVITIES = [
     "Politics",
