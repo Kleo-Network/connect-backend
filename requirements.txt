@@ -140,3 +140,4 @@ presidio-anonymizer   # Anonymizes detected PII
 imgurpython           # IMGUR uploading chart images
 gunicorn
 celery
+nltk

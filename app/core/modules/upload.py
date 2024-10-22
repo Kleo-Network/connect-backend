@@ -26,16 +26,16 @@ def prepare_history_json(history_items, address, user):
     to_stamp = 0
     points = int(user["kleo_points"]) if user else 0
     for item in history_items:
-        activities[item.category] = activities.get(item.category, 0) + 1
-        content = item.summary 
+        activities[item['category']] = activities.get(item['category'], 0) + 1
+        content = item['summary'] 
         items["content"].append(content)
 
-        from_stamp = min(from_stamp, item.visitTime)
-        to_stamp = max(to_stamp, item.visitTime)
+        from_stamp = min(from_stamp, item["visitTime"])
+        to_stamp = max(to_stamp, item["visitTime"])
 
         points += 1
 
-    previous_hash = user["previous_hash"] if user else ""
+    previous_hash = user.get("previous_hash", "") if user else ""
 
     json_object = {
         "activities": activities,

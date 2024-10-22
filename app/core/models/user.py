@@ -25,7 +25,7 @@ class User:
         stage=1,
         name="",
         pfp="",
-        previous_hash=""
+        previous_hash="",
         verified=False,
         last_cards_marked=0,
         about="",
@@ -37,6 +37,7 @@ class User:
         settings={},
         first_time_user=True,
         total_data_quantity=0,
+        activity_json={},
         milestones={
             "tweet_activity_graph": False,  # Boolean, true if milestone completed
             "data_owned": 0,  # Integer, MB of data owned
@@ -101,6 +102,41 @@ class User:
             user_collection.insert_one(self.document)
         return self.document
 
+def get_activity_json(address):
+    try:
+        # Find the user by address
+        user = db.users.find_one(
+            {"address": address},
+            {"_id": 0, "activity_json": 1}  # Exclude _id, include only previous_hash
+        )
+        
+        if user:
+            return user.get("activity_json", "")  # Return previous_hash if it exists, empty string otherwise
+        else:
+            return {}  # Return None if user not found
+
+    except Exception as e:
+        print(f"An error occurred while retrieving previous hash: {e}")
+        return None 
+
+def update_activity_json(address, new_activity_json):
+    try:
+        filter_query = {"address": address}
+        update_operation = {"$set": {"activity_json": new_activity_json}}
+        
+        user_of_db = db.users.find_one_and_update(
+            filter_query,
+            update_operation,
+            projection={"_id": 0},
+            return_document=pymongo.ReturnDocument.AFTER
+        )
+        
+        return user_of_db
+    except StopIteration as _:
+        return None
+
+    except Exception as e:
+        return {}  
 
 def set_signup_upload_by_slug(slug):
     try:

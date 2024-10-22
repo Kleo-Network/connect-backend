@@ -10,6 +10,7 @@ AWS_DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION")
 POLYGON_RPC = os.environ.get("NODE_API_KEY")
 
 ACTIVITIES = [
+    "Cryptocurrency",
     "Politics",
     "Comedy",
     "Sports",
@@ -30,6 +31,26 @@ ACTIVITIES = [
     "Marketplace",
     "Sitcoms",
     "TV Series",
+    "Blogging",
+    "Cooking",
+    "Fitness",
+    "Photography",
+    "Travel",
+    "News",
+    "Finance",
+    "Dating",
+    "Crafting",
+    "Art",
+    "Fashion",
+    "Gardening",
+    "Languages",
+    "Pets",
+    "Meditation",
+    "Webinars",
+    "Conservation",
+    "Volunteering",
+    "Education",
+    "Streaming",
 ]
 
 ABI = [

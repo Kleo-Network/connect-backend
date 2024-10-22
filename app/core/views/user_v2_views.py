@@ -4,7 +4,7 @@ from app.celery.userDataComputation.activityClassification import (
     get_most_relevant_activity,
 )
 from app.core.modules.activity_chart import upload_image_to_imgur
-from ..models.user import User, find_by_address
+from ..models.user import *
 from ..modules.auth import get_jwt_token
 import os
 import requests
@@ -18,16 +18,15 @@ core = Blueprint("core", __name__)
 @core.route("/get-user-graph/<userAddress>", methods=["GET"])
 def get_user_graph(userAddress):
     try:
-        count_user = get_history_count(userAddress)
-        if count_user < 10:
+        activity_json = get_activity_json(userAddress)
+        if activity_json == {}:
             return jsonify({"processing": True}), 200
 
         if not userAddress:
             return jsonify({"error": "Address is required"}), 400
-        top_activities = get_top_activities(userAddress)
-
-        if not top_activities:
-            return jsonify({"error": "No activity data found"}), 404
+        top_activities = get_top_activities(activity_json)
+        #if not top_activities:
+        #    return jsonify({"error": "No activity data found"}), 404
 
         return jsonify({"data": top_activities}), 200
     except Exception as e:
@@ -40,39 +39,42 @@ def save_history():
     user_address = data.get("address")
     signup = data.get("signup")
     history = data.get("history")
-
-    responses = []  # Store responses for items with "content"
+    return_abi_contract = False
 
     if signup:
         referee_address = find_referral_in_history(history)
         if referee_address:
             update_referee_and_bonus(user_address, referee_address)
         contextual_activity_classification_for_batch.delay(history, user_address)
-        return jsonify({"signup": "Signup successful!"}), 200
+        return jsonify({"data": "Signup successful!"}), 200
     else:
+        if get_history_count(user_address) > 5:
+            return_abi_contract = True
         for item in history:
             if "content" in item:
                 user = find_by_address(user_address)
-                contextual_activity_classification.delay(item, address)
-                if get_history_count > 100:
-                    contractData = {
-                        "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
-                        "abi": ABI,
-                        "functionName": "safeMint",
-                        "functionParams": [
-                            user_address,
-                            user.get("previous_hash", ""),
-                            ],
-                    }
+                contextual_activity_classification.delay(item, user_address)
+        
+        if return_abi_contract:
+            user.get("previous_hash", "")
+            contractData = {
+                "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                "abi": ABI,
+                "functionName": "safeMint",
+                "functionParams": [
+                    user_address,
+                    user.get("previous_hash", "thisiswhereurlcomes"),
+                    ],
+            }
 
-                    response = {
-                        "contractData": contractData,
-                        "password": user.get("slug"),
-                        "rpc": POLYGON_RPC,
-                    }
-                    responses.append(response)
-                    return jsonify({"data": responses}), 200
-        return jsonify({"history": "History added successfully!"}), 200
+            response = {
+                "contractData": contractData,
+                "password": user.get("slug"),
+                "rpc": POLYGON_RPC,
+            }
+            return jsonify({"data": response}), 200
+        
+        return jsonify({"data": "History added successfully!"}), 200
     
 
 
@@ -121,7 +123,6 @@ def create_user():
     """
     data = request.get_json()
 
-    print("data", data.get("address"))
     wallet_address = data.get("address")
 
     user = find_by_address(wallet_address)
@@ -142,7 +143,6 @@ def create_user():
         "password": response["slug"],
         "token": get_jwt_token(wallet_address, wallet_address),
     }
-    print(jsonify(user_data))
     return jsonify(user_data), 200  # 201 Created
 
 

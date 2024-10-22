@@ -3,10 +3,8 @@ from bson import ObjectId
 import pymongo
 from datetime import datetime
 import os
+import json
 
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 
 
 # MongoDB connection URI
@@ -16,15 +14,6 @@ db_name = os.environ.get("DB_NAME")
 # Connect to MongoDB
 client = pymongo.MongoClient(mongo_uri)
 db = client.get_database(db_name)
-nltk.download('stopwords')
-nltk.download('punkt')
-
-def remove_stopwords(text):
-    stop_words = set(stopwords.words('english'))
-    word_tokens = word_tokenize(text.lower())
-    filtered_text = ' '.join([word for word in word_tokens if word.isalnum() and word not in stop_words])
-    
-    return filtered_text
 
 class History:
     def __init__(
@@ -57,7 +46,7 @@ class History:
             "subcategory": subcategory,
             "url": url,
             "domain": domain,
-            "summary": remove_stopwords(summary),
+            "summary": summary,
             "visitTime": visitTime,
         }
 
@@ -123,19 +112,37 @@ def delete_all_history(address):
         return 0
 
 
-def get_top_activities(address):
-    histories = get_history_item(address)
-    activities = [history["category"] for history in histories]
-    activity_counts = Counter(activities)
-    total_activities = sum(activity_counts.values())
-    activity_percentages = [
-        {"label": activity, "percentage": round((count / total_activities) * 100)}
-        for activity, count in activity_counts.items()
-    ]
-    top_activities = sorted(
-        activity_percentages, key=lambda x: x["percentage"], reverse=True
-    )[:8]
-    return top_activities
+
+def get_top_activities(activity_counts):
+    try:
+        if isinstance(activity_counts, str):
+            data = json.loads(activity_counts)
+        
+        activity_counts = {activity: int(count) for activity, count in activity_counts.items()}
+        
+        total_activities = sum(activity_counts.values())
+        
+        if total_activities == 0:
+            raise ValueError("Total activities count is zero, cannot compute percentages.")
+        
+        activity_percentages = [
+            {"label": activity, "percentage": round((count / total_activities) * 100)}
+            for activity, count in activity_counts.items()
+        ]
+        
+        top_activities = sorted(
+            activity_percentages, key=lambda x: x["percentage"], reverse=True
+        )[:8]
+        
+        return top_activities
+    
+    except Exception as e:
+        # Log the exception details
+        print(f"An error occurred: {e}")
+        # Re-raise the exception if needed or handle it accordingly
+        raise
+
+
   
 def get_all_history_items(address, limit=100):
     try:

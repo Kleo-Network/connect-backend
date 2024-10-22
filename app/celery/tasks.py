@@ -2,7 +2,6 @@ from app.celery.userDataComputation.activityClassification import (
     get_most_relevant_activity,
     get_most_relevant_activity_for_batch,
 )
-from app.celery.userDataComputation.pii import remove_pii
 from ..core.controllers.history import *
 from ..core.models.history import *
 from ..core.models.user import *
@@ -65,9 +64,9 @@ def send_telegram_notification(self, slug, response):
     queue="activity-classification",
 )
 def contextual_activity_classification(self, item, address):
-    pii_result = remove_pii(item["content"])
-    clean_content = pii_result["updated_text"]
-    pii_count = pii_result["pii_count"]
+     
+    clean_content = item["content"]
+    pii_count = 1
     text_size_in_bytes = len(clean_content.encode("utf-8"))
 
     activity = get_most_relevant_activity(clean_content)
@@ -76,7 +75,8 @@ def contextual_activity_classification(self, item, address):
     if not user:
         print(f"User with address {address} not found")
         return
-
+    print(item)
+    activity_json = get_activity_json(address)
     history_entry = History(
         address=address,
         url=item["url"],
@@ -85,6 +85,13 @@ def contextual_activity_classification(self, item, address):
         category=activity,
         summary=item["content"]
     )
+    # if activity json ["activity"] does not exist set as 1 otherwise incerement by 1
+    if activity not in activity_json:
+        activity_json[activity] = 1
+    else:
+        activity_json[activity] += 1
+
+    update_activity_json(address, activity_json)
 
     history_entry.save()
     user_updated = update_user_data_by_address(address, pii_count, text_size_in_bytes)
@@ -123,9 +130,8 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
     # Iterate through the batch of 100 history items
     for item in history_batch:
         # Remove PII and gather clean content
-        pii_result = remove_pii(item["title"])
-        clean_content = pii_result["updated_text"]
-        pii_count = pii_result["pii_count"]
+        clean_content = item["title"]
+        pii_count = 0
 
         # Store the cleaned content and PII count for later processing
         clean_contents.append(clean_content)
@@ -141,7 +147,13 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
 
         # Find the user by address
         user = find_by_address(address)
-
+        activity_json = get_activity_json(address)
+        if activity not in activity_json:
+            activity_json[activity] = 1
+        else:
+            activity_json[activity] += 1
+            
+        update_activity_json(address, activity_json)
         if not user:
             print(f"User with address {address} not found")
             continue
@@ -174,15 +186,3 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
             print(f"Failed to update PII count for user with address {address}")
 
     return activities
-
-
-@shared_task(
-    bind=True,
-    base=AbortableTask,
-    ack_later=True,
-    default_retry_delay=20,
-    max_retries=0,
-    queue="remove-pii",
-)
-def remove_PII(self, content, address):
-    clean_text = remove_pii(content)

@@ -62,7 +62,6 @@ def create_user():
     else:
         # Case 3: User does not exist and signup is false
         user = find_by_address(user_info_from_google["email"])
-        print(user)
         if user is None:
             return jsonify({"message": "Please sign up"}), 200
         else:
