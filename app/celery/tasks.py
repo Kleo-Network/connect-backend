@@ -64,7 +64,7 @@ def send_telegram_notification(self, slug, response):
     queue="activity-classification",
 )
 def contextual_activity_classification(self, item, address):
-     
+
     clean_content = item["content"]
     pii_count = 1
     text_size_in_bytes = len(clean_content.encode("utf-8"))
@@ -83,7 +83,7 @@ def contextual_activity_classification(self, item, address):
         title=item.get("title", "No Title Available"),
         visitTime=float(item.get("lastVisitTime", datetime.now().timestamp())),
         category=activity,
-        summary=item["content"]
+        summary=item["content"],
     )
     # if activity json ["activity"] does not exist set as 1 otherwise incerement by 1
     if activity not in activity_json:
@@ -100,7 +100,7 @@ def contextual_activity_classification(self, item, address):
         print(f"Successfully updated PII count for user with address {address}")
     else:
         print(f"Failed to update PII count for user with address {address}")
-    
+
     counter = get_history_count(address)
     if counter > 100:
         history_items = get_all_history_items(address)
@@ -110,8 +110,6 @@ def contextual_activity_classification(self, item, address):
         delete_all_history(address)
 
     return activity
-
-
 
 
 @shared_task(
@@ -152,7 +150,7 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
             activity_json[activity] = 1
         else:
             activity_json[activity] += 1
-            
+
         update_activity_json(address, activity_json)
         if not user:
             print(f"User with address {address} not found")
