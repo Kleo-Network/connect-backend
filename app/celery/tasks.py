@@ -80,8 +80,8 @@ def contextual_activity_classification(self, item, address):
     history_entry = History(
         address=address,
         url=item["url"],
-        title=item["title"],
-        visitTime=float(item["lastVisitTime"]),
+        title=item.get("title", "No Title Available"),
+        visitTime=float(item.get("lastVisitTime", datetime.now().timestamp())),
         category=activity,
         summary=item["content"]
     )
