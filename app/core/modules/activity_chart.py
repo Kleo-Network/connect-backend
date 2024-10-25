@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# API endpoint for uploading images
 IMGUR_UPLOAD_IMG_ENDPOINT = "https://api.imgur.com/3/image"
-
-# Get Imgur Client ID from environment variables
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID")
+
+IMGBB_API_KEY = os.getenv("IMGBB_API_KEY")
+IMGBB_UPLOAD_IMG_ENDPOINT = f"https://api.imgbb.com/1/upload?key={IMGBB_API_KEY}"
 
 
 def upload_image_to_imgur(image_data):
@@ -35,3 +35,15 @@ def upload_image_to_imgur(image_data):
     except Exception as e:
         print(f"Exception occurred while uploading image: {e}")
         return None
+
+
+def upload_image_to_image_bb(image_data):
+    payload = {"image": image_data}
+    response = requests.post(IMGBB_UPLOAD_IMG_ENDPOINT, data=payload)
+
+    if response.status_code == 200:
+        response_data = response.json()
+        if response_data.get("success"):
+            return response_data["data"]["url_viewer"]
+        else:
+            raise Exception("Image upload unsuccessful.")

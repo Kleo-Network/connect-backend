@@ -3,11 +3,9 @@ import random
 from app.celery.userDataComputation.activityClassification import (
     get_most_relevant_activity,
 )
-from app.core.modules.activity_chart import upload_image_to_imgur
+from app.core.modules.activity_chart import upload_image_to_image_bb
 from ..models.user import *
 from ..modules.auth import get_jwt_token
-import os
-import requests
 from ...celery.tasks import *
 from ..models.history import get_top_activities, get_history_count
 from ...core.models.constants import ABI, POLYGON_RPC
@@ -25,7 +23,7 @@ def get_user_graph(userAddress):
         if not userAddress:
             return jsonify({"error": "Address is required"}), 400
         top_activities = get_top_activities(activity_json)
-        #if not top_activities:
+        # if not top_activities:
         #    return jsonify({"error": "No activity data found"}), 404
 
         return jsonify({"data": top_activities}), 200
@@ -54,7 +52,7 @@ def save_history():
             if "content" in item:
                 user = find_by_address(user_address)
                 contextual_activity_classification.delay(item, user_address)
-        
+
         if return_abi_contract:
             user.get("previous_hash", "")
             contractData = {
@@ -64,7 +62,7 @@ def save_history():
                 "functionParams": [
                     user_address,
                     user.get("previous_hash", "thisiswhereurlcomes"),
-                    ],
+                ],
             }
 
             response = {
@@ -73,9 +71,8 @@ def save_history():
                 "rpc": POLYGON_RPC,
             }
             return jsonify({"data": response}), 200
-        
+
         return jsonify({"data": "History added successfully!"}), 200
-    
 
 
 # @core.route("/save-history", methods=["POST"])
@@ -155,8 +152,8 @@ def upload_activity_chart():
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
 
-        # Call the upload service to upload the image to Imgur
-        image_url = upload_image_to_imgur(image_data)
+        # Call the upload function to upload the image to Imgbb
+        image_url = upload_image_to_image_bb(image_data)
 
         if image_url:
             return jsonify({"url": image_url}), 200
