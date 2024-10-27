@@ -214,3 +214,21 @@ def update_milestone():
         )
     else:
         return jsonify({"error": "Failed to update user data."}), 500
+
+
+@core.route("/getHistoryCounts/<userAddress>", methods=["GET"])
+def get_all_history_count_for_address(userAddress):
+    try:
+        if not userAddress:
+            return jsonify({"error": "Address is required"}), 400
+
+        count = get_history_count(userAddress)
+        if not count:
+            return (
+                jsonify({"error": "Can't find any history with this given address"}),
+                200,
+            )
+
+        return jsonify({"Counts": count}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
