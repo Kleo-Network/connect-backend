@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify, request
 from ..models.user import get_all_users_with_count
 from celery import current_app as current_celery_app
-from ..modules.cards import history_count
 from app.celery.tasks import *
 from collections import defaultdict
 import ast
@@ -9,92 +8,6 @@ import ast
 core = Blueprint("core", __name__)
 
 
-# Route to abort scheduled tasks for users
-@core.route("/tasks/abort_scheduled", methods=["GET"])
-def abort_scheduled_tasks():
-    """Abort scheduled tasks for all users based on their slugs."""
-    users = get_all_users_with_count()
-    i = current_celery_app.control.inspect()
-    scheduled_tasks = i.scheduled() or {}
-
-    tasks_to_revoke = {}
-    kept_tasks = {}
-
-    # Identify tasks to revoke and keep
-    for worker, tasks in scheduled_tasks.items():
-        for task in tasks:
-            task_slug = task["request"]["kwargs"].get("slug")
-            if task_slug in [user["slug"] for user in users]:
-                if task_slug not in kept_tasks:
-                    kept_tasks[task_slug] = task
-                else:
-                    if task_slug not in tasks_to_revoke:
-                        tasks_to_revoke[task_slug] = []
-                    tasks_to_revoke[task_slug].append(task["request"]["id"])
-
-    revoked_count = 0
-    for slug, task_ids in tasks_to_revoke.items():
-        for task_id in task_ids:
-            try:
-                current_celery_app.control.revoke(task_id, terminate=True)
-                revoked_count += 1
-            except Exception:  # Catch any exception for a revoked task
-                pass
-
-    return (
-        jsonify(
-            {
-                "message": f"Aborted {revoked_count} tasks for all users",
-                "kept_tasks": {
-                    slug: task["request"]["id"] for slug, task in kept_tasks.items()
-                },
-            }
-        ),
-        200,
-    )
-
-
-# Route to inspect scheduled tasks
-@core.route("/tasks/inspect_celery_tasks", methods=["GET"])
-def inspect_scheduled_tasks():
-    """Inspect currently scheduled tasks."""
-    i = current_celery_app.control.inspect()
-    scheduled_tasks = i.scheduled() or {}
-    return jsonify({"tasks": list(scheduled_tasks.values())}), 200
-
-
-# Route to update scheduled tasks based on user status
-@core.route("/tasks/update_celery", methods=["POST"])
-def update_celery():
-    """Update Celery tasks for all users based on their status."""
-    data = request.get_json()
-    i = current_celery_app.control.inspect()
-    scheduled_tasks = i.scheduled() or {}
-    users = get_all_users_with_count()
-
-    new_tasks_count = 0
-    revoked_tasks_count = 0
-
-    # Loop through each user
-    for user in users:
-        slug = user["slug"]
-        has_sufficient_history = history_count(slug, 60)
-
-        # If conditions are not met, revoke any existing tasks for this user
-        revoked_count = revoke_user_tasks(slug, scheduled_tasks)
-        revoked_tasks_count += revoked_count
-
-    return (
-        jsonify(
-            {
-                "success": True,
-                "message": "Tasks updated for all users",
-                "new_tasks_scheduled": new_tasks_count,
-                "tasks_revoked": revoked_tasks_count,
-            }
-        ),
-        200,
-    )
 
 
 def revoke_user_tasks(slug, scheduled_tasks):
@@ -116,28 +29,8 @@ def revoke_user_tasks(slug, scheduled_tasks):
     return revoked_count
 
 
-@core.route("/tasks/list_active_users", methods=["POST"])
-def list_active_users_zero_pending():
-    """List active users with no pending cards."""
-    users = get_all_users_with_count()
-    active_users_with_no_pending_cards = []
-    for user in users:
-        slug = user["slug"]
-        if history_count(slug, 60):
-            active_users_with_no_pending_cards.append(user["slug"])
-    return jsonify(active_users_with_no_pending_cards), 200
 
 
-@core.route("/tasks/list_users_active_history", methods=["POST"])
-def list_active_users():
-    """List active users with activity history."""
-    users = get_all_users_with_count()
-    active_users_with_no_pending_cards = []
-    for user in users:
-        slug = user["slug"]
-        if history_count(slug, 60):
-            active_users_with_no_pending_cards.append(user["slug"])
-    return jsonify(active_users_with_no_pending_cards), 200
 
 
 @core.route("/tasks/active_users", methods=["POST"])

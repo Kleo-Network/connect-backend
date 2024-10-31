@@ -8,11 +8,46 @@ from ..core.models.user import *
 from ..core.models.celery_tasks import *
 from ..core.models.visits import *
 from ..core.modules.upload import upload_to_arweave, prepare_history_json
-
+import redis
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
 import json
 import requests
+
+
+redis_host = os.environ.get("REDIS_HOST", "redis")
+redis_port = int(os.environ.get("REDIS_PORT", 6379))
+
+redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
+
+
+@shared_task(
+    bind=True,
+    base=AbortableTask,
+    ack_later=True,
+    default_retry_delay=1,
+    max_retries=0,
+    queue="user-graph-update",
+)
+def update_user_graph_cache(self, userAddress):
+    try:
+        # Get the activity_json for the user
+        activity_json = get_activity_json(userAddress)
+        if not activity_json:
+            # No activity data available
+            return
+
+        # Get top activities
+        top_activities = get_top_activities(activity_json)
+
+        # Save the data into Redis cache
+        cache_key = f"user_graph:{userAddress}"
+        redis_client.set(cache_key, json.dumps(top_activities))
+
+        print(f"Updated Redis cache for user {userAddress}")
+    except Exception as e:
+        print(f"Error updating user graph cache for {userAddress}: {str(e)}")
+
 
 
 def send_telegram_message(slug, body):

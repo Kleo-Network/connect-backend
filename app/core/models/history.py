@@ -146,14 +146,13 @@ def get_top_activities(activity_counts):
   
 def get_all_history_items(address, limit=100):
     try:
-        # Query the database for history items
         pipeline = [
             {"$match": {"address": address}},
-            {"$sort": {"visitTime": -1}},  # Sort by visitTime in descending order
+            {"$sort": {"visitTime": -1}},
             {"$limit": limit},
             {"$project": {
                 "_id": 0,
-                "id": {"$toString": "$_id"},  # Convert ObjectId to string
+                "id": {"$toString": "$_id"},
                 "visitTime": 1,
                 "category": 1,
                 "title": 1,
@@ -163,14 +162,14 @@ def get_all_history_items(address, limit=100):
             }}
         ]
 
-        history_items = list(db.history.aggregate(pipeline))
+        history_items = list(db.history.aggregate(pipeline, 
+                           collation={"locale": "en", "strength": 2}))
         
         return history_items
 
     except Exception as e:
         print(f"An error occurred while retrieving history items: {e}")
         return []
-
 
 def find_referral_in_history(history):
     """
