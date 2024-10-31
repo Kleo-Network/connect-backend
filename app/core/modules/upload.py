@@ -30,10 +30,9 @@ def prepare_history_json(history_items, address, user):
         activities[item['category']] = activities.get(item['category'], 0) + 1
         
         # Handle summary fallback to title
-        summary = item.get('summary', '')
-        content = summary if summary else item.get('title', '')
-        items["content"].append(content)
-
+        items["content"].append(item.get('summary', 'NO CONTENT'))
+        items["content"].append(item.get('url', "NO URL"))
+        items["content"].append(item.get('title', "NO TITLE"))
         from_stamp = min(from_stamp, item["visitTime"])
         to_stamp = max(to_stamp, item["visitTime"])
 

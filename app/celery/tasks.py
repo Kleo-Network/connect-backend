@@ -145,7 +145,6 @@ def contextual_activity_classification(self, item, address):
         new_hash = upload_to_arweave(json_object)
         update_previous_hash(address, new_hash)
         delete_all_history(address)
-
     return activity
 
 
