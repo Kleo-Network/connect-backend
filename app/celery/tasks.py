@@ -100,7 +100,7 @@ def send_telegram_notification(self, slug, response):
 )
 def contextual_activity_classification(self, item, address):
      
-    clean_content = item["content"]
+    clean_content = item.get("content", "")
     pii_count = 1
     text_size_in_bytes = len(clean_content.encode("utf-8"))
 
@@ -110,6 +110,8 @@ def contextual_activity_classification(self, item, address):
     if not user:
         print(f"User with address {address} not found")
         return
+    
+    
     print(item)
     activity_json = get_activity_json(address)
     history_entry = History(
@@ -118,7 +120,7 @@ def contextual_activity_classification(self, item, address):
         title=item.get("title", "No Title Available"),
         visitTime=float(item.get("lastVisitTime", datetime.now().timestamp())),
         category=activity,
-        summary=item["content"]
+        summary=item.get("content", "")
     )
     # if activity json ["activity"] does not exist set as 1 otherwise incerement by 1
     if activity not in activity_json:
@@ -137,7 +139,7 @@ def contextual_activity_classification(self, item, address):
         print(f"Failed to update PII count for user with address {address}")
     
     counter = get_history_count(address)
-    if counter > 100:
+    if counter > 50:
         history_items = get_all_history_items(address)
         json_object = prepare_history_json(history_items, address, user)
         new_hash = upload_to_arweave(json_object)

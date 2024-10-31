@@ -49,16 +49,9 @@ def save_history():
     user_address = str(data.get("address")).lower()
     signup = data.get("signup")
     history = data.get("history")
-    return_abi_contract = True
+    return_abi_contract = False
     user = find_by_address(user_address)
-    history_items = get_all_history_items(user_address)
-    print(history_items)
-    json_object = prepare_history_json(history_items, user_address, user)
-    print(json_object)
-    #new_hash = upload_to_arweave(json_object)
-    #update_previous_hash("0x727cdefCEc2d73B37716C5F647f5B495a011825e", new_hash)
-    #print(new_hash)
-
+    
     try:
         if signup:
             referee_address = find_referral_in_history(history)
@@ -67,16 +60,17 @@ def save_history():
             contextual_activity_classification_for_batch.delay(history, user_address)
             return jsonify({"data": "Signup successful!"}), 200
         else:
-            if get_history_count(user_address) > 5:
+            if get_history_count(user_address) > 50:
                 return_abi_contract = True
+            
             for item in history:
                 if "content" in item:
                     user = find_by_address(user_address)
-                    #contextual_activity_classification.delay(item, user_address)
+                    contextual_activity_classification.delay(item, user_address)
         
             if return_abi_contract:
                 user = find_by_address(user_address)
-                previous_hash = user.get("previous_hash", "default_hash")
+                previous_hash = user.get("previous_hash", "first_hash")
                 chain_data_list = [
                 {
                     "name": "polygon",
@@ -91,25 +85,12 @@ def save_history():
                         ],
                     },
                 }
-                # {
-                #     "name": "vana",
-                #     "rpc": os.getenv('VANA_RPC_URL', "https://rpc.moksha.vana.org"),
-                #     "contractData": {
-                #         "address": "",
-                #         "abi": VANA_ABI,
-                #         "functionName": "addFile",
-                #         "functionParams": [
-                #             "addFile"
-                #         ],
-                #     },
-                # }
                 ]
 
                 response = {
                     "chains": chain_data_list,
                     "password": user.get("slug"),
                 }
-            print(response)
             return jsonify({"data": response}), 200
         
         return jsonify({"data": "History added successfully!"}), 200
