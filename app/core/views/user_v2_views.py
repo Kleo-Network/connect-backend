@@ -13,66 +13,92 @@ from ...core.models.constants import ABI, POLYGON_RPC
 core = Blueprint("core", __name__)
 
 
+
+
 @core.route("/get-user-graph/<userAddress>", methods=["GET"])
 def get_user_graph(userAddress):
     try:
-        activity_json = get_activity_json(userAddress)
-        if activity_json == {}:
-            return jsonify({"processing": True}), 200
-
         if not userAddress:
             return jsonify({"error": "Address is required"}), 400
         top_activities = get_top_activities(activity_json)
         # if not top_activities:
         #    return jsonify({"error": "No activity data found"}), 404
 
-        return jsonify({"data": top_activities}), 200
+        cache_key = f"user_graph:{userAddress}"
+        cached_data = redis_client.get(cache_key)
+
+        if cached_data:
+            data = json.loads(cached_data)
+            response = jsonify({"data": data})
+            response.status_code = 200
+        else:
+            response = jsonify({"processing": True})
+            response.status_code = 200
+
+        update_user_graph_cache.delay(userAddress)
+
+        return response
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+
 @core.route("/save-history", methods=["POST"])
 def save_history():
+    print("hit save history")
     data = request.get_json()
-    user_address = data.get("address")
+    user_address = str(data.get("address")).lower()
     signup = data.get("signup")
     history = data.get("history")
     return_abi_contract = False
-
-    if signup:
-        referee_address = find_referral_in_history(history)
-        if referee_address:
-            update_referee_and_bonus(user_address, referee_address)
-        contextual_activity_classification_for_batch.delay(history, user_address)
-        return jsonify({"data": "Signup successful!"}), 200
-    else:
-        if get_history_count(user_address) > 5:
-            return_abi_contract = True
-        for item in history:
-            if "content" in item:
+    user = find_by_address(user_address)
+    
+    try:
+        if signup:
+            referee_address = find_referral_in_history(history)
+            if referee_address:
+                update_referee_and_bonus(user_address, referee_address)
+            contextual_activity_classification_for_batch.delay(history, user_address)
+            return jsonify({"data": "Signup successful!"}), 200
+        else:
+            if get_history_count(user_address) > 50:
+                return_abi_contract = True
+            
+            for item in history:
+                if "content" in item:
+                    user = find_by_address(user_address)
+                    contextual_activity_classification.delay(item, user_address)
+        
+            if return_abi_contract:
                 user = find_by_address(user_address)
-                contextual_activity_classification.delay(item, user_address)
+                previous_hash = user.get("previous_hash", "first_hash")
+                chain_data_list = [
+                {
+                    "name": "polygon",
+                    "rpc": POLYGON_RPC,
+                    "contractData": {
+                        "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                        "abi": ABI,
+                        "functionName": "safeMint",
+                        "functionParams": [
+                            user_address,
+                            previous_hash,
+                        ],
+                    },
+                }
+                ]
 
-        if return_abi_contract:
-            user.get("previous_hash", "")
-            contractData = {
-                "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
-                "abi": ABI,
-                "functionName": "safeMint",
-                "functionParams": [
-                    user_address,
-                    user.get("previous_hash", "thisiswhereurlcomes"),
-                ],
-            }
+                response = {
+                    "chains": chain_data_list,
+                    "password": user.get("slug"),
+                }
 
-            response = {
-                "contractData": contractData,
-                "password": user.get("slug"),
-                "rpc": POLYGON_RPC,
-            }
             return jsonify({"data": response}), 200
 
         return jsonify({"data": "History added successfully!"}), 200
+    except:
+        pass
+
 
 
 # @core.route("/save-history", methods=["POST"])
@@ -119,11 +145,11 @@ def create_user():
     and generate a 5-digit random code.
     """
     data = request.get_json()
-
+    print("create user hit")
     wallet_address = data.get("address")
 
     user = find_by_address(wallet_address)
-
+    print(user)
     if user:
         user["token"] = get_jwt_token(wallet_address, wallet_address)
         return jsonify(user), 200
@@ -134,12 +160,13 @@ def create_user():
     # Create a new user with the random code
     user = User(address=wallet_address, slug=random_code)
     response = user.save(signup=True)
-
+    
     # Prepare the response object
     user_data = {
         "password": response["slug"],
         "token": get_jwt_token(wallet_address, wallet_address),
     }
+    print(user_data)
     return jsonify(user_data), 200  # 201 Created
 
 

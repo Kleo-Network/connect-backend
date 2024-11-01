@@ -231,17 +231,13 @@ def update_previous_hash(address, new_hash):
 def find_by_address(address):
     try:
         pipeline = [
-            {"$match": {"address": address}},
-            {"$project": {"_id": 0}},  # Exclude the _id field
+            {"$match": {"$expr": {"$eq": [{"$toLower": "$address"}, address.lower()]}}},
+            {"$project": {"_id": 0}},
         ]
         user_of_db = db.users.aggregate(pipeline).next()
         return user_of_db
-
-    # TODO: Error Handling
-    # If an invalid ID is passed to `get_movie`, it should return None.
     except StopIteration as _:
         return None
-
     except Exception as e:
         return {}
 

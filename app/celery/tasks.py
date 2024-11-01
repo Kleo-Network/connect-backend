@@ -8,11 +8,46 @@ from ..core.models.user import *
 from ..core.models.celery_tasks import *
 from ..core.models.visits import *
 from ..core.modules.upload import upload_to_arweave, prepare_history_json
-
+import redis
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
 import json
 import requests
+
+
+redis_host = os.environ.get("REDIS_HOST", "redis")
+redis_port = int(os.environ.get("REDIS_PORT", 6379))
+
+redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
+
+
+@shared_task(
+    bind=True,
+    base=AbortableTask,
+    no_ack=True,
+    default_retry_delay=1,
+    max_retries=0,
+    queue="user-graph-update",
+)
+def update_user_graph_cache(self, userAddress):
+    try:
+        # Get the activity_json for the user
+        activity_json = get_activity_json(userAddress)
+        if not activity_json:
+            # No activity data available
+            return
+
+        # Get top activities
+        top_activities = get_top_activities(activity_json)
+
+        # Save the data into Redis cache
+        cache_key = f"user_graph:{userAddress}"
+        redis_client.set(cache_key, json.dumps(top_activities))
+
+        print(f"Updated Redis cache for user {userAddress}")
+    except Exception as e:
+        print(f"Error updating user graph cache for {userAddress}: {str(e)}")
+
 
 
 def send_telegram_message(slug, body):
@@ -58,14 +93,14 @@ def send_telegram_notification(self, slug, response):
 @shared_task(
     bind=True,
     base=AbortableTask,
-    ack_later=True,
+    no_ack=True,
     default_retry_delay=1,
     max_retries=0,
     queue="activity-classification",
 )
 def contextual_activity_classification(self, item, address):
-
-    clean_content = item["content"]
+     
+    clean_content = item.get("content", "")
     pii_count = 1
     text_size_in_bytes = len(clean_content.encode("utf-8"))
 
@@ -75,6 +110,8 @@ def contextual_activity_classification(self, item, address):
     if not user:
         print(f"User with address {address} not found")
         return
+    
+    
     print(item)
     activity_json = get_activity_json(address)
     history_entry = History(
@@ -83,7 +120,7 @@ def contextual_activity_classification(self, item, address):
         title=item.get("title", "No Title Available"),
         visitTime=float(item.get("lastVisitTime", datetime.now().timestamp())),
         category=activity,
-        summary=item["content"],
+        summary=item.get("content", "")
     )
     # if activity json ["activity"] does not exist set as 1 otherwise incerement by 1
     if activity not in activity_json:
@@ -102,13 +139,12 @@ def contextual_activity_classification(self, item, address):
         print(f"Failed to update PII count for user with address {address}")
 
     counter = get_history_count(address)
-    if counter > 100:
+    if counter > 50:
         history_items = get_all_history_items(address)
         json_object = prepare_history_json(history_items, address, user)
         new_hash = upload_to_arweave(json_object)
         update_previous_hash(address, new_hash)
         delete_all_history(address)
-
     return activity
 
 

@@ -7,8 +7,7 @@ def upload_to_arweave(json_object):
         # Send POST request
         url = os.getenv("BACKEND_UPLOAD_URL")
         headers = {"Content-Type": "application/json"}
-        response = requests.post(url, json=json_object, headers=headers)
-
+        response = requests.post(url, json={"data": json_object}, headers=headers)
         # Check if the request was successful
         if response.status_code == 200:
             result = response.json()
@@ -27,10 +26,14 @@ def prepare_history_json(history_items, address, user):
     from_stamp = float("inf")
     to_stamp = 0
     points = int(user["kleo_points"]) if user else 0
+    
     for item in history_items:
-        activities[item["category"]] = activities.get(item["category"], 0) + 1
-        content = item["summary"]
-        items["content"].append(content)
+        activities[item['category']] = activities.get(item['category'], 0) + 1
+        
+        # Handle summary fallback to title
+        items["content"].append(item.get('summary', 'NO CONTENT'))
+        items["content"].append(item.get('url', "NO URL"))
+        items["content"].append(item.get('title', "NO TITLE"))
 
         from_stamp = min(from_stamp, item["visitTime"])
         to_stamp = max(to_stamp, item["visitTime"])
