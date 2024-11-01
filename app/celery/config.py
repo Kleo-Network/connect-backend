@@ -20,6 +20,7 @@ class BaseSettings:
         Queue("default"),
         Queue("remove-pii"),
         Queue("send-email"),
+        Queue("user-graph-update")
     )
     broker_transport_options = {"region": "ap-south-1"}
     enable_remote_control = False
@@ -30,7 +31,7 @@ class BaseSettings:
     broker_login_method = "AMQPLAIN"
     broker_user = os.environ.get("RABBIT_MQ_USERNAME", "vaibhavgeek")
     broker_password = os.environ.get("RABBIT_MQ_PASSWORD", "adminKleoNetwork")
-
+    worker_prefetch_multiplier = 20
 
 def get_settings():
     return BaseSettings()

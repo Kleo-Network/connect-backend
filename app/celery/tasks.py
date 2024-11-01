@@ -24,7 +24,7 @@ redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
 @shared_task(
     bind=True,
     base=AbortableTask,
-    ack_later=True,
+    no_ack=True,
     default_retry_delay=1,
     max_retries=0,
     queue="user-graph-update",
@@ -93,7 +93,7 @@ def send_telegram_notification(self, slug, response):
 @shared_task(
     bind=True,
     base=AbortableTask,
-    ack_later=True,
+    no_ack=True,
     default_retry_delay=1,
     max_retries=0,
     queue="activity-classification",
