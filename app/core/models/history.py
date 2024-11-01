@@ -6,7 +6,6 @@ import os
 import json
 
 
-
 # MongoDB connection URI
 mongo_uri = os.environ.get("DB_URL")
 db_name = os.environ.get("DB_NAME")
@@ -14,6 +13,7 @@ db_name = os.environ.get("DB_NAME")
 # Connect to MongoDB
 client = pymongo.MongoClient(mongo_uri)
 db = client.get_database(db_name)
+
 
 class History:
     def __init__(
@@ -112,30 +112,33 @@ def delete_all_history(address):
         return 0
 
 
-
 def get_top_activities(activity_counts):
     try:
         if isinstance(activity_counts, str):
             data = json.loads(activity_counts)
-        
-        activity_counts = {activity: int(count) for activity, count in activity_counts.items()}
-        
+
+        activity_counts = {
+            activity: int(count) for activity, count in activity_counts.items()
+        }
+
         total_activities = sum(activity_counts.values())
-        
+
         if total_activities == 0:
-            raise ValueError("Total activities count is zero, cannot compute percentages.")
-        
+            raise ValueError(
+                "Total activities count is zero, cannot compute percentages."
+            )
+
         activity_percentages = [
             {"label": activity, "percentage": round((count / total_activities) * 100)}
             for activity, count in activity_counts.items()
         ]
-        
+
         top_activities = sorted(
             activity_percentages, key=lambda x: x["percentage"], reverse=True
         )[:8]
-        
+
         return top_activities
-    
+
     except Exception as e:
         # Log the exception details
         print(f"An error occurred: {e}")
@@ -143,7 +146,6 @@ def get_top_activities(activity_counts):
         raise
 
 
-  
 def get_all_history_items(address, limit=100):
     try:
         pipeline = [
@@ -164,7 +166,6 @@ def get_all_history_items(address, limit=100):
 
         history_items = list(db.history.aggregate(pipeline, 
                            collation={"locale": "en", "strength": 2}))
-        
         return history_items
 
     except Exception as e:

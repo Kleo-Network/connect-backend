@@ -137,7 +137,7 @@ def contextual_activity_classification(self, item, address):
         print(f"Successfully updated PII count for user with address {address}")
     else:
         print(f"Failed to update PII count for user with address {address}")
-    
+
     counter = get_history_count(address)
     if counter > 50:
         history_items = get_all_history_items(address)
@@ -146,8 +146,6 @@ def contextual_activity_classification(self, item, address):
         update_previous_hash(address, new_hash)
         delete_all_history(address)
     return activity
-
-
 
 
 @shared_task(
@@ -188,7 +186,7 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
             activity_json[activity] = 1
         else:
             activity_json[activity] += 1
-            
+
         update_activity_json(address, activity_json)
         if not user:
             print(f"User with address {address} not found")
