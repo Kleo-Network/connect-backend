@@ -151,7 +151,7 @@ def contextual_activity_classification(self, item, address):
 @shared_task(
     bind=True,
     base=AbortableTask,
-    ack_later=True,
+    no_ack=True,
     default_retry_delay=1,
     max_retries=0,
     queue="activity-classification-new",
