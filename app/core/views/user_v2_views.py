@@ -45,8 +45,8 @@ def get_user_graph(userAddress):
 
 @core.route("/save-history", methods=["POST"])
 def save_history():
-    print("hit save history")
     data = request.get_json()
+    print(data)
     user_address = str(data.get("address")).lower()
     signup = data.get("signup")
     history = data.get("history")
@@ -94,10 +94,15 @@ def save_history():
                 }
 
             return jsonify({"data": response}), 200
-
-        return jsonify({"data": "History added successfully!"}), 200
-    except:
-        pass
+        return jsonify({
+            "status": "success",
+            "message": "History saved successfully"
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 
