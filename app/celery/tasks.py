@@ -2,11 +2,8 @@ from app.celery.userDataComputation.activityClassification import (
     get_most_relevant_activity,
     get_most_relevant_activity_for_batch,
 )
-from ..core.controllers.history import *
 from ..core.models.history import *
 from ..core.models.user import *
-from ..core.models.celery_tasks import *
-from ..core.models.visits import *
 from ..core.modules.upload import upload_to_arweave, prepare_history_json
 import redis
 from celery import shared_task
