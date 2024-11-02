@@ -20,6 +20,7 @@ def get_user_graph(userAddress):
     try:
         if not userAddress:
             return jsonify({"error": "Address is required"}), 400
+        activity_json = get_activity_json(userAddress)
         top_activities = get_top_activities(activity_json)
         # if not top_activities:
         #    return jsonify({"error": "No activity data found"}), 404
