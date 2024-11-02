@@ -701,8 +701,8 @@ def update_referee_and_bonus(user_address, referee_address):
         #     {"$inc": {"kleo_points": referral_bonus}}
         # )
 
-        print(
-            f"Assigned referee {referee_address} to user {user_address}, added bonus, and updated referrals."
-        )
+        # print(
+        #     f"Assigned referee {referee_address} to user {user_address}, added bonus, and updated referrals."
+        # )
     except Exception as e:
         print(f"An error occurred while updating referral: {e}")

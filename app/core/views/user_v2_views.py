@@ -40,7 +40,7 @@ def get_user_graph(userAddress):
 @core.route("/save-history", methods=["POST"])
 def save_history():
     data = request.get_json()
-    print(data)
+    # print(data)
     user_address = str(data.get("address")).lower()
     signup = data.get("signup")
     history = data.get("history")
@@ -140,11 +140,11 @@ def create_user():
     and generate a 5-digit random code.
     """
     data = request.get_json()
-    print("create user hit")
+    # print("create user hit")
     wallet_address = data.get("address")
 
     user = find_by_address(wallet_address)
-    print(user)
+    # print(user)
     if user:
         user["token"] = get_jwt_token(wallet_address, wallet_address)
         return jsonify(user), 200
@@ -161,7 +161,7 @@ def create_user():
         "password": response["slug"],
         "token": get_jwt_token(wallet_address, wallet_address),
     }
-    print(user_data)
+    # print(user_data)
     return jsonify(user_data), 200  # 201 Created
 
 
