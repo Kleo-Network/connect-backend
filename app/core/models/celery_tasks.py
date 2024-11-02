@@ -56,9 +56,9 @@ def get_celery_tasks_by_slug(slug):
             }
         },
     ]
-    print(pipeline)
+    # print(pipeline)
     tasks = list(db.celery.aggregate(pipeline))
-    print(tasks)
+    # print(tasks)
     return tasks
 
 

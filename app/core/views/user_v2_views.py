@@ -13,17 +13,11 @@ from ...core.models.constants import ABI, POLYGON_RPC
 core = Blueprint("core", __name__)
 
 
-
-
 @core.route("/get-user-graph/<userAddress>", methods=["GET"])
 def get_user_graph(userAddress):
     try:
         if not userAddress:
             return jsonify({"error": "Address is required"}), 400
-        activity_json = get_activity_json(userAddress)
-        top_activities = get_top_activities(activity_json)
-        # if not top_activities:
-        #    return jsonify({"error": "No activity data found"}), 404
 
         cache_key = f"user_graph:{userAddress}"
         cached_data = redis_client.get(cache_key)
@@ -43,17 +37,16 @@ def get_user_graph(userAddress):
         return jsonify({"error": str(e)}), 500
 
 
-
 @core.route("/save-history", methods=["POST"])
 def save_history():
     data = request.get_json()
-    print(data)
+    # print(data)
     user_address = str(data.get("address")).lower()
     signup = data.get("signup")
     history = data.get("history")
     return_abi_contract = False
     user = find_by_address(user_address)
-    
+
     try:
         if signup:
             referee_address = find_referral_in_history(history)
@@ -64,29 +57,29 @@ def save_history():
         else:
             if get_history_count(user_address) > 50:
                 return_abi_contract = True
-            
+
             for item in history:
                 if "content" in item:
                     user = find_by_address(user_address)
                     contextual_activity_classification.delay(item, user_address)
-        
+
             if return_abi_contract:
                 user = find_by_address(user_address)
                 previous_hash = user.get("previous_hash", "first_hash")
                 chain_data_list = [
-                {
-                    "name": "polygon",
-                    "rpc": POLYGON_RPC,
-                    "contractData": {
-                        "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
-                        "abi": ABI,
-                        "functionName": "safeMint",
-                        "functionParams": [
-                            user_address,
-                            previous_hash,
-                        ],
-                    },
-                }
+                    {
+                        "name": "polygon",
+                        "rpc": POLYGON_RPC,
+                        "contractData": {
+                            "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                            "abi": ABI,
+                            "functionName": "safeMint",
+                            "functionParams": [
+                                user_address,
+                                previous_hash,
+                            ],
+                        },
+                    }
                 ]
 
                 response = {
@@ -95,16 +88,12 @@ def save_history():
                 }
 
                 return jsonify({"data": response}), 200
-            return jsonify({
-                "status": "success",
-                "message": "History saved successfully"
-            }), 200
+            return (
+                jsonify({"status": "success", "message": "History saved successfully"}),
+                200,
+            )
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # @core.route("/save-history", methods=["POST"])
@@ -151,11 +140,11 @@ def create_user():
     and generate a 5-digit random code.
     """
     data = request.get_json()
-    print("create user hit")
+    # print("create user hit")
     wallet_address = data.get("address")
 
     user = find_by_address(wallet_address)
-    print(user)
+    # print(user)
     if user:
         user["token"] = get_jwt_token(wallet_address, wallet_address)
         return jsonify(user), 200
@@ -166,13 +155,13 @@ def create_user():
     # Create a new user with the random code
     user = User(address=wallet_address, slug=random_code)
     response = user.save(signup=True)
-    
+
     # Prepare the response object
     user_data = {
         "password": response["slug"],
         "token": get_jwt_token(wallet_address, wallet_address),
     }
-    print(user_data)
+    # print(user_data)
     return jsonify(user_data), 200  # 201 Created
 
 

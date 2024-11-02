@@ -44,10 +44,9 @@ def update_user_graph_cache(self, userAddress):
         cache_key = f"user_graph:{userAddress}"
         redis_client.set(cache_key, json.dumps(top_activities))
 
-        print(f"Updated Redis cache for user {userAddress}")
+        # print(f"Updated Redis cache for user {userAddress}")
     except Exception as e:
         print(f"Error updating user graph cache for {userAddress}: {str(e)}")
-
 
 
 def send_telegram_message(slug, body):
@@ -69,7 +68,8 @@ def send_telegram_message(slug, body):
     try:
         response = requests.post(telegram_api_url, json=payload)
         if response.status_code == 200:
-            print(f"Telegram message sent successfully for slug: {slug}")
+            pass
+            # print(f"Telegram message sent successfully for slug: {slug}")
         else:
             print(
                 f"Failed to send Telegram message for slug: {slug}. Status code: {response.status_code}"
@@ -99,7 +99,7 @@ def send_telegram_notification(self, slug, response):
     queue="activity-classification",
 )
 def contextual_activity_classification(self, item, address):
-     
+
     clean_content = item.get("content", "")
     pii_count = 1
     text_size_in_bytes = len(clean_content.encode("utf-8"))
@@ -110,9 +110,8 @@ def contextual_activity_classification(self, item, address):
     if not user:
         print(f"User with address {address} not found")
         return
-    
-    
-    print(item)
+
+    # print(item)
     activity_json = get_activity_json(address)
     history_entry = History(
         address=address,
@@ -120,7 +119,7 @@ def contextual_activity_classification(self, item, address):
         title=item.get("title", "No Title Available"),
         visitTime=float(item.get("lastVisitTime", datetime.now().timestamp())),
         category=activity,
-        summary=item.get("content", "")
+        summary=item.get("content", ""),
     )
     # if activity json ["activity"] does not exist set as 1 otherwise incerement by 1
     if activity not in activity_json:
@@ -134,7 +133,8 @@ def contextual_activity_classification(self, item, address):
     user_updated = update_user_data_by_address(address, pii_count, text_size_in_bytes)
 
     if user_updated:
-        print(f"Successfully updated PII count for user with address {address}")
+        pass
+        # print(f"Successfully updated PII count for user with address {address}")
     else:
         print(f"Failed to update PII count for user with address {address}")
 
@@ -177,7 +177,7 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
     # Iterate through each classified activity and save it along with history entries
     for idx, item in enumerate(history_batch):
         activity = activities[idx]
-        print(f"Most relevant activity for item {idx} is {activity}")
+        # print(f"Most relevant activity for item {idx} is {activity}")
 
         # Find the user by address
         user = find_by_address(address)
@@ -204,9 +204,9 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
         # Save the history entry to the database
         history_entry.save()
 
-        print(
-            f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
-        )
+        # print(
+        #     f"Saved history entry for user {address}: {item['title']} - Activity: {activity}"
+        # )
 
         # Update the PII count and data quantity for the user
         text_size_in_bytes = len(clean_contents[idx].encode("utf-8"))
@@ -215,7 +215,8 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
         )
 
         if user_updated:
-            print(f"Successfully updated PII count for user with address {address}")
+            pass
+            # print(f"Successfully updated PII count for user with address {address}")
         else:
             print(f"Failed to update PII count for user with address {address}")
 

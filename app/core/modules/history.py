@@ -268,15 +268,15 @@ def create_pending_cards(slug):
             create_visit_chart_card(slug, top_domains, start_date, end_date)
 
     history_from_db = get_history_item(slug)
-    print("Step 1")
+    # print("Step 1")
     if not history_from_db:
         return
     cluster_history_list = cluster_and_save(history_from_db)
-    print("Step 2")
+    # print("Step 2")
     if not cluster_history_list:
         return
     response_from_llm = create_card_from_llm(slug, cluster_history_list)
-    print(response_from_llm)
+    # print(response_from_llm)
     return response_from_llm
 
 
@@ -446,7 +446,7 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
         service=input_service,
         max_tokens=max_tokens,
     )
-    print(bot_response)
+    # print(bot_response)
     if (
         "choices" in bot_response
         and len(bot_response["choices"]) > 0
@@ -461,7 +461,7 @@ def generate_results(slug, items, initial_prompt, input_service, max_tokens=100)
     else:
         response_text_json = []
 
-    print(response_text_json)
+    # print(response_text_json)
     if response_text_json is not None and len(response_text_json) > 0:
         for card_data in response_text_json:
             try:
