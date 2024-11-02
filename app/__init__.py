@@ -10,11 +10,23 @@ def create_app():
     # Initialize Flask app with a descriptive name
     app = Flask("KLEO-NETWORK")
 
-    # Enable Cross-Origin Resource Sharing (CORS) for all API routes
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # Enable Cross-Origin Resource Sharing (CORS) globally for all origins (*)
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
     # Register all the blueprints
     register_blueprints(app)
+
+    # Ensure correct headers are sent in the response
+    @app.after_request
+    def add_cors_headers(response):
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add(
+            "Access-Control-Allow-Headers", "Content-Type,Authorization"
+        )
+        response.headers.add(
+            "Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS"
+        )
+        return response
 
     return app
 
