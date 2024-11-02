@@ -1,4 +1,4 @@
-from app.celery.userDataComputation.activityClassification import (
+from app.celery.compute.classifier import (
     get_most_relevant_activity,
     get_most_relevant_activity_for_batch,
 )
@@ -47,46 +47,6 @@ def update_user_graph_cache(self, userAddress):
 
 
 
-def send_telegram_message(slug, body):
-    tg_token_api = os.environ.get("TELEGRAM_API_TOKEN")
-    channel_id = "-1002178791722"  # The channel ID you provided
-
-    subject = f"Activity for Slug: {slug}"
-    message = f"```{json.dumps(body, indent=2)}```"
-
-    # Send the message
-    telegram_api_url = f"https://api.telegram.org/bot{tg_token_api}/sendMessage"
-
-    payload = {
-        "chat_id": channel_id,
-        "text": f"{subject}\n\n{message}",
-        "parse_mode": "Markdown",
-    }
-
-    try:
-        response = requests.post(telegram_api_url, json=payload)
-        if response.status_code == 200:
-            print(f"Telegram message sent successfully for slug: {slug}")
-        else:
-            print(
-                f"Failed to send Telegram message for slug: {slug}. Status code: {response.status_code}"
-            )
-    except Exception as e:
-        print(f"Failed to send Telegram message for slug: {slug}. Error: {str(e)}")
-
-
-@shared_task(
-    bind=True,
-    base=AbortableTask,
-    ack_later=True,
-    default_retry_delay=20,
-    max_retries=2,
-    queue="send-email",
-)
-def send_telegram_notification(self, slug, response):
-    send_telegram_message(slug, response)
-
-
 @shared_task(
     bind=True,
     base=AbortableTask,
@@ -107,9 +67,7 @@ def contextual_activity_classification(self, item, address):
     if not user:
         print(f"User with address {address} not found")
         return
-    
-    
-    print(item)
+
     activity_json = get_activity_json(address)
     history_entry = History(
         address=address,
