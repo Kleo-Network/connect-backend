@@ -93,11 +93,11 @@ def save_history():
                     "password": user.get("slug"),
                 }
 
-            return jsonify({"data": response}), 200
-        return jsonify({
-            "status": "success",
-            "message": "History saved successfully"
-        }), 200
+                return jsonify({"data": response}), 200
+            return jsonify({
+                "status": "success",
+                "message": "History saved successfully"
+            }), 200
     except Exception as e:
         return jsonify({
             "status": "error",
