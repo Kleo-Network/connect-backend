@@ -11,13 +11,6 @@ services:
     volumes:
       - .:/app
     container_name: development
-  celery:
-    build: .
-    command: celery -A run.celery worker --pool=prefork --concurrency=8 --loglevel=info
-    depends_on:
-      - api
-    volumes:
-      - .:/app
 
 volumes:
   app:

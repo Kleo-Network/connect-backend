@@ -18,7 +18,7 @@ docker volume rm $(docker volume ls -q)
 
 # Optional: Remove all networks
 # echo "Removing networks..."
-# docker network rm $(docker network ls -q)
-
+docker network rm $(docker network ls -q)
+docker system prune -a --volumes
 # Your Docker environment is now clean
 echo "Docker environment has been cleaned up."
