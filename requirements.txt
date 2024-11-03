@@ -76,3 +76,4 @@ imgurpython           # IMGUR uploading chart images
 gunicorn
 nltk
 redis
+PyJWT

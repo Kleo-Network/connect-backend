@@ -97,36 +97,38 @@ def save_history():
 
 @core.route("/create-user", methods=["POST"])
 def create_user():
-    """
-    Create a new user or return existing user information.
-    If the user exists, return their data along with a JWT token.
-    If the user doesn't exist, create a new user, allocate Vana points and tokens,
-    and generate a 5-digit random code.
-    """
     data = request.get_json()
-    # print("create user hit")
     wallet_address = data.get("address")
 
+    if not wallet_address:
+        return jsonify({"error": "Address is required"}), 400
+
     user = find_by_address(wallet_address)
-    # print(user)
     if user:
-        user["token"] = get_jwt_token(wallet_address, wallet_address)
+        try:
+            token = get_jwt_token(wallet_address, wallet_address)
+        except Exception as e:
+            return jsonify({'error': 'Failed to generate token'}), 500
+
+        user["token"] = token
         return jsonify(user), 200
 
-    # Generate a 5-digit random code
     random_code = str(random.randint(100, 9999999))
 
-    # Create a new user with the random code
     user = User(address=wallet_address, slug=random_code)
     response = user.save(signup=True)
 
-    # Prepare the response object
+    try:
+        token = get_jwt_token(wallet_address, wallet_address)
+    except Exception as e:
+        return jsonify({'error': 'Failed to generate token'}), 500
+
     user_data = {
         "password": response["slug"],
-        "token": get_jwt_token(wallet_address, wallet_address),
+        "token": token,
     }
-    # print(user_data)
-    return jsonify(user_data), 200  # 201 Created
+    return jsonify(user_data), 201
+
 
 
 @core.route("/upload_activity_chart", methods=["POST"])
