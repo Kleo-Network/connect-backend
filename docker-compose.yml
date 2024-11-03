@@ -5,13 +5,7 @@ services:
       - 6379:6379
   api:
     build: .
-    command: gunicorn --workers 4 \
-         --threads 2 \
-         --timeout 30 \
-         --keep-alive 5 \
-         --max-requests 1000 \
-         --max-requests-jitter 50 \
-         'app:create_app()'
+    command: gunicorn -w 4 --bind 0.0.0.0:5001 run:app
     ports:
       - 5001:5001
     volumes:

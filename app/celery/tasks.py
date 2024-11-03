@@ -147,7 +147,6 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
             print(f"User with address {address} not found")
             continue
 
-        # Create a new History entry
         history_entry = History(
             address=address,
             url=item["url"],
@@ -155,8 +154,6 @@ def contextual_activity_classification_for_batch(self, history_batch, address):
             visitTime=float(item.get("lastVisitTime", datetime.now().timestamp())),
             category=activity,
         )
-
-        # Save the history entry to the database
         history_entry.save()
 
         print(

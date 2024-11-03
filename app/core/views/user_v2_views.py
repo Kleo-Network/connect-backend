@@ -1,8 +1,6 @@
 from flask import Blueprint, request, jsonify
 import random
-from app.celery.userDataComputation.activityClassification import (
-    get_most_relevant_activity,
-)
+
 from app.core.modules.activity_chart import upload_image_to_image_bb
 from ..models.user import *
 from ..modules.auth import get_jwt_token

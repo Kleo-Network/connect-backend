@@ -14,9 +14,9 @@ def create_app():
 
     CORS(app, resources={r"/api/*": {"origins": "*"}})
     limiter = Limiter(
-        app,
         key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"]  # Adjust limits as needed
+        app=app,
+        default_limits=["200 per day", "50 per hour"]
     )
     @app.errorhandler(RateLimitExceeded)
     def rate_limit_handler(e):
