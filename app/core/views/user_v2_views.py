@@ -109,9 +109,9 @@ def create_user():
             token = get_jwt_token(wallet_address, wallet_address)
         except Exception as e:
             return jsonify({'error': 'Failed to generate token'}), 500
-
-        user["token"] = token
-        return jsonify(user), 200
+        
+        user_data = {"password": user["slug"], "token": token}
+        return jsonify(user_data), 200
 
     random_code = str(random.randint(100, 9999999))
 
@@ -127,7 +127,8 @@ def create_user():
         "password": response["slug"],
         "token": token,
     }
-    return jsonify(user_data), 201
+    print(user_data)
+    return jsonify(user_data), 200
 
 
 
