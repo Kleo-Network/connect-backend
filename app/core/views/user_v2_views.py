@@ -94,7 +94,6 @@ def save_history():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-
 @core.route("/create-user", methods=["POST"])
 def create_user():
     data = request.get_json()
@@ -108,8 +107,8 @@ def create_user():
         try:
             token = get_jwt_token(wallet_address, wallet_address)
         except Exception as e:
-            return jsonify({'error': 'Failed to generate token'}), 500
-        
+            return jsonify({"error": "Failed to generate token"}), 500
+
         user_data = {"password": user["slug"], "token": token}
         return jsonify(user_data), 200
 
@@ -121,7 +120,7 @@ def create_user():
     try:
         token = get_jwt_token(wallet_address, wallet_address)
     except Exception as e:
-        return jsonify({'error': 'Failed to generate token'}), 500
+        return jsonify({"error": "Failed to generate token"}), 500
 
     user_data = {
         "password": response["slug"],
@@ -129,7 +128,6 @@ def create_user():
     }
     print(user_data)
     return jsonify(user_data), 200
-
 
 
 @core.route("/upload_activity_chart", methods=["POST"])
@@ -157,10 +155,11 @@ def get_user(userAddress):
     """
     Fetch user data from MongoDB based on the user's address.
     """
+    print("------------- get-user --------------", userAddress)
     try:
         # Query the MongoDB collection using the user's address
         user_data = find_by_address(userAddress)
-
+        print("------------- userData --------------", user_data)
         # If user data is not found, return a 404 error
         if not user_data:
             return jsonify({"error": "User not found"}), 404
